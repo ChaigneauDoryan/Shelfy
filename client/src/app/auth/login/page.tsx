@@ -9,7 +9,7 @@ export default function LoginPage() {
     const cookieStore = cookies()
     const supabase = createClient(cookieStore)
 
-    const origin = headers().get('host');
+    const origin = (headers() as any).get('host');
     const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
     const redirectToUrl = `${protocol}://${origin}/auth/callback`;
 
