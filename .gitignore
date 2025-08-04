@@ -42,5 +42,3 @@ Thumbs.db
 *.swp
 *.swo
 
-# Client directory (if it's a separate git repo)
-client/
