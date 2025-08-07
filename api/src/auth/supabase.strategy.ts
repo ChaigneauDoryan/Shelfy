@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class SupabaseStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly configService: ConfigService) {
-    const secret = configService.get<string>('SUPABASE_KEY');
+    const secret = configService.get<string>('SUPABASE_ANON_KEY');
     if (!secret) {
       throw new Error('SUPABASE_KEY is not defined in the environment variables.');
     }

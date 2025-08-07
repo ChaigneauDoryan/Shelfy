@@ -2,7 +2,6 @@
 'use client'
 
 import { useState } from "react"
-import Link from "next/link"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -18,56 +17,54 @@ import {
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
 
 const formSchema = z.object({
   email: z.string().email({ message: "Veuillez saisir une adresse e-mail valide." }),
-  password: z.string().min(1, { message: "Le mot de passe ne peut pas être vide." }),
 });
 
-export default function LoginPage() {
-  const router = useRouter();
+export default function ForgotPasswordPage() {
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "" },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: values.email,
-      password: values.password,
+    const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
+      redirectTo: `${location.origin}/auth/reset-password`,
     });
 
     if (error) {
-      setError("Email ou mot de passe invalide.");
+      setError("Une erreur est survenue. Veuillez réessayer.");
     } else {
-      router.push('/dashboard');
-      router.refresh(); // Pour s'assurer que la session est bien mise à jour
+      setIsSubmitted(true);
     }
   }
 
-  async function handleGoogleSignIn() {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${location.origin}/auth/callback`,
-      },
-    });
+  if (isSubmitted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle>Vérifiez vos e-mails</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>Si un compte existe pour cette adresse, un e-mail de réinitialisation de mot de passe a été envoyé.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Connexion</CardTitle>
-          <CardDescription>Accédez à votre compte Codex.</CardDescription>
+          <CardTitle>Mot de passe oublié</CardTitle>
+          <CardDescription>Saisissez votre e-mail pour recevoir un lien de réinitialisation.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -90,31 +87,9 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex justify-between items-center">
-                      <FormLabel>Mot de passe</FormLabel>
-                      <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">
-                        Mot de passe oublié ?
-                      </Link>
-                    </div>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full">Se connecter</Button>
+              <Button type="submit" className="w-full">Envoyer le lien</Button>
             </form>
           </Form>
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-600">Ou continuer avec</p>
-            <Button onClick={handleGoogleSignIn} variant="outline" className="w-full mt-2">Se connecter avec Google</Button>
-          </div>
         </CardContent>
       </Card>
     </div>

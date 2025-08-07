@@ -1,9 +1,11 @@
+'use client'
+
 import Link from 'next/link';
 
 export default function Navbar() {
   return (
     <nav className="bg-gray-800 text-white p-4 shadow-md">
-      <div className="container mx-auto flex justify-between items-center">
+      <div className="container mx-auto flex justify-between items-center flex-nowrap">
         <Link href="/" className="text-2xl font-bold text-white hover:text-gray-300 transition duration-300">
           Codex
         </Link>

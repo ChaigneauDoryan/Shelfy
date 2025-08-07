@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from "react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -18,56 +18,58 @@ import {
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Veuillez saisir une adresse e-mail valide." }),
-  password: z.string().min(1, { message: "Le mot de passe ne peut pas être vide." }),
+  password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères." }),
+  confirmPassword: z.string(),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Les mots de passe ne correspondent pas.",
+  path: ["confirmPassword"],
 });
 
-export default function LoginPage() {
+export default function ResetPasswordPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { password: "", confirmPassword: "" },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: values.email,
-      password: values.password,
-    });
+    const { error } = await supabase.auth.updateUser({ password: values.password });
 
     if (error) {
-      setError("Email ou mot de passe invalide.");
+      setError("Impossible de réinitialiser le mot de passe. Le lien a peut-être expiré.");
     } else {
-      router.push('/dashboard');
-      router.refresh(); // Pour s'assurer que la session est bien mise à jour
+      setIsSubmitted(true);
     }
   }
 
-  async function handleGoogleSignIn() {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${location.origin}/auth/callback`,
-      },
-    });
+  if (isSubmitted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <CardTitle>Mot de passe réinitialisé !</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p>Votre mot de passe a été mis à jour avec succès.</p>
+            <Button onClick={() => router.push('/auth/login')} className="mt-4">Retour à la connexion</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Connexion</CardTitle>
-          <CardDescription>Accédez à votre compte Codex.</CardDescription>
+          <CardTitle>Réinitialiser votre mot de passe</CardTitle>
+          <CardDescription>Saisissez votre nouveau mot de passe.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -79,28 +81,10 @@ export default function LoginPage() {
               )}
               <FormField
                 control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="votre@email.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex justify-between items-center">
-                      <FormLabel>Mot de passe</FormLabel>
-                      <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">
-                        Mot de passe oublié ?
-                      </Link>
-                    </div>
+                    <FormLabel>Nouveau mot de passe</FormLabel>
                     <FormControl>
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
@@ -108,13 +92,22 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">Se connecter</Button>
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirmer le nouveau mot de passe</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="••••••••" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full">Réinitialiser le mot de passe</Button>
             </form>
           </Form>
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-600">Ou continuer avec</p>
-            <Button onClick={handleGoogleSignIn} variant="outline" className="w-full mt-2">Se connecter avec Google</Button>
-          </div>
         </CardContent>
       </Card>
     </div>
