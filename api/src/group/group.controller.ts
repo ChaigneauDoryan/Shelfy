@@ -1,11 +1,25 @@
 
-import { Controller, Post, Body, UseGuards, Req, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Req, Get, Query, UnauthorizedException } from '@nestjs/common';
 import { GroupService } from './group.service';
 import { AuthGuard } from '@nestjs/passport';
 
 @Controller('groups')
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
+
+  @Post()
+  @UseGuards(AuthGuard('jwt'))
+  async createGroup(@Body() createGroupDto: { name: string; description?: string; avatar_url?: string }, @Req() req) {
+    const userId = req.user.id;
+    const accessToken = req.headers.authorization?.split(' ')[1]; // Extraire le token Bearer
+
+    if (!accessToken) {
+      throw new UnauthorizedException('Access token not found.');
+    }
+
+    const group = await this.groupService.createGroup(createGroupDto, userId, accessToken);
+    return group;
+  }
 
   @Post('invite')
   @UseGuards(AuthGuard('jwt')) // Assurez-vous que l'utilisateur est authentifié

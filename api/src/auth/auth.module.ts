@@ -6,9 +6,13 @@ import { AuthController } from './auth.controller';
 import { SupabaseStrategy } from './supabase.strategy';
 
 @Module({
-  imports: [ConfigModule, PassportModule.register({ defaultStrategy: 'jwt' })],
+  imports: [
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    ConfigModule,
+  ],
   providers: [AuthService, SupabaseStrategy],
   controllers: [AuthController],
+  exports: [PassportModule, SupabaseStrategy], // Exporter pour que les autres modules puissent l'utiliser
 })
 export class AuthModule {}
 

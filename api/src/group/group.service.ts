@@ -21,6 +21,57 @@ export class GroupService {
     );
   }
 
+  async createGroup(createGroupDto: { name: string; description?: string; avatar_url?: string }, userId: string, accessToken: string) {
+    const { name, description, avatar_url } = createGroupDto;
+
+    console.log("User ID for group creation:", userId); // Ligne de débogage
+
+    // Créer un client Supabase avec le token d'accès de l'utilisateur
+    const supabase = createClient(
+      this.configService.get<string>('SUPABASE_URL')!,
+      this.configService.get<string>('SUPABASE_ANON_KEY')!,
+      {
+        global: {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      }
+    );
+
+    // 1. Créer le groupe
+    const { data: group, error: groupError } = await supabase
+      .from('groups')
+      .insert({
+        name,
+        description,
+        avatar_url,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (groupError) {
+      console.error('Error creating group:', groupError);
+      throw new Error('Failed to create group.');
+    }
+
+    // 2. Ajouter le créateur comme premier membre (admin)
+    const { error: memberError } = await supabase // Utiliser le client authentifié
+      .from('group_members')
+      .insert({
+        group_id: group.id,
+        user_id: userId,
+        role: 'admin', // Le créateur est admin par défaut
+      });
+
+    if (memberError) {
+      // Idéalement, il faudrait une transaction pour annuler la création du groupe
+      console.error('Error adding creator to group members:', memberError);
+      throw new Error('Failed to add creator to group.');
+    }
+
+    return group;
+  }
+
   async sendGroupInvitation(
     groupId: string,
     groupName: string,

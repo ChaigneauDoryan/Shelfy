@@ -49,7 +49,7 @@ export default function AcceptInvitationPage() {
 
       // Appeler l'API backend pour accepter l'invitation
       try {
-        const response = await fetch(`/api/groups/accept-invitation?token=${token}`, {
+        const response = await fetch(`/groups/accept-invitation?token=${token}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

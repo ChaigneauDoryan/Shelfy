@@ -47,7 +47,7 @@ export default function InviteToGroupPage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/groups/invite', {
+      const response = await fetch('/groups/invite', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -19,15 +19,23 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
+import { createClient } from "@/lib/supabase/client";
+
+import GroupAvatarUpload from "@/components/GroupAvatarUpload";
+
+import { jwtDecode } from 'jwt-decode';
+
 const createGroupSchema = z.object({
   name: z.string().min(3, { message: "Le nom du groupe doit contenir au moins 3 caractères." }).max(50, { message: "Le nom du groupe ne peut pas dépasser 50 caractères." }),
   description: z.string().max(280, { message: "La description ne peut pas dépasser 280 caractères." }).optional(),
+  avatar_url: z.string().url({ message: "Veuillez fournir une URL valide." }).optional(),
 });
 
 type CreateGroupFormValues = z.infer<typeof createGroupSchema>;
 
 export default function CreateGroupPage() {
   const router = useRouter();
+  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,6 +44,7 @@ export default function CreateGroupPage() {
     defaultValues: {
       name: '',
       description: '',
+      avatr_url: '',
     },
   });
 
@@ -44,21 +53,42 @@ export default function CreateGroupPage() {
     setError(null);
 
     try {
-      // Note: L'appel API sera implémenté dans les prochaines étapes
-      // const response = await fetch('/api/groups', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(values),
-      // });
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
 
-      // if (!response.ok) {
-      //   const errorData = await response.json();
-      //   throw new Error(errorData.message || 'Échec de la création du groupe.');
-      // }
+      console.log("Access Token:", accessToken); // Ajoutez cette ligne pour déboguer
 
-      console.log("Form values:", values);
-      alert("La création de groupe est en cours de développement. Les données ont été logguées en console.");
-      // router.push('/groups'); // Rediriger vers la page des groupes après succès
+      if (!accessToken) {
+        throw new Error("Utilisateur non authentifié.");
+      }
+
+      // --- Débogage du JWT ---
+      try {
+        const decodedToken = jwtDecode(accessToken);
+        console.log("Decoded JWT:", decodedToken);
+      } catch (e) {
+        console.error("Error decoding JWT:", e);
+      }
+      // --- Fin du débogage ---
+
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      console.log("API Base URL from env:", apiBaseUrl);
+      const response = await fetch(`${apiBaseUrl}/groups`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(values),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Échec de la création du groupe.');
+      }
+
+      router.push('/groups');
+      router.refresh(); // Pour forcer le re-rendu de la page des groupes
 
     } catch (err: any) {
       setError(err.message);
@@ -77,6 +107,19 @@ export default function CreateGroupPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="avatr_url"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col items-center">
+                    <FormLabel>Avatar du groupe (Optionnel)</FormLabel>
+                    <FormControl>
+                      <GroupAvatarUpload onUpload={(url) => field.onChange(url)} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="name"
