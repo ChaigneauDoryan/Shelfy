@@ -1,28 +1,19 @@
 {
   "build": {
-    "env": {
-      // Variables d'environnement nécessaires pendant le processus de build
-      // Par exemple, si votre build Next.js ou NestJS a besoin de variables spécifiques
-      // pour la compilation. Généralement, les variables de runtime sont suffisantes.
-    }
+    "env": {}
   },
   "functions": {
-    // Définit comment Vercel doit traiter les fichiers compilés de votre API NestJS
-    // Le chemin doit pointer vers les fichiers JavaScript compilés de votre API
     "api/dist/main.js": {
-      "runtime": "nodejs20.x" // Utilisez la version de Node.js que vous préférez (ex: nodejs18.x ou nodejs20.x)
+      "runtime": "nodejs20.x"
     }
   },
   "routes": [
-    // Redirige toutes les requêtes vers /api/* vers votre fonction serverless NestJS
     {
       "src": "/api/(.*)",
-      "dest": "api/dist/main.js" // Le point d'entrée de votre application NestJS compilée
+      "dest": "api/dist/main.js"
     }
   ],
-  // Commandes pour installer les dépendances de vos deux projets
   "installCommand": "npm install --prefix ./client && npm install --prefix ./api",
   "buildCommand": "npm run build --prefix ./client && npm run build --prefix ./api",
-  // Le répertoire de sortie de votre application Next.js (le frontend)
   "outputDirectory": "client/.next"
 }
