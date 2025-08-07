@@ -1,19 +1,24 @@
 {
-  "build": {
-    "env": {}
-  },
-  "functions": {
-    "api/dist/main.js": {
-      "runtime": "nodejs20.x"
+  "installCommand": "npm install --prefix ./client && npm install --prefix ./api",
+  "buildCommand": "npm run build --prefix ./client && npm run build --prefix ./api",
+  "builds": [
+    {
+      "src": "client/package.json",
+      "use": "@vercel/next"
+    },
+    {
+      "src": "api/dist/main.js",
+      "use": "@vercel/node"
     }
-  },
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/dist/main.js"
+      "dest": "/api"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/client/$1"
     }
-  ],
-  "installCommand": "npm install --prefix ./client && npm install --prefix ./api",
-  "buildCommand": "npm run build --prefix ./client && npm run build --prefix ./api",
-  "outputDirectory": "client/.next"
+  ]
 }
