@@ -40,6 +40,7 @@ export default function GroupAvatarUpload({ onUpload }: GroupAvatarUploadProps) 
 
       setAvatarUrl(publicUrl);
       onUpload(publicUrl);
+      console.log('GroupAvatarUpload: Uploaded URL:', publicUrl);
 
     } catch (error: any) {
       alert(error.message);

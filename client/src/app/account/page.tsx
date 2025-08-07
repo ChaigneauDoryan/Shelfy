@@ -84,7 +84,7 @@ export default function AccountPage() {
           <AvatarUpload
             userId={user.id}
             initialAvatarUrl={avatarUrl}
-            onUpload={(url) => setAvatarUrl(url)}
+            onUpload={(url: string) => setAvatarUrl(url)}
           />
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>

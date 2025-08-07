@@ -4,13 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { FaPlus, FaUsers, FaBookOpen } from 'react-icons/fa';
+import GroupCard from '@/components/GroupCard';
 
 // Fonction pour récupérer les groupes de l'utilisateur
 async function getUserGroups(supabase: any, userId: string) {
   const { data, error } = await supabase
     .from('group_members')
     .select(`
-      groups (*)
+      role,
+      groups (*,
+        group_members(count),
+        group_invitations(count)
+      )
     `)
     .eq('user_id', userId);
 
@@ -19,8 +24,13 @@ async function getUserGroups(supabase: any, userId: string) {
     return [];
   }
 
-  // Extraire les données des groupes de la jointure
-  return data.map((item: any) => item.groups);
+  // Extraire les données des groupes, le count des membres et le rôle de l'utilisateur
+  return data.map((item: any) => ({
+    ...item.groups,
+    members_count: item.groups.group_members[0]?.count || 0,
+    pending_invitations_count: item.groups.group_invitations[0]?.count || 0,
+    user_role: item.role, // Ajouter le rôle de l'utilisateur dans ce groupe
+  }));
 }
 
 export default async function GroupsPage() {
@@ -29,6 +39,7 @@ export default async function GroupsPage() {
 
   const { data: { user } } = await supabase.auth.getUser();
   const myGroups = user ? await getUserGroups(supabase, user.id) : [];
+  const canInvite = myGroups.some((group: any) => group.user_role === 'admin');
 
   return (
     <div className="space-y-8 p-4">
@@ -38,11 +49,13 @@ export default async function GroupsPage() {
           <p className="text-lg text-gray-600 mt-2">Connectez-vous avec d'autres passionnés de lecture.</p>
         </div>
         <div className="flex space-x-4">
-          <Link href="/groups/invite">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md flex items-center">
-              <FaPlus className="mr-2" /> Inviter un membre
-            </Button>
-          </Link>
+          {canInvite && (
+            <Link href="/groups/invite">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md flex items-center">
+                <FaPlus className="mr-2" /> Inviter un membre
+              </Button>
+            </Link>
+          )}
           <Link href="/groups/create">
             <Button variant="outline" className="px-6 py-3 rounded-lg shadow-md flex items-center">
               <FaPlus className="mr-2" /> Créer un groupe
@@ -57,22 +70,7 @@ export default async function GroupsPage() {
         {myGroups && myGroups.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {myGroups.map((group: any) => (
-              <Card key={group.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out">
-                <CardHeader className="flex flex-row items-center space-x-4 p-4">
-                  <img src={group.avatar_url || `https://via.placeholder.com/150/33FF57/FFFFFF?text=${group.name.substring(0, 2)}`} alt={group.name} className="w-16 h-16 rounded-full object-cover border-2 border-blue-500" />
-                  <div>
-                    <CardTitle className="text-xl font-semibold text-gray-900">{group.name}</CardTitle>
-                    {/* Note: Le nombre de membres n'est pas directement disponible, nous mettons un placeholder */}
-                    <p className="text-sm text-gray-500 flex items-center"><FaUsers className="mr-1" /> N/A membres</p>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-4 pt-0">
-                  <p className="text-gray-700 mb-3 line-clamp-2">{group.description || 'Aucune description.'}</p>
-                  {/* Note: Le livre actuel n'est pas disponible, nous mettons un placeholder */}
-                  <p className="text-sm text-gray-600 flex items-center"><FaBookOpen className="mr-1" /> Lecture actuelle: <span className="font-medium ml-1">Non défini</span></p>
-                  <Button className="w-full mt-4 bg-green-500 hover:bg-green-600">Voir le groupe</Button>
-                </CardContent>
-              </Card>
+              <GroupCard key={group.id} group={group} currentUserId={user?.id || ''} />
             ))}
           </div>
         ) : (

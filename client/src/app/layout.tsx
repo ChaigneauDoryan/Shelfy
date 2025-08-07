@@ -8,6 +8,7 @@ import { Providers } from "./providers"
 import Navbar from "../components/Navbar"
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
+import { Toaster } from '@/components/ui/toaster';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -61,6 +62,7 @@ export default function RootLayout({
       >
         {!user && <Navbar />}
         <Providers>{children}</Providers>
+        <Toaster />
       </body>
     </html>
   );

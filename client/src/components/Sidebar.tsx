@@ -8,31 +8,15 @@ import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 
-export default function Sidebar() {
-  const [user, setUser] = useState<User | null>(null);
+interface SidebarProps {
+  user: User | null;
+  profile: { username: string; avatar_url: string } | null;
+  onSignOut: () => void;
+}
+
+export default function Sidebar({ user, profile, onSignOut }: SidebarProps) {
   const supabase = createClient();
   const router = useRouter();
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    // Initial fetch
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    fetchUser();
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/');
-    router.refresh();
-  };
 
   return (
     <div className="flex flex-col h-screen bg-gray-800 text-white w-64 p-4 shadow-lg">
@@ -70,7 +54,7 @@ export default function Sidebar() {
       </nav>
       <div className="mt-auto">
         {user && (
-          <button onClick={handleSignOut} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+          <button onClick={onSignOut} className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
             Déconnexion
           </button>
         )}

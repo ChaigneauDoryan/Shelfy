@@ -9,7 +9,7 @@ export function createClient(cookieStore: ReturnType<typeof cookies>) {
     {
       cookies: {
         async get(name: string) {
-          return (await cookieStore.get(name))?.value
+          return (await cookieStore).get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
           try {

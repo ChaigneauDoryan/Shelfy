@@ -2,7 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import Sidebar from "@/components/Sidebar";
+import ClientLayoutContent from "./ClientLayoutContent";
 
 export default async function DashboardLayout({
   children,
@@ -25,11 +25,8 @@ export default async function DashboardLayout({
     .single();
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar user={user} profile={profile} />
-      <main className="flex-1 p-8 bg-gray-100/50">
-        {children}
-      </main>
-    </div>
+    <ClientLayoutContent user={user} profile={profile}>
+      {children}
+    </ClientLayoutContent>
   );
 }

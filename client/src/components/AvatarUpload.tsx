@@ -6,7 +6,13 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 
-export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }) {
+interface AvatarUploadProps {
+  userId: string;
+  initialAvatarUrl: string;
+  onUpload: (url: string) => void;
+}
+
+export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: AvatarUploadProps) {
   const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
   const [uploading, setUploading] = useState(false);
   const supabase = createClient();
@@ -15,7 +21,7 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }) {
     setAvatarUrl(initialAvatarUrl);
   }, [initialAvatarUrl]);
 
-  const handleUpload = async (event) => {
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true);
       if (!event.target.files || event.target.files.length === 0) {
@@ -37,7 +43,7 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }) {
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
       setAvatarUrl(publicUrl);
       onUpload(publicUrl);
-    } catch (error) {
+    } catch (error: any) {
       alert(error.message);
     } finally {
       setUploading(false);

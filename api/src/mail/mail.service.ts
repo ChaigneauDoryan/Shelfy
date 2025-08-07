@@ -39,6 +39,11 @@ export class MailService {
       `,
     };
 
-    await this.transporter.sendMail(mailOptions);
+    try {
+      await this.transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error('MailService: Error sending email:', error);
+      throw new Error('Failed to send email.');
+    }
   }
 }

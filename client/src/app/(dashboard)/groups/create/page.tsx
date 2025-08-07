@@ -44,13 +44,15 @@ export default function CreateGroupPage() {
     defaultValues: {
       name: '',
       description: '',
-      avatr_url: '',
+      avatar_url: '',
     },
   });
 
   const onSubmit = async (values: CreateGroupFormValues) => {
     setLoading(true);
     setError(null);
+
+    console.log('CreateGroupPage: Form values before API call:', values); // Nouveau log
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -109,7 +111,7 @@ export default function CreateGroupPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="avatr_url"
+                name="avatar_url"
                 render={({ field }) => (
                   <FormItem className="flex flex-col items-center">
                     <FormLabel>Avatar du groupe (Optionnel)</FormLabel>

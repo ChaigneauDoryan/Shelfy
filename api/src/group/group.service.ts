@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, User } from '@supabase/supabase-js';
 
 @Injectable()
 export class GroupService {
@@ -14,6 +14,11 @@ export class GroupService {
   ) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL')!;
     const supabaseAnonKey = this.configService.get<string>('SUPABASE_ANON_KEY')!;
+    const supabaseServiceRoleKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
+
+    console.log('GroupService Constructor: SUPABASE_URL:', supabaseUrl);
+    console.log('GroupService Constructor: SUPABASE_ANON_KEY:', supabaseAnonKey ? supabaseAnonKey.substring(0, 5) + '...' : 'undefined/missing');
+    console.log('GroupService Constructor: SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceRoleKey ? supabaseServiceRoleKey.substring(0, 5) + '...' : 'undefined/missing');
 
     this.supabase = createClient(
       supabaseUrl,
@@ -24,7 +29,7 @@ export class GroupService {
   async createGroup(createGroupDto: { name: string; description?: string; avatar_url?: string }, userId: string, accessToken: string) {
     const { name, description, avatar_url } = createGroupDto;
 
-    console.log("User ID for group creation:", userId); // Ligne de débogage
+    console.log('GroupService: Received createGroupDto:', createGroupDto); // Nouveau log
 
     // Créer un client Supabase avec le token d'accès de l'utilisateur
     const supabase = createClient(
@@ -72,21 +77,37 @@ export class GroupService {
     return group;
   }
 
+  
+
   async sendGroupInvitation(
     groupId: string,
     groupName: string,
     inviterName: string,
     invitedEmail: string,
     inviterId: string,
+    accessToken: string,
   ): Promise<void> {
-    // Vérifier si l'utilisateur existe déjà
-    const { data: existingUser, error: userError } = await this.supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', invitedEmail)
-      .single();
+    // Créer un client Supabase avec la clé de rôle de service pour les opérations d'administration
+    const adminSupabase = createClient(
+      this.configService.get<string>('SUPABASE_URL')!,
+      this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
 
-    if (userError && userError.code !== 'PGRST116') { // PGRST116 means no rows found
+    // Vérifier si l'utilisateur existe déjà dans auth.users en utilisant listUsers
+    const { data: usersData, error: userError } = await adminSupabase.auth.admin.listUsers({
+      perPage: 1,
+      page: 0, // La pagination commence à 0
+      // Le filtre par email n'est pas directement supporté dans les options de listUsers
+      // Nous allons récupérer tous les utilisateurs et filtrer manuellement
+    });
+
+    let existingUser: User | null = null;
+    if (usersData?.users && usersData.users.length > 0) {
+      // Filtrer manuellement par email
+      existingUser = usersData.users.find((user: User) => user.email === invitedEmail) || null;
+    }
+
+    if (userError) {
       console.error('Error checking existing user:', userError);
       throw new Error('Failed to check existing user.');
     }
@@ -103,8 +124,19 @@ export class GroupService {
       invitationLink = `${baseUrl}/auth/signup?redirectTo=/auth/invite?token=${invitationToken}&groupId=${groupId}&email=${encodeURIComponent(invitedEmail)}`;
     }
 
+    // Créer un client Supabase avec le token d'accès de l'utilisateur pour les opérations RLS
+    const userSupabase = createClient(
+      this.configService.get<string>('SUPABASE_URL')!,
+      this.configService.get<string>('SUPABASE_ANON_KEY')!,
+      {
+        global: {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      }
+    );
+
     // Enregistrer l'invitation dans la base de données
-    const { error: insertError } = await this.supabase.from('group_invitations').insert({
+    const { error: insertError } = await userSupabase.from('group_invitations').insert({
       group_id: groupId,
       invited_email: invitedEmail,
       inviter_id: inviterId,
@@ -126,8 +158,19 @@ export class GroupService {
     );
   }
 
-  async acceptGroupInvitation(token: string, userId: string): Promise<boolean> {
-    const { data: invitation, error: fetchError } = await this.supabase
+
+  async acceptGroupInvitation(token: string, userId: string, accessToken: string): Promise<boolean> {
+    const userSupabase = createClient(
+      this.configService.get<string>('SUPABASE_URL')!,
+      this.configService.get<string>('SUPABASE_ANON_KEY')!,
+      {
+        global: {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      }
+    );
+
+    const { data: invitation, error: fetchError } = await userSupabase
       .from('group_invitations')
       .select('*')
       .eq('token', token)
@@ -140,7 +183,7 @@ export class GroupService {
     }
 
     // Ajouter l'utilisateur au groupe
-    const { error: memberError } = await this.supabase.from('group_members').insert({
+    const { error: memberError } = await userSupabase.from('group_members').insert({
       group_id: invitation.group_id,
       user_id: userId,
       role: 'member',
@@ -152,7 +195,7 @@ export class GroupService {
     }
 
     // Mettre à jour le statut de l'invitation
-    const { error: updateError } = await this.supabase
+    const { error: updateError } = await userSupabase
       .from('group_invitations')
       .update({ status: 'accepted' })
       .eq('id', invitation.id);
@@ -163,5 +206,33 @@ export class GroupService {
     }
 
     return true;
+  }
+
+  async deleteGroup(groupId: string, userId: string, accessToken: string): Promise<void> {
+    // Créer un client Supabase avec le token d'accès de l'utilisateur
+    const supabase = createClient(
+      this.configService.get<string>('SUPABASE_URL')!,
+      this.configService.get<string>('SUPABASE_ANON_KEY')!,
+      {
+        global: {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      }
+    );
+
+    // La politique RLS sur la table 'groups' (Allow creator to delete their own groups)
+    // et sur 'group_members' (Allow group admin to remove members) gérera les permissions.
+    // Si la table group_members a une contrainte ON DELETE CASCADE sur group_id,
+    // les membres seront automatiquement supprimés.
+    const { error } = await supabase
+      .from('groups')
+      .delete()
+      .eq('id', groupId)
+      .eq('created_by', userId); // Ajouté pour une sécurité supplémentaire côté application, bien que RLS le gère.
+
+    if (error) {
+      console.error('Error deleting group:', error);
+      throw new Error('Failed to delete group or not authorized.');
+    }
   }
 }
