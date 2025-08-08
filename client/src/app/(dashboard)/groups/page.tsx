@@ -120,10 +120,10 @@ export default function GroupsPage() {
           <h1 className="text-4xl font-extrabold text-gray-900">Vos Groupes de Lecture</h1>
           <p className="text-lg text-gray-600 mt-2">Connectez-vous avec d'autres passionnés de lecture.</p>
         </div>
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full">
           <Dialog open={isJoinModalOpen} onOpenChange={setIsJoinModalOpen}> {/* Contrôlé par l'état */}
             <DialogTrigger asChild>
-              <Button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg shadow-md flex items-center w-full">
+              <Button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg shadow-md flex items-center">
                 <FaPlus className="mr-2" /> Rejoindre un groupe
               </Button>
             </DialogTrigger>
@@ -150,8 +150,8 @@ export default function GroupsPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          <Link href="/groups/create" className="w-full">
-            <Button variant="outline" className="px-6 py-3 rounded-lg shadow-md flex items-center w-full">
+          <Link href="/groups/create">
+            <Button variant="outline" className="px-6 py-3 rounded-lg shadow-md flex items-center">
               <FaPlus className="mr-2" /> Créer un groupe
             </Button>
           </Link>
