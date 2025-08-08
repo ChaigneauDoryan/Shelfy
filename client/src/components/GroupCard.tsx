@@ -18,6 +18,7 @@ interface GroupCardProps {
     avatar_url?: string;
     invitation_code?: string;
     user_role?: string; // Nouveau: rôle de l'utilisateur dans ce groupe
+    members_count?: number; // Ajouté: nombre de membres du groupe
   };
   currentUserId: string; // L'ID de l'utilisateur actuellement connecté
   onGroupChange: () => void; // Nouvelle prop pour rafraîchir les groupes
