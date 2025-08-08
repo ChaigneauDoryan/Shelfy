@@ -1,5 +1,5 @@
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { createClient, User } from '@supabase/supabase-js';
@@ -16,10 +16,6 @@ export class GroupService {
     const supabaseAnonKey = this.configService.get<string>('SUPABASE_ANON_KEY')!;
     const supabaseServiceRoleKey = this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
 
-    console.log('GroupService Constructor: SUPABASE_URL:', supabaseUrl);
-    console.log('GroupService Constructor: SUPABASE_ANON_KEY:', supabaseAnonKey ? supabaseAnonKey.substring(0, 5) + '...' : 'undefined/missing');
-    console.log('GroupService Constructor: SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceRoleKey ? supabaseServiceRoleKey.substring(0, 5) + '...' : 'undefined/missing');
-
     this.supabase = createClient(
       supabaseUrl,
       supabaseAnonKey,
@@ -28,8 +24,6 @@ export class GroupService {
 
   async createGroup(createGroupDto: { name: string; description?: string; avatar_url?: string }, userId: string, accessToken: string) {
     const { name, description, avatar_url } = createGroupDto;
-
-    console.log('GroupService: Received createGroupDto:', createGroupDto); // Nouveau log
 
     // Créer un client Supabase avec le token d'accès de l'utilisateur
     const supabase = createClient(
@@ -43,6 +37,16 @@ export class GroupService {
     );
 
     // 1. Créer le groupe
+    const generateCode = (length: number) => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    };
+    const invitation_code = generateCode(10);
+
     const { data: group, error: groupError } = await supabase
       .from('groups')
       .insert({
@@ -50,13 +54,13 @@ export class GroupService {
         description,
         avatar_url,
         created_by: userId,
+        invitation_code,
       })
       .select()
       .single();
 
     if (groupError) {
-      console.error('Error creating group:', groupError);
-      throw new Error('Failed to create group.');
+      throw new HttpException('Failed to create group.', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     // 2. Ajouter le créateur comme premier membre (admin)
@@ -70,8 +74,7 @@ export class GroupService {
 
     if (memberError) {
       // Idéalement, il faudrait une transaction pour annuler la création du groupe
-      console.error('Error adding creator to group members:', memberError);
-      throw new Error('Failed to add creator to group.');
+      throw new HttpException('Failed to add creator to group.', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     return group;
@@ -79,134 +82,7 @@ export class GroupService {
 
   
 
-  async sendGroupInvitation(
-    groupId: string,
-    groupName: string,
-    inviterName: string,
-    invitedEmail: string,
-    inviterId: string,
-    accessToken: string,
-  ): Promise<void> {
-    // Créer un client Supabase avec la clé de rôle de service pour les opérations d'administration
-    const adminSupabase = createClient(
-      this.configService.get<string>('SUPABASE_URL')!,
-      this.configService.get<string>('SUPABASE_SERVICE_ROLE_KEY')!,
-    );
-
-    // Vérifier si l'utilisateur existe déjà dans auth.users en utilisant listUsers
-    const { data: usersData, error: userError } = await adminSupabase.auth.admin.listUsers({
-      perPage: 1,
-      page: 0, // La pagination commence à 0
-      // Le filtre par email n'est pas directement supporté dans les options de listUsers
-      // Nous allons récupérer tous les utilisateurs et filtrer manuellement
-    });
-
-    let existingUser: User | null = null;
-    if (usersData?.users && usersData.users.length > 0) {
-      // Filtrer manuellement par email
-      existingUser = usersData.users.find((user: User) => user.email === invitedEmail) || null;
-    }
-
-    if (userError) {
-      console.error('Error checking existing user:', userError);
-      throw new Error('Failed to check existing user.');
-    }
-
-    const invitationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15); // Simple token for now
-    const baseUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
-    let invitationLink = '';
-
-    if (existingUser) {
-      // Utilisateur existant: lien vers la page de connexion/acceptation
-      invitationLink = `${baseUrl}/auth/login?redirectTo=/auth/invite?token=${invitationToken}&groupId=${groupId}`;
-    } else {
-      // Nouvel utilisateur: lien vers la page d'inscription/acceptation
-      invitationLink = `${baseUrl}/auth/signup?redirectTo=/auth/invite?token=${invitationToken}&groupId=${groupId}&email=${encodeURIComponent(invitedEmail)}`;
-    }
-
-    // Créer un client Supabase avec le token d'accès de l'utilisateur pour les opérations RLS
-    const userSupabase = createClient(
-      this.configService.get<string>('SUPABASE_URL')!,
-      this.configService.get<string>('SUPABASE_ANON_KEY')!,
-      {
-        global: {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      }
-    );
-
-    // Enregistrer l'invitation dans la base de données
-    const { error: insertError } = await userSupabase.from('group_invitations').insert({
-      group_id: groupId,
-      invited_email: invitedEmail,
-      inviter_id: inviterId,
-      token: invitationToken,
-      status: 'pending',
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Expire dans 24 heures
-    });
-
-    if (insertError) {
-      console.error('Error inserting invitation:', insertError);
-      throw new Error('Failed to save invitation.');
-    }
-
-        await this.mailService.sendGroupInvitation(
-      invitedEmail,
-      groupName,
-      inviterName,
-      invitationLink,
-    );
-  }
-
-
-  async acceptGroupInvitation(token: string, userId: string, accessToken: string): Promise<boolean> {
-    const userSupabase = createClient(
-      this.configService.get<string>('SUPABASE_URL')!,
-      this.configService.get<string>('SUPABASE_ANON_KEY')!,
-      {
-        global: {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        },
-      }
-    );
-
-    const { data: invitation, error: fetchError } = await userSupabase
-      .from('group_invitations')
-      .select('*')
-      .eq('token', token)
-      .eq('status', 'pending')
-      .single();
-
-    if (fetchError || !invitation || new Date(invitation.expires_at) < new Date()) {
-      console.error('Invalid or expired invitation:', fetchError);
-      return false;
-    }
-
-    // Ajouter l'utilisateur au groupe
-    const { error: memberError } = await userSupabase.from('group_members').insert({
-      group_id: invitation.group_id,
-      user_id: userId,
-      role: 'member',
-    });
-
-    if (memberError) {
-      console.error('Error adding member to group:', memberError);
-      return false;
-    }
-
-    // Mettre à jour le statut de l'invitation
-    const { error: updateError } = await userSupabase
-      .from('group_invitations')
-      .update({ status: 'accepted' })
-      .eq('id', invitation.id);
-
-    if (updateError) {
-      console.error('Error updating invitation status:', updateError);
-      return false;
-    }
-
-    return true;
-  }
+  
 
   async deleteGroup(groupId: string, userId: string, accessToken: string): Promise<void> {
     // Créer un client Supabase avec le token d'accès de l'utilisateur
@@ -231,8 +107,160 @@ export class GroupService {
       .eq('created_by', userId); // Ajouté pour une sécurité supplémentaire côté application, bien que RLS le gère.
 
     if (error) {
-      console.error('Error deleting group:', error);
-      throw new Error('Failed to delete group or not authorized.');
+      throw new HttpException('Failed to delete group or not authorized.', HttpStatus.FORBIDDEN);
     }
+  }
+
+  async updateGroup(groupId: string, updateGroupDto: { name?: string; description?: string; avatar_url?: string }, accessToken: string) {
+    const supabase = createClient(
+      this.configService.get<string>('SUPABASE_URL')!,
+      this.configService.get<string>('SUPABASE_ANON_KEY')!,
+      {
+        global: {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      }
+    );
+
+    const { data, error } = await supabase
+      .from('groups')
+      .update(updateGroupDto)
+      .eq('id', groupId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating group:', error);
+      throw new HttpException('Failed to update group.', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return data;
+  }
+
+  async joinGroup(invitationCode: string, userId: string, accessToken: string) {
+    const supabase = createClient(
+      this.configService.get<string>('SUPABASE_URL')!,
+      this.configService.get<string>('SUPABASE_ANON_KEY')!,
+      {
+        global: {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      }
+    );
+
+    // 1. Trouver le groupe par code d'invitation
+    const { data: group, error: groupError } = await supabase
+      .from('groups')
+      .select('id')
+      .eq('invitation_code', invitationCode)
+      .single();
+
+    if (groupError || !group) {
+      throw new HttpException('Code d\'invitation invalide ou expiré.', HttpStatus.BAD_REQUEST);
+    }
+
+    // 2. Vérifier si l'utilisateur est déjà membre
+    const { data: existingMember, error: memberCheckError } = await supabase
+      .from('group_members')
+      .select('id')
+      .eq('group_id', group.id)
+      .eq('user_id', userId)
+      .single();
+
+    if (memberCheckError && memberCheckError.code !== 'PGRST116') { // PGRST116: no rows found
+      throw new HttpException('Erreur lors de la vérification des membres.', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    if (existingMember) {
+      throw new HttpException('Vous êtes déjà membre de ce groupe.', HttpStatus.CONFLICT);
+    }
+
+    // 3. Ajouter l'utilisateur au groupe
+    const { error: insertError } = await supabase
+      .from('group_members')
+      .insert({
+        group_id: group.id,
+        user_id: userId,
+        role: 'member',
+      });
+
+    if (insertError) {
+      throw new HttpException('Échec de l\'ajout au groupe : ' + insertError.message || 'raison inconnue.', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return { message: 'Groupe rejoint avec succès !' };
+  }
+
+  async leaveGroup(groupId: string, userId: string, accessToken: string) {
+    const supabase = createClient(
+      this.configService.get<string>('SUPABASE_URL')!,
+      this.configService.get<string>('SUPABASE_ANON_KEY')!,
+      {
+        global: {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      }
+    );
+
+    // Vérifier si l utilisateur est bien membre du groupe
+    const { data: member, error: memberError } = await supabase
+      .from('group_members')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .single();
+
+    if (memberError || !member) {
+      throw new HttpException('Vous n\'êtes pas membre de ce groupe ou le groupe n\'existe pas.', HttpStatus.NOT_FOUND);
+    }
+
+    // Supprimer l utilisateur du groupe
+    const { error: deleteError } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('group_id', groupId)
+      .eq('user_id', userId);
+
+    if (deleteError) {
+      console.error('Error leaving group:', deleteError);
+      throw new HttpException('Échec de la sortie du groupe.', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return { message: 'Vous avez quitté le groupe avec succès.' };
+  }
+
+  async regenerateInvitationCode(groupId: string, accessToken: string) {
+    const supabase = createClient(
+      this.configService.get<string>('SUPABASE_URL')!,
+      this.configService.get<string>('SUPABASE_ANON_KEY')!,
+      {
+        global: {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        },
+      }
+    );
+
+    const generateCode = (length: number) => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    };
+    const newCode = generateCode(10);
+
+    const { data, error } = await supabase
+      .from('groups')
+      .update({ invitation_code: newCode })
+      .eq('id', groupId)
+      .select('invitation_code')
+      .single();
+
+    if (error) {
+      throw new HttpException('Impossible de régénérer le code d\'invitation.', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return data;
   }
 }
