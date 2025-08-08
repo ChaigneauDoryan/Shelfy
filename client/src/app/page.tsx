@@ -18,14 +18,14 @@ export default function HomePage() {
           <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-500">
             Plongez dans des mondes littéraires, partagez vos passions et découvrez votre prochaine grande lecture au sein d'une communauté de passionnés.
           </p>
-          <div className="mt-10 flex justify-center gap-4">
-            <Link href="/auth/signup">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-lg shadow-lg transform hover:scale-105 transition-transform duration-300">
+          <div className="mt-10 flex flex-col sm:flex-row justify-center gap-4">
+            <Link href="/auth/signup" className="w-full sm:w-auto">
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-lg shadow-lg transform hover:scale-105 transition-transform duration-300 w-full">
                 Rejoindre la communauté
               </Button>
             </Link>
-            <Link href="/auth/login">
-              <Button size="lg" variant="outline" className="px-8 py-6 text-lg rounded-lg shadow-lg transform hover:scale-105 transition-transform duration-300 border-gray-300 hover:bg-gray-100">
+            <Link href="/auth/login" className="w-full sm:w-auto">
+              <Button size="lg" variant="outline" className="px-8 py-6 text-lg rounded-lg shadow-lg transform hover:scale-105 transition-transform duration-300 border-gray-300 hover:bg-gray-100 w-full mt-2 sm:mt-0">
                 J'ai déjà un compte
               </Button>
             </Link>

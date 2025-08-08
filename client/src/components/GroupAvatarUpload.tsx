@@ -7,12 +7,19 @@ import { FaUpload, FaSpinner } from 'react-icons/fa'
 
 interface GroupAvatarUploadProps {
   onUpload: (url: string) => void;
+  existingAvatarUrl?: string | null;
 }
 
-export default function GroupAvatarUpload({ onUpload }: GroupAvatarUploadProps) {
+export default function GroupAvatarUpload({ onUpload, existingAvatarUrl }: GroupAvatarUploadProps) {
   const supabase = createClient();
   const [uploading, setUploading] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(existingAvatarUrl || null);
+
+  useEffect(() => {
+    if (existingAvatarUrl) {
+      setAvatarUrl(existingAvatarUrl);
+    }
+  }, [existingAvatarUrl]);
 
   async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
     try {

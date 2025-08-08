@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
-import Navbar from "../components/Navbar"
+
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { Toaster } from '@/components/ui/toaster';
@@ -60,7 +60,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {!user && <Navbar />}
+        
         <Providers>{children}</Providers>
         <Toaster />
       </body>

@@ -126,7 +126,7 @@ export default function SignupPage() {
           <CardTitle>Créer un compte</CardTitle>
           <CardDescription>Rejoignez Codex pour commencer votre aventure littéraire.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -197,12 +197,13 @@ export default function SignupPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">S'inscrire</Button>
+              <Button type="submit" className="w-full hidden">S'inscrire</Button>
             </form>
           </Form>
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center flex flex-col space-y-2">
+            <Button type="submit" className="w-full">S'inscrire</Button>
             <p className="text-sm text-gray-600">Ou continuer avec</p>
-            <Button onClick={handleGoogleSignIn} variant="outline" className="w-full mt-2">S'inscrire avec Google</Button>
+            <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">S'inscrire avec Google</Button>
           </div>
         </CardContent>
       </Card>

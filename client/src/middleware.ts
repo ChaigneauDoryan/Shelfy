@@ -18,46 +18,37 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          request.cookies.set({ name, value, ...options })
+          response = NextResponse.next({ request: { headers: request.headers } })
+          response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
+          request.cookies.set({ name, value: '', ...options })
+          response = NextResponse.next({ request: { headers: request.headers } })
+          response.cookies.set({ name, value: '', ...options })
         },
       },
     }
   )
 
-  await supabase.auth.getSession()
+  const { data: { session } } = await supabase.auth.getSession();
 
-  return response
+  const { pathname } = request.nextUrl;
+
+  // Routes protégées
+  const protectedRoutes = ['/dashboard', '/groups', '/library', '/profile', '/reviews', '/account'];
+
+  // Si l'utilisateur n'est pas connecté et essaie d'accéder à une route protégée
+  if (!session && protectedRoutes.some(path => pathname.startsWith(path))) {
+    return NextResponse.redirect(new URL('/auth/login', request.url));
+  }
+
+  // Si l'utilisateur est connecté et essaie d'accéder aux pages de connexion/inscription
+  if (session && (pathname.startsWith('/auth/login') || pathname.startsWith('/auth/signup'))) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
+  return response;
 }
 
 export const config = {

@@ -69,7 +69,7 @@ export default function LoginPage() {
           <CardTitle>Connexion</CardTitle>
           <CardDescription>Accédez à votre compte Codex.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               {error && (
@@ -108,12 +108,13 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full">Se connecter</Button>
+              <Button type="submit" className="w-full hidden">Se connecter</Button>
             </form>
           </Form>
-          <div className="mt-4 text-center">
+          <div className="mt-4 text-center flex flex-col space-y-2">
+            <Button type="submit" className="w-full">Se connecter</Button>
             <p className="text-sm text-gray-600">Ou continuer avec</p>
-            <Button onClick={handleGoogleSignIn} variant="outline" className="w-full mt-2">Se connecter avec Google</Button>
+            <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">Se connecter avec Google</Button>
           </div>
         </CardContent>
       </Card>

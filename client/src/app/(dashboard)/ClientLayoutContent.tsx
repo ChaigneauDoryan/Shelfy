@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from "next/navigation";
-import Sidebar from "@/components/Sidebar";
+import TopNavbar from "@/components/TopNavbar";
 import { createClient } from "@/lib/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -26,9 +26,9 @@ export default function ClientLayoutContent({
   };
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar user={user} profile={profile} onSignOut={handleSignOut} />
-      <main className="flex-1 p-8 bg-gray-100/50">
+    <div className="flex flex-col min-h-screen overflow-x-hidden">
+      <TopNavbar user={user} profile={profile} onSignOut={handleSignOut} />
+            <main className="flex-1 p-4 md:p-8 bg-gray-100/50">
         {children}
       </main>
     </div>
