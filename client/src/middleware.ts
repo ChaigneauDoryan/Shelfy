@@ -39,8 +39,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
-  // if user is not signed in and the current path is not / redirect the user to /
-  if (!user && request.nextUrl.pathname !== '/') {
+  const publicPaths = [
+    '/',
+    '/auth/login',
+    '/auth/signup',
+    '/auth/auth-code-error',
+    '/auth/callback',
+    '/auth/forgot-password',
+    '/auth/invite',
+    '/auth/reset-password',
+  ];
+
+  // if user is not signed in and the current path is not a public path, redirect the user to /
+  if (!user && !publicPaths.includes(request.nextUrl.pathname)) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

@@ -20,7 +20,7 @@ import { debounce } from "lodash"
 
 const formSchema = z.object({
   username: z.string().min(2, { message: "Le nom d'utilisateur doit contenir au moins 2 caractères." }),
-  fullName: z.string().optional(),
+  
   email: z.string().email({ message: "Veuillez saisir une adresse e-mail valide." }),
   password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères." }),
   confirmPassword: z.string(),
@@ -39,7 +39,7 @@ export default function SignupPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       username: "",
-      fullName: "",
+      
       email: "",
       password: "",
       confirmPassword: "",
@@ -79,7 +79,7 @@ export default function SignupPage() {
       options: {
         data: {
           username: values.username,
-          full_name: values.fullName,
+          
         },
       },
     });
@@ -144,19 +144,7 @@ export default function SignupPage() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="fullName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom complet (optionnel)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Votre nom complet" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              
               <FormField
                 control={form.control}
                 name="email"

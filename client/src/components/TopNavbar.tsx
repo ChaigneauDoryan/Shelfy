@@ -39,7 +39,7 @@ export default function TopNavbar({ user, profile, onSignOut }: TopNavbarProps) 
         <Link href="/groups" className="flex items-center text-base hover:text-gray-300 transition duration-300">
           <FaUsers className="mr-2" /> Groupes de Lecture
         </Link>
-        <Link href="/account" className="flex items-center text-base hover:text-gray-300 transition duration-300">
+        <Link href="/profile" className="flex items-center text-base hover:text-gray-300 transition duration-300">
           <FaUser className="mr-2" /> Mon Profil
         </Link>
       </div>
@@ -76,7 +76,7 @@ export default function TopNavbar({ user, profile, onSignOut }: TopNavbarProps) 
             <Link href="/groups" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
               <FaUsers className="mr-2" /> Groupes de Lecture
             </Link>
-            <Link href="/account" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
+            <Link href="/dashboard/profile" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
               <FaUser className="mr-2" /> Mon Profil
             </Link>
             {user && (
