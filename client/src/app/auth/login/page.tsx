@@ -108,11 +108,10 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full hidden">Se connecter</Button>
+              <Button type="submit" className="w-full">Se connecter</Button>
             </form>
           </Form>
           <div className="mt-4 text-center flex flex-col space-y-2">
-            <Button type="submit" className="w-full">Se connecter</Button>
             <p className="text-sm text-gray-600">Ou continuer avec</p>
             <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">Se connecter avec Google</Button>
           </div>

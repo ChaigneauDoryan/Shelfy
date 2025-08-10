@@ -76,7 +76,7 @@ export default function TopNavbar({ user, profile, onSignOut }: TopNavbarProps) 
             <Link href="/groups" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
               <FaUsers className="mr-2" /> Groupes de Lecture
             </Link>
-            <Link href="/dashboard/profile" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
+            <Link href="/profile" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
               <FaUser className="mr-2" /> Mon Profil
             </Link>
             {user && (
