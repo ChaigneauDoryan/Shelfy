@@ -43,10 +43,7 @@ const manualBookSchema = z.object({
   author: z.string().optional(),
   description: z.string().optional(),
   cover_url: z.string().url("URL de couverture invalide.").optional().or(z.literal('')),
-  page_count: z.preprocess(
-    (val) => (val === "" ? undefined : Number(val)),
-    z.number().int().positive("Le nombre de pages doit être positif.").optional()
-  ),
+  page_count: z.string().optional(),
   genre: z.string().optional(),
   isbn: z.string().optional(),
   published_date: z.string().optional(),
@@ -169,12 +166,27 @@ export default function AddBookPage() {
   };
 
   const handleManualSubmit = async (values: ManualBookFormValues) => {
+    let pageCount: number | null = null;
+    if (values.page_count) {
+      const parsedPageCount = Number(values.page_count);
+      if (!isNaN(parsedPageCount) && Number.isInteger(parsedPageCount) && parsedPageCount > 0) {
+        pageCount = parsedPageCount;
+      } else {
+        toast({
+          title: 'Erreur de validation',
+          description: 'Le nombre de pages doit être un entier positif.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     const bookToAdd = {
       title: values.title,
       author: values.author || null,
       description: values.description || null,
       coverUrl: values.cover_url || null,
-      pageCount: values.page_count || null,
+      pageCount: pageCount,
       genre: values.genre || null,
       isbn: values.isbn || null,
       publishedDate: values.published_date || null,

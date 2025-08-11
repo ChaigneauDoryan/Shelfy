@@ -6,8 +6,10 @@ import ClientLayoutContent from "./ClientLayoutContent";
 
 export default async function DashboardLayout({
   children,
+  addBookModal,
 }: {
   children: React.ReactNode;
+  addBookModal: React.ReactNode;
 }) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
