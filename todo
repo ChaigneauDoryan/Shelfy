@@ -1,9 +1,3 @@
-page mon profil :
-    - accepte tout type d'image (HEIC, PNG, JPG, WEBP...)
-    - Statistiques de lecture : afficher nombre de livres lus, pages lues, moyenne de notes données.
-    - Badges & succès : gamification (ex. “Premier livre terminé”, “Lecteur nocturne”, “Marathon de lecture”).
-    - Préférences de lecture : genres favoris, auteurs favoris, rythme de lecture
-
 page mes livres :
     - en ajout il faut pemettre d'ajouter un livre (titre, author, description, cover_url)
     - objectif est d'ajouter des livres à partir d'une API opensource qui recense les infos que j'ai besoin, si le livre n'est pas reconnu dans l'API il faut permettre d' aljouter quand même (du style google books api ou autre)

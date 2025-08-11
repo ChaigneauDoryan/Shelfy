@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { Slider } from "@/components/ui/slider";
 
 const PACE_LEVELS = {
-  1: { label: '🐢 Occasionnel', value: 'occasional' },
-  2: { label: '🐇 Régulier', value: 'regular' },
-  3: { label: '🐆 Passionné', value: 'passionate' },
+  occasional: { label: 'Occasionnel', value: 'occasional' },
+  regular: { label: 'Régulier', value: 'regular' },
+  passionate: { label: 'Passionné', value: 'passionate' },
 };
 
 type PaceValue = 'occasional' | 'regular' | 'passionate';
@@ -17,17 +17,18 @@ interface PaceSliderProps {
 }
 
 export default function PaceSlider({ initialPace, onPaceChange }: PaceSliderProps) {
-  const initialLevel = Object.keys(PACE_LEVELS).find(key => PACE_LEVELS[key as any].value === initialPace) || 1;
+  const initialLevel = initialPace ? Object.keys(PACE_LEVELS).indexOf(initialPace) + 1 : 1;
   const [level, setLevel] = useState<number>(Number(initialLevel));
 
   const handleValueChange = (newLevel: number[]) => {
     const value = newLevel[0];
+    const paceKey = Object.keys(PACE_LEVELS)[value - 1] as PaceValue;
     setLevel(value);
-    onPaceChange(PACE_LEVELS[value as keyof typeof PACE_LEVELS].value as PaceValue);
+    onPaceChange(paceKey);
   };
 
   useEffect(() => {
-    const newLevel = Object.keys(PACE_LEVELS).find(key => PACE_LEVELS[key as any].value === initialPace) || 1;
+    const newLevel = initialPace ? Object.keys(PACE_LEVELS).indexOf(initialPace) + 1 : 1;
     setLevel(Number(newLevel));
   }, [initialPace]);
 
@@ -41,9 +42,9 @@ export default function PaceSlider({ initialPace, onPaceChange }: PaceSliderProp
         onValueChange={handleValueChange}
       />
       <div className="flex justify-between text-center mt-2 text-sm text-gray-600">
-        <span>{PACE_LEVELS[1].label}</span>
-        <span>{PACE_LEVELS[2].label}</span>
-        <span>{PACE_LEVELS[3].label}</span>
+        <span>{PACE_LEVELS.occasional.label}</span>
+        <span>{PACE_LEVELS.regular.label}</span>
+        <span>{PACE_LEVELS.passionate.label}</span>
       </div>
     </div>
   );

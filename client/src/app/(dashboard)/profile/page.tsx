@@ -211,6 +211,17 @@ export default function ProfilePage() {
 
         <Card>
           <CardHeader>
+            <CardTitle>Vos Préférences de Lecture</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <WordCloud data={topGenres} title="Genres Favoris" />
+            <WordCloud data={topAuthors} title="Auteurs Favoris" />
+            <PaceDisplay pace={readingPace as any} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Vos informations</CardTitle>
           </CardHeader>
           <CardContent>
@@ -256,16 +267,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Vos Préférences de Lecture</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <WordCloud data={topGenres} title="Genres Favoris" />
-            <WordCloud data={topAuthors} title="Auteurs Favoris" />
-            <PaceDisplay pace={readingPace as any} />
-          </CardContent>
-        </Card>
+        
       </div>
     </div>
   );

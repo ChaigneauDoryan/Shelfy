@@ -28,7 +28,7 @@ const aggregateData = (data: any[], period: 'week' | 'month' | 'year') => {
     return acc;
   }, {} as { [key: string]: { date: string; livres: number } });
 
-  return Object.values(aggregated).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  return (Object.values(aggregated) as { date: string; livres: number }[]).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 };
 
 export default function ReadingActivityChart() {

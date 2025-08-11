@@ -3,9 +3,9 @@
 import { FaHourglassHalf, FaUser, FaBolt } from 'react-icons/fa6';
 
 const PACE_INFO = {
-  1: { label: 'Occasionnel', Icon: FaHourglassHalf, color: 'text-blue-500' },
-  2: { label: 'Régulier', Icon: FaUser, color: 'text-green-500' },
-  3: { label: 'Passionné', Icon: FaBolt, color: 'text-orange-500' },
+  occasional: { label: 'Occasionnel', Icon: FaHourglassHalf, color: 'text-blue-500' },
+  regular: { label: 'Régulier', Icon: FaUser, color: 'text-green-500' },
+  passionate: { label: 'Passionné', Icon: FaBolt, color: 'text-orange-500' },
 };
 
 interface PaceDisplayProps {
