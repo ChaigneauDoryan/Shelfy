@@ -15,7 +15,8 @@ type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
-  action?: ToastActionElement
+  action?: React.ReactElement<typeof ToastAction>
+  duration?: number // Ajouter la durée ici
 }
 
 const actionTypes = {
