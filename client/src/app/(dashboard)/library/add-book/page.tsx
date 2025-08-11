@@ -43,7 +43,7 @@ const manualBookSchema = z.object({
   author: z.string().optional(),
   description: z.string().optional(),
   cover_url: z.string().url("URL de couverture invalide.").optional().or(z.literal('')),
-  page_count: z.string().optional(),
+    page_count: z.string().optional(),
   genre: z.string().optional(),
   isbn: z.string().optional(),
   published_date: z.string().optional(),
@@ -70,7 +70,7 @@ export default function AddBookPage() {
       author: '',
       description: '',
       cover_url: '',
-      page_count: undefined,
+      page_count: '', // Changer à une chaîne vide
       genre: '',
       isbn: '',
       published_date: '',
