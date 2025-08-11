@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/:path*', // Assurez-vous que c'est le bon port de votre API
+        destination: 'http://localhost:3001/:path*', // Cette règle ne s'applique qu'en développement local
       },
     ];
   },
