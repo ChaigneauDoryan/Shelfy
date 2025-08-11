@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { BookModule } from './book/book.module';
 import { MailModule } from './mail/mail.module';
 import { GroupModule } from './group/group.module';
+import { GoogleBooksModule } from './google-books/google-books.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { GroupModule } from './group/group.module';
     BookModule,
     MailModule,
     GroupModule,
+    GoogleBooksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
