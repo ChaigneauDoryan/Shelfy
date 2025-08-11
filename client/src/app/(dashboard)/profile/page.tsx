@@ -72,9 +72,6 @@ export default function ProfilePage() {
           form.reset({
             username: data.username,
             bio: data.bio || "",
-            favorite_genres: data.favorite_genres || [],
-            favorite_authors: data.favorite_authors || [],
-            reading_pace: data.reading_pace || 'regular',
           });
           setAvatarUrl(data.avatar_url || '');
         }
