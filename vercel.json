@@ -1,4 +1,6 @@
 {
+  "installCommand": "npm install --prefix ./client && npm install --prefix ./api",
+  "buildCommand": "npm run build --prefix ./client && npm run build --prefix ./api",
   "rewrites": [
     {
       "source": "/api/:path*",
