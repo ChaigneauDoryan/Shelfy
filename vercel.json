@@ -1,24 +1,33 @@
-  {                                                                                   
-   "installCommand": "npm install --prefix ./client && npm install --prefix ./api",  
-   "buildCommand": "npm run build --prefix ./client && npm run build --prefix ./api",
-    "builds": [                                                                       
-      {                                                                               
-       "src": "client/package.json",                                                 
-       "use": "@vercel/next"                                                         
-     },                                                                              
-     {                                                                               
-       "src": "api/dist/main.js",                                                    
-        "use": "@vercel/node"                                                         
-      }                                                                               
-    ],                                                                                
-    "routes": [                                                                       
-      {                                                                               
-        "src": "/api/(.*)",                                                           
-       "dest": "/api"                                                                
-     },                                                                              
-     {                                                                               
-       "src": "/(.*)",                                                               
-       "dest": "/client/$1"                                                          
-      }                                                                               
-    ]                                                                                 
-  }                                                                                   
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/package.json",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["dist/**"],
+        "installCommand": "npm install",
+        "buildCommand": "npm run build"
+      }
+    },
+    {
+      "src": "client/package.json",
+      "use": "@vercel/next",
+      "config": {
+        "distDir": ".next",
+        "installCommand": "npm install",
+        "buildCommand": "npm run build"
+      }
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/src/main.ts"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/client/$1"
+    }
+  ]
+}
