@@ -5,6 +5,8 @@ import { DebugInterceptor } from './debug.interceptor';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('api');
+
   // Activer CORS pour autoriser les requêtes depuis le frontend
   app.enableCors({
     origin: 'http://localhost:3000', // L'URL de votre frontend

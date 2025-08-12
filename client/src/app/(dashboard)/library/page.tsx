@@ -51,7 +51,7 @@ export default function LibraryPage() {
         throw new Error("Utilisateur non authentifié.");
       }
 
-      const url = status && status !== 'all' ? `/api/library?status=${status}` : '/api/library';
+            const url = status && status !== 'all' ? `/api/library?status=${status}` : '/api/library';
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,

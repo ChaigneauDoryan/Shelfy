@@ -92,7 +92,7 @@ export default function AddBookPage() {
         throw new Error("Utilisateur non authentifié.");
       }
 
-      const response = await fetch(`/api/library/search?query=${encodeURIComponent(query)}`, {
+            const response = await fetch(`/api/library/search?query=${encodeURIComponent(query)}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
@@ -121,7 +121,7 @@ export default function AddBookPage() {
         throw new Error("Utilisateur non authentifié.");
       }
 
-      const response = await fetch('/api/library/add', {
+            const response = await fetch('/api/library/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -22,12 +22,12 @@
   ],
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/src/main.ts"
+      "src": "/api/(.*)",
+      "dest": "/api/src/main.ts"
     },
     {
-      "source": "/(.*)",
-      "destination": "/client/$1"
+      "src": "/(.*)",
+      "dest": "/client/$1"
     }
   ]
 }
