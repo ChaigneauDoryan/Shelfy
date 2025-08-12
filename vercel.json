@@ -2,32 +2,22 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/package.json",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["dist/**"],
-        "installCommand": "npm install",
-        "buildCommand": "npm run build"
-      }
+      "src": "api/src/main.ts",
+      "use": "@vercel/node"
     },
     {
-      "src": "client/package.json",
-      "use": "@vercel/next",
-      "config": {
-        "distDir": ".next",
-        "installCommand": "npm install",
-        "buildCommand": "npm run build"
-      }
+      "src": "client/next.config.js",
+      "use": "@vercel/next"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/src/main.ts"
+      "source": "/api/(.*)",
+      "destination": "/api/src/main.ts"
     },
     {
-      "src": "/(.*)",
-      "dest": "/client/$1"
+      "source": "/(.*)",
+      "destination": "/client/$1"
     }
   ]
 }
