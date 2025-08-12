@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/:path*', // Cette règle ne s'applique qu'en développement local
+        destination: `${process.env.NEXT_PUBLIC_API_BASE_URL}/:path*`,
       },
     ];
   },
