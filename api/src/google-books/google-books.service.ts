@@ -13,7 +13,6 @@ export class GoogleBooksService {
 
   async searchBooks(query: string): Promise<any> {
     const apiKey = this.configService.get<string>('GOOGLE_BOOKS_API_KEY');
-    console.log('DEBUG: GOOGLE_BOOKS_API_KEY from service:', apiKey ? 'Loaded' : 'NOT LOADED'); // Ajout d'un log
     if (!apiKey) {
       throw new Error('Google Books API Key not configured.');
     }
