@@ -127,7 +127,7 @@ export async function getUserBooks(cookieStore: ReturnType<typeof cookies>, user
     .eq('user_id', userId);
 
   if (statusName) {
-    const statusId = await getReadingStatusId(statusName);
+    const statusId = await getReadingStatusId(cookieStore, statusName);
     query = query.eq('status_id', statusId);
   }
 
@@ -165,7 +165,7 @@ export async function getUserBookById(cookieStore: ReturnType<typeof cookies>, u
 
 export async function updateUserBookStatus(cookieStore: ReturnType<typeof cookies>, userBookId: string, statusName: string, userId: string) {
   const supabase = createClient(cookieStore);
-  const statusId = await getReadingStatusId(statusName);
+  const statusId = await getReadingStatusId(cookieStore, statusName);
   const updateData: any = { status_id: statusId, updated_at: new Date() };
 
   if (statusName === 'finished') {

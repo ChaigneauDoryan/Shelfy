@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { updateUserBookStatus } from '@/lib/book-utils';
 
-export async function PATCH(request: Request, { params }: { params: { userBookId: string } }) {
-  const supabase = createRouteHandlerClient({ cookies });
+export async function PATCH(request: Request, context: any) {
+  const supabase = createClient(cookies());
 
   const {
     data: { session },
@@ -15,7 +15,7 @@ export async function PATCH(request: Request, { params }: { params: { userBookId
   }
 
   const userId = session.user.id;
-  const { userBookId } = params;
+  const { userBookId } = context.params;
   const { status } = await request.json();
 
   if (!status) {
@@ -23,7 +23,7 @@ export async function PATCH(request: Request, { params }: { params: { userBookId
   }
 
   try {
-    const updatedBook = await updateUserBookStatus(userBookId, status, userId);
+    const updatedBook = await updateUserBookStatus(cookies(), userBookId, status, userId);
     return NextResponse.json(updatedBook);
   } catch (error: any) {
     console.error('Error updating user book status:', error.message);

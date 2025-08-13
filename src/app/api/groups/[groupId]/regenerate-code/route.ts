@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { regenerateInvitationCode } from '@/lib/group-utils';
 
-export async function PATCH(request: Request, { params }: { params: { groupId: string } }) {
-  const supabase = createRouteHandlerClient({ cookies });
+export async function PATCH(request: NextRequest, context: any) {
+  const supabase = createClient(cookies());
 
   const {
     data: { session },
@@ -14,13 +14,23 @@ export async function PATCH(request: Request, { params }: { params: { groupId: s
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId } = params;
+  const userId = session.user.id;
+  const { groupId } = context.params;
 
   try {
-    const result = await regenerateInvitationCode(groupId);
+    const result = await regenerateInvitationCode(supabase, groupId, userId);
     return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('Error regenerating invitation code:', error.message);
-    return NextResponse.json({ message: 'Failed to regenerate invitation code.' }, { status: 500 });
+  } catch (error: unknown) {
+    console.error('Error regenerating invitation code:', error);
+    let errorMessage = 'Failed to regenerate invitation code.';
+    let statusCode = 500;
+
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      if (error.message.includes('Unauthorized')) {
+        statusCode = 403;
+      }
+    }
+    return NextResponse.json({ message: errorMessage }, { status: statusCode });
   }
 }

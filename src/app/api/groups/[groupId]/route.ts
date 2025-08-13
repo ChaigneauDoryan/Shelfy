@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { deleteGroup, updateGroup } from '@/lib/group-utils';
 
-export async function DELETE(request: Request, { params }: { params: { groupId: string } }) {
-  const supabase = createRouteHandlerClient({ cookies });
+export async function DELETE(request: Request, context: any) {
+  const supabase = createClient(cookies());
 
   const {
     data: { session },
@@ -15,7 +15,7 @@ export async function DELETE(request: Request, { params }: { params: { groupId: 
   }
 
   const userId = session.user.id;
-  const { groupId } = params;
+  const { groupId } = context.params;
 
   try {
     await deleteGroup(groupId, userId);
@@ -26,8 +26,8 @@ export async function DELETE(request: Request, { params }: { params: { groupId: 
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { groupId: string } }) {
-  const supabase = createRouteHandlerClient({ cookies });
+export async function PATCH(request: Request, context: any) {
+  const supabase = createClient(cookies());
 
   const {
     data: { session },
@@ -37,7 +37,7 @@ export async function PATCH(request: Request, { params }: { params: { groupId: s
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId } = params;
+  const { groupId } = context.params;
   const updateGroupDto = await request.json();
 
   try {

@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { leaveGroup } from '@/lib/group-utils';
 
-export async function DELETE(request: Request, { params }: { params: { groupId: string } }) {
-  const supabase = createRouteHandlerClient({ cookies });
+export async function DELETE(request: NextRequest, context: any) {
+  const { groupId } = context.params;
+  const supabase = createClient(cookies());
 
   const {
     data: { session },
@@ -15,16 +16,24 @@ export async function DELETE(request: Request, { params }: { params: { groupId: 
   }
 
   const userId = session.user.id;
-  const { groupId } = params;
 
   try {
     const result = await leaveGroup(groupId, userId);
     return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('Error leaving group:', error.message);
-    if (error.message === 'Vous n\'êtes pas membre de ce groupe ou le groupe n\'existe pas.') {
-      return NextResponse.json({ message: error.message }, { status: 404 });
+  } catch (error: unknown) {
+    console.error('Error leaving group:', error);
+    let errorMessage = 'Failed to leave group.';
+    let statusCode = 500;
+
+    if (error instanceof Error) {
+      if (error.message === 'Vous n\'êtes pas membre de ce groupe ou le groupe n\'existe pas.') {
+        errorMessage = error.message;
+        statusCode = 404;
+      } else {
+        errorMessage = error.message;
+      }
     }
-    return NextResponse.json({ message: 'Failed to leave group.' }, { status: 500 });
+
+    return NextResponse.json({ message: errorMessage }, { status: statusCode });
   }
 }

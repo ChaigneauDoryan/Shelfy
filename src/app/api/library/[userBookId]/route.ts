@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { getUserBookById, deleteUserBook } from '@/lib/book-utils';
 
-export async function GET(request: Request, { params }: { params: { userBookId: string } }) {
-  const supabase = createRouteHandlerClient({ cookies });
+export async function GET(request: Request, context: any) {
+  const supabase = createClient(cookies());
 
   const {
     data: { session },
@@ -15,10 +15,10 @@ export async function GET(request: Request, { params }: { params: { userBookId: 
   }
 
   const userId = session.user.id;
-  const { userBookId } = params;
+  const { userBookId } = context.params;
 
   try {
-    const book = await getUserBookById(userBookId, userId);
+    const book = await getUserBookById(cookies(), userBookId, userId);
     return NextResponse.json(book);
   } catch (error: any) {
     console.error('Error fetching user book by ID:', error.message);
@@ -26,8 +26,8 @@ export async function GET(request: Request, { params }: { params: { userBookId: 
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { userBookId: string } }) {
-  const supabase = createRouteHandlerClient({ cookies });
+export async function DELETE(request: Request, context: any) {
+  const supabase = createClient(cookies());
 
   const {
     data: { session },
@@ -38,10 +38,10 @@ export async function DELETE(request: Request, { params }: { params: { userBookI
   }
 
   const userId = session.user.id;
-  const { userBookId } = params;
+  const { userBookId } = context.params;
 
   try {
-    const result = await deleteUserBook(userBookId, userId);
+    const result = await deleteUserBook(cookies(), userBookId, userId);
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error deleting user book:', error.message);

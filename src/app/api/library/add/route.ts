@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { findOrCreateBook, addUserBook } from '@/lib/book-utils';
 
 export async function POST(request: Request) {
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = createClient(cookies());
 
   const {
     data: { session },
@@ -18,8 +18,8 @@ export async function POST(request: Request) {
   const bookData = await request.json();
 
   try {
-    const book = await findOrCreateBook(bookData, userId);
-    const userBook = await addUserBook(userId, book.id);
+    const book = await findOrCreateBook(cookies(), bookData, userId);
+    const userBook = await addUserBook(cookies(), userId, book.id);
     return NextResponse.json(userBook);
   } catch (error: any) {
     console.error('Error adding book to library:', error.message);

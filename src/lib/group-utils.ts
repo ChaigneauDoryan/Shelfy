@@ -1,14 +1,15 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-const createSupabaseServiceRoleClient = () => {
+const createSupabaseServiceRoleClient = async () => {
+  const accessToken = await (cookies() as any).get('sb-access-token')?.value;
   return createClient(supabaseUrl, supabaseAnonKey, {
     global: {
       headers: {
-        Authorization: `Bearer ${cookies().get('sb-access-token')?.value}`,
+        Authorization: `Bearer ${accessToken}`,
       },
     },
   });
@@ -24,7 +25,7 @@ function generateCode(length: number) {
 }
 
 export async function createGroup(createGroupDto: { name: string; description?: string; avatar_url?: string }, userId: string) {
-  const supabase = createSupabaseServiceRoleClient();
+  const supabase = await createSupabaseServiceRoleClient();
   const { name, description, avatar_url } = createGroupDto;
 
   const invitation_code = generateCode(10);
@@ -63,7 +64,7 @@ export async function createGroup(createGroupDto: { name: string; description?: 
 }
 
 export async function deleteGroup(groupId: string, userId: string): Promise<void> {
-  const supabase = createSupabaseServiceRoleClient();
+  const supabase = await createSupabaseServiceRoleClient();
 
   const { error } = await supabase
     .from('groups')
@@ -78,7 +79,7 @@ export async function deleteGroup(groupId: string, userId: string): Promise<void
 }
 
 export async function updateGroup(groupId: string, updateGroupDto: { name?: string; description?: string; avatar_url?: string }) {
-  const supabase = createSupabaseServiceRoleClient();
+  const supabase = await createSupabaseServiceRoleClient();
 
   const { data, error } = await supabase
     .from('groups')
@@ -96,7 +97,7 @@ export async function updateGroup(groupId: string, updateGroupDto: { name?: stri
 }
 
 export async function joinGroup(invitationCode: string, userId: string) {
-  const supabase = createSupabaseServiceRoleClient();
+  const supabase = await createSupabaseServiceRoleClient();
 
   const { data: group, error: groupError } = await supabase
     .from('groups')
@@ -140,7 +141,7 @@ export async function joinGroup(invitationCode: string, userId: string) {
 }
 
 export async function leaveGroup(groupId: string, userId: string) {
-  const supabase = createSupabaseServiceRoleClient();
+  const supabase = await createSupabaseServiceRoleClient();
 
   const { data: member, error: memberError } = await supabase
     .from('group_members')
@@ -167,8 +168,18 @@ export async function leaveGroup(groupId: string, userId: string) {
   return { message: 'Vous avez quitté le groupe avec succès.' };
 }
 
-export async function regenerateInvitationCode(groupId: string) {
-  const supabase = createSupabaseServiceRoleClient();
+export async function regenerateInvitationCode(supabase: SupabaseClient, groupId: string, userId: string) {
+  // Check if user is admin/owner of the group using the passed supabase client
+  const { data: member, error: memberError } = await supabase
+    .from('group_members')
+    .select('role')
+    .eq('group_id', groupId)
+    .eq('user_id', userId)
+    .single();
+
+  if (memberError || !member || (member.role !== 'admin' && member.role !== 'owner')) {
+    throw new Error('Unauthorized: User is not an admin or owner of this group.');
+  }
 
   const newCode = generateCode(10);
 
