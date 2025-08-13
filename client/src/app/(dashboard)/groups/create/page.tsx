@@ -52,13 +52,9 @@ export default function CreateGroupPage() {
     setLoading(true);
     setError(null);
 
-    console.log('CreateGroupPage: Form values before API call:', values); // Nouveau log
-
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
-
-      console.log("Access Token:", accessToken); // Ajoutez cette ligne pour déboguer
 
       if (!accessToken) {
         throw new Error("Utilisateur non authentifié.");
@@ -67,14 +63,12 @@ export default function CreateGroupPage() {
       // --- Débogage du JWT ---
       try {
         const decodedToken = jwtDecode(accessToken);
-        console.log("Decoded JWT:", decodedToken);
       } catch (e) {
         console.error("Error decoding JWT:", e);
       }
       // --- Fin du débogage ---
 
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-      console.log("API Base URL from env:", apiBaseUrl);
       const response = await fetch(`${apiBaseUrl}/groups`, {
         method: 'POST',
         headers: {

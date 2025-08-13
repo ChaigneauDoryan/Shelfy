@@ -116,13 +116,6 @@ export default function InviteToGroupPage() {
           invitedEmails: values.emails.map(emailObj => emailObj.email), // Transformer en tableau de chaînes de caractères
         }),
       });
-
-      console.log('DEBUG (Frontend): Sending body:', {
-        groupId: values.groupId,
-        groupName: selectedGroup.name,
-        __temp_invited_emails__: values.emails.map(emailObj => emailObj.email),
-      });
-
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Échec de l\'envoi de l\'invitation.');
