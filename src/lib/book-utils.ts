@@ -1,8 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from './supabase/server';
 
-export async function getReadingStatusId(cookieStore: ReturnType<typeof cookies>, statusName: string): Promise<number> {
-  const supabase = createClient(cookieStore);
+export async function getReadingStatusId(supabase: any, statusName: string): Promise<number> {
   const { data, error } = await supabase
     .from('reading_statuses')
     .select('id')
@@ -15,39 +14,59 @@ export async function getReadingStatusId(cookieStore: ReturnType<typeof cookies>
   return data.id;
 }
 
-export async function findOrCreateBook(cookieStore: ReturnType<typeof cookies>, bookData: any, userId: string) {
-  const supabase = createClient(cookieStore);
-  const { googleBooksId, isbn, title, author, description, coverUrl, pageCount, genre, publishedDate, publisher } = bookData;
+export async function findOrCreateBook(supabase: any, bookData: any, userId: string) {
+  const isGoogleBooks = bookData.volumeInfo !== undefined;
+  const bookInfo = isGoogleBooks ? bookData.volumeInfo : bookData;
+
+  const googleBooksId = bookData.id;
+  const title = bookInfo.title;
+  const author = bookInfo.authors ? bookInfo.authors.join(', ') : bookData.author;
+  const description = bookInfo.description;
+  const coverUrl = bookInfo.imageLinks?.thumbnail || bookInfo.imageLinks?.smallThumbnail || bookData.coverUrl;
+  const pageCount = bookInfo.pageCount;
+  const genre = bookInfo.categories ? bookInfo.categories.join(', ') : bookData.genre;
+  const publishedDate = bookInfo.publishedDate;
+  const publisher = bookInfo.publisher;
+  const isManual = bookData.isManual || !isGoogleBooks;
+
+  let isbn = bookData.isbn;
+  if (isGoogleBooks && bookInfo.industryIdentifiers) {
+    const isbn13 = bookInfo.industryIdentifiers.find((i: any) => i.type === 'ISBN_13');
+    const isbn10 = bookInfo.industryIdentifiers.find((i: any) => i.type === 'ISBN_10');
+    isbn = isbn13 ? isbn13.identifier : (isbn10 ? isbn10.identifier : null);
+  }
 
   let book: any = null;
   try {
-    let { data, error } = await supabase
-      .from('books')
-      .select('*')
-      .eq('google_books_id', googleBooksId)
-      .single();
+    if (!isManual && googleBooksId) {
+      let { data, error } = await supabase
+        .from('books')
+        .select('*')
+        .eq('google_books_id', googleBooksId)
+        .single();
 
-    if (error && error.code === 'PGRST116') { // PGRST116: no rows found
-      if (isbn) {
-        let { data: bookByIsbn, error: isbnError } = await supabase
-          .from('books')
-          .select('*')
-          .eq('isbn', isbn)
-          .single();
-        
-        if (!isbnError && bookByIsbn) {
-          book = bookByIsbn;
+      if (error && error.code === 'PGRST116') { // PGRST116: no rows found
+        if (isbn) {
+          let { data: bookByIsbn, error: isbnError } = await supabase
+            .from('books')
+            .select('*')
+            .eq('isbn', isbn)
+            .single();
+          
+          if (!isbnError && bookByIsbn) {
+            book = bookByIsbn;
+          }
         }
+      } else if (data) {
+        book = data;
       }
-    } else if (data) {
-      book = data;
     }
 
     if (!book) {
       const { data: newBook, error: insertError } = await supabase
         .from('books')
         .insert({
-          google_books_id: googleBooksId,
+          google_books_id: isManual ? null : googleBooksId,
           isbn: isbn,
           title: title,
           author: author,
@@ -64,19 +83,19 @@ export async function findOrCreateBook(cookieStore: ReturnType<typeof cookies>, 
 
       if (insertError) {
         console.error('Error inserting new book:', insertError);
-        throw new Error('Failed to save book information.');
+        return { data: null, error: insertError };
       }
       book = newBook;
     }
-  } catch (e) {
-    throw e; 
+    return { data: book, error: null };
+  } catch (e: any) {
+    console.error('Error in findOrCreateBook:', e.message);
+    return { data: null, error: { message: e.message } };
   }
-
-  return book;
 }
 
-export async function addUserBook(cookieStore: ReturnType<typeof cookies>, userId: string, bookId: string) {
-  const supabase = createClient(cookieStore);
+export async function addUserBook(supabase: any, userId: string, bookId: string, bookData: any) {
+  const { readingPace } = bookData;
 
   try {
     const { data: existingUserBook, error: userBookError } = await supabase
@@ -90,13 +109,19 @@ export async function addUserBook(cookieStore: ReturnType<typeof cookies>, userI
       throw new Error('Ce livre est déjà dans votre bibliothèque.');
     }
 
+    const insertData: any = {
+      user_id: userId,
+      book_id: bookId,
+      status_id: 1, // Default: 'to_read' (ID 1)
+    };
+
+    if (readingPace) {
+      insertData.reading_pace = readingPace;
+    }
+
     const { data: userBook, error: insertError } = await supabase
       .from('user_books')
-      .insert({
-        user_id: userId,
-        book_id: bookId,
-        status_id: 1, // Par défaut: 'to_read' (ID 1)
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -111,8 +136,7 @@ export async function addUserBook(cookieStore: ReturnType<typeof cookies>, userI
   }
 }
 
-export async function getUserBooks(cookieStore: ReturnType<typeof cookies>, userId: string, statusName?: string) {
-  const supabase = createClient(cookieStore);
+export async function getUserBooks(supabase: any, userId: string, statusName?: string) {
 
   let query = supabase
     .from('user_books')
@@ -140,8 +164,7 @@ export async function getUserBooks(cookieStore: ReturnType<typeof cookies>, user
   return data;
 }
 
-export async function getUserBookById(cookieStore: ReturnType<typeof cookies>, userBookId: string, userId: string) {
-  const supabase = createClient(cookieStore);
+export async function getUserBookById(supabase: any, userBookId: string, userId: string) {
   const { data, error } = await supabase
     .from('user_books')
     .select(`
@@ -157,21 +180,18 @@ export async function getUserBookById(cookieStore: ReturnType<typeof cookies>, u
     .single();
 
   if (error) {
-    console.error('Error fetching user book:', error);
+    console.error('Error fetching user book:', error.message, error.code, error);
     throw new Error('Failed to fetch user book.');
   }
   return data;
 }
 
-export async function updateUserBookStatus(cookieStore: ReturnType<typeof cookies>, userBookId: string, statusName: string, userId: string) {
-  const supabase = createClient(cookieStore);
+export async function updateUserBookStatus(supabase: any, userBookId: string, statusName: string, userId: string) {
   const statusId = await getReadingStatusId(cookieStore, statusName);
   const updateData: any = { status_id: statusId, updated_at: new Date() };
 
   if (statusName === 'finished') {
     updateData.finished_at = new Date();
-  } else if (statusName === 'reading') {
-    updateData.started_at = new Date();
   }
 
   const { data, error } = await supabase
@@ -189,8 +209,7 @@ export async function updateUserBookStatus(cookieStore: ReturnType<typeof cookie
   return data;
 }
 
-export async function deleteUserBook(cookieStore: ReturnType<typeof cookies>, userBookId: string, userId: string) {
-  const supabase = createClient(cookieStore);
+export async function deleteUserBook(supabase: any, userBookId: string, userId: string) {
   const { error } = await supabase
     .from('user_books')
     .delete()
@@ -202,4 +221,29 @@ export async function deleteUserBook(cookieStore: ReturnType<typeof cookies>, us
     throw new Error('Failed to delete user book.');
   }
   return { message: 'Livre supprimé de votre bibliothèque.' };
+}
+
+
+
+
+
+
+
+export async function addPageComment(supabase: any, userBookId: string, pageNumber: number, commentText: string) {
+
+  const { data, error } = await supabase
+    .from('user_book_comments') // Assuming this is the existing table
+    .insert({
+      user_book_id: userBookId,
+      page_number: pageNumber,
+      comment_text: commentText,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding page comment:', error);
+    throw new Error('Failed to add page comment.');
+  }
+  return data;
 }

@@ -132,7 +132,9 @@ export default function LibraryPage() {
               )}
             </CardContent>
             <div className="p-4 pt-0">
-              <Button className="w-full">Voir les détails</Button>
+              <Link href={`/library/${userBook.id}`}>
+                <Button className="w-full">Voir les détails</Button>
+              </Link>
             </div>
           </Card>
         ))}
