@@ -5,7 +5,7 @@ import { leaveGroup } from '@/lib/group-utils';
 
 export async function DELETE(request: NextRequest, context: any) {
   const { groupId } = context.params;
-  const supabase = createClient(cookies());
+  const supabase = await createClient(cookies());
 
   const {
     data: { session },

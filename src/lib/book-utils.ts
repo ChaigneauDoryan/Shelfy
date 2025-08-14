@@ -136,7 +136,7 @@ export async function addUserBook(supabase: any, userId: string, bookId: string,
   }
 }
 
-export async function getUserBooks(supabase: any, userId: string, statusName?: string) {
+export async function getUserBooks(supabase: any, userId: string, statusName?: string, isArchived?: boolean) {
 
   let query = supabase
     .from('user_books')
@@ -146,14 +146,21 @@ export async function getUserBooks(supabase: any, userId: string, statusName?: s
       rating,
       started_at,
       finished_at,
+      current_page,
       book:books(*)
     `)
     .eq('user_id', userId);
 
   if (statusName) {
-    const statusId = await getReadingStatusId(cookieStore, statusName);
+    const statusId = await getReadingStatusId(supabase, statusName);
     query = query.eq('status_id', statusId);
   }
+
+  // Add is_archived filter
+  if (isArchived !== undefined) { // Apply filter only if isArchived is explicitly true or false
+    query = query.eq('is_archived', isArchived);
+  }
+  // If isArchived is undefined, no filter is applied, showing all books (archived and non-archived)
 
   const { data, error } = await query;
 

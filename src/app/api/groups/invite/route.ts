@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import * as nodemailer from 'nodemailer'; // Assuming nodemailer is installed
 
 export async function POST(request: Request) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient(cookies());
 
   const {
     data: { session },

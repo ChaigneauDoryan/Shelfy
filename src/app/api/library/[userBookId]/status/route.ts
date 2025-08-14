@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { updateUserBookStatus } from '@/lib/book-utils';
 
 export async function PATCH(request: Request, context: any) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient(cookies());
 
   const {
     data: { session },
@@ -23,7 +23,7 @@ export async function PATCH(request: Request, context: any) {
   }
 
   try {
-    const updatedBook = await updateUserBookStatus(cookies(), userBookId, status, userId);
+    const updatedBook = await updateUserBookStatus(supabase, userBookId, status, userId);
     return NextResponse.json(updatedBook);
   } catch (error: any) {
     console.error('Error updating user book status:', error.message);

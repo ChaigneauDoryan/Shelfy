@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { regenerateInvitationCode } from '@/lib/group-utils';
 
 export async function PATCH(request: NextRequest, context: any) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient(cookies());
 
   const {
     data: { session },

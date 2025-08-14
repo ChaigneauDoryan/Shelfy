@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { createGroup } from '@/lib/group-utils';
 
 export async function POST(request: Request) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient(cookies());
 
   const {
     data: { session },

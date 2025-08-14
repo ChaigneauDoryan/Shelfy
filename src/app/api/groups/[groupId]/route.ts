@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { deleteGroup, updateGroup } from '@/lib/group-utils';
 
 export async function DELETE(request: Request, context: any) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient(cookies());
 
   const {
     data: { session },
@@ -27,7 +27,7 @@ export async function DELETE(request: Request, context: any) {
 }
 
 export async function PATCH(request: Request, context: any) {
-  const supabase = createClient(cookies());
+  const supabase = await createClient(cookies());
 
   const {
     data: { session },

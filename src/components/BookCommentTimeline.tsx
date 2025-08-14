@@ -74,18 +74,23 @@ export default function BookCommentTimeline({ userBookId, totalBookPages, refres
   return (
     <div className="mt-8">
       <h2 className="text-xl font-semibold mb-4">Timeline des commentaires</h2>
-      <div className="relative w-full h-4 bg-gray-200 rounded-full mb-8">
+      <div className="relative w-full h-2 bg-gray-200 rounded-full mb-8 flex items-center"> {/* Reduced height */}
         {/* Timeline bar */}
         {comments.map((comment) => {
           const position = (comment.page_number / totalBookPages) * 100;
           return (
             <div
               key={comment.id}
-              className="absolute w-4 h-4 bg-blue-500 rounded-full cursor-pointer transform -translate-x-1/2 -translate-y-1/2 top-1/2"
-              style={{ left: `${position}%` }}
+              className="absolute flex flex-col items-center cursor-pointer"
+              style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
               onClick={() => setSelectedComment(comment)}
-              title={comment.comment_title} // Use comment_title for title
-            ></div>
+            >
+              {/* Line connecting to the title */}
+              <div className="w-4 h-4 bg-blue-500 rounded-full relative z-10"></div> {/* The point */}
+              {/* Line connecting to the title */}
+              <div className="absolute w-px bg-gray-400" style={{ height: '20px', top: '100%', marginTop: '4px' }}></div> {/* Line below the point */}
+              <span className="absolute text-xs text-gray-700 whitespace-nowrap" style={{ top: 'calc(100% + 24px)' }}>{comment.comment_title}</span> {/* Title below the line */}
+            </div>
           );
         })}
       </div>
