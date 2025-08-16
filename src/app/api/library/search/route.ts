@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get('query');
+  const title = searchParams.get('title');
+  const author = searchParams.get('author');
+  const isbn = searchParams.get('isbn');
+  const genre = searchParams.get('genre');
 
-  if (!query) {
-    return NextResponse.json({ message: 'Query parameter is required.' }, { status: 400 });
+  if (!title && !author && !isbn && !genre) {
+    return NextResponse.json({ message: 'At least one search parameter is required.' }, { status: 400 });
   }
 
   const GOOGLE_BOOKS_API_KEY = process.env.GOOGLE_BOOKS_API_KEY;
@@ -16,8 +19,16 @@ export async function GET(request: Request) {
 
   const GOOGLE_BOOKS_API_URL = 'https://www.googleapis.com/books/v1/volumes';
 
+  let queryParts: string[] = [];
+  if (title) queryParts.push(`intitle:${title}`);
+  if (author) queryParts.push(`inauthor:${author}`);
+  if (isbn) queryParts.push(`isbn:${isbn}`);
+  if (genre) queryParts.push(`subject:${genre}`);
+
+  const query = queryParts.join('+');
+
   try {
-    const response = await fetch(`${GOOGLE_BOOKS_API_URL}?q=${encodeURIComponent(query)}&key=${GOOGLE_BOOKS_API_KEY}`);
+    const response = await fetch(`${GOOGLE_BOOKS_API_URL}?q=${encodeURIComponent(query)}&maxResults=40&lang=fr&key=${GOOGLE_BOOKS_API_KEY}`);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch from Google Books API: ${response.statusText}`);

@@ -65,7 +65,6 @@ export async function PUT(request: Request, context: any) {
 
   try {
     const requestBody = await request.json(); // Log the raw request body
-    console.log('PUT request body:', requestBody); // Add this log
     const { is_archived } = requestBody; // Destructure from the logged body
 
     if (is_archived === undefined || typeof is_archived !== 'boolean') {

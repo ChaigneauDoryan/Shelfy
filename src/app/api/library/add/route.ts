@@ -21,7 +21,6 @@ export async function POST(request: Request) {
     console.error('Error parsing request body:', e);
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
-  console.log('Received book data:', book); // Debug log
 
   if (!book) {
     return NextResponse.json({ error: 'Book data is missing in request body' }, { status: 400 });

@@ -12,8 +12,6 @@ interface PageProps {
 export default async function BookDetailPage({ params, searchParams }: PageProps) {
   // Attendre la résolution de params
   const { userBookId } = await params;
-  console.log('BookDetailPage component rendered for userBookId:', userBookId);
-
   const cookieStore = cookies();
   const supabase = await createClient(cookieStore);
 

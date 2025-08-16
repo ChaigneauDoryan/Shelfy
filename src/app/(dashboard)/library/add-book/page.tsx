@@ -20,6 +20,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
+import { useDebounce } from '@/hooks/use-debounce';
 
 interface BookResult {
   id?: string | null;
@@ -37,8 +38,6 @@ interface BookResult {
     industryIdentifiers?: { type: string; identifier: string }[];
   };
 }
-
-import { useDebounce } from '@/hooks/use-debounce';
 
 const manualBookSchema = z.object({
   title: z.string().min(1, "Le titre est requis."),
@@ -64,9 +63,15 @@ interface ChapterInput {
 
 export default function AddBookPage() {
   const router = useRouter();
-  const [query, setQuery] = useState('');
-  const debouncedQuery = useDebounce(query, 500); // Debounce for 500ms
+  const [searchParams, setSearchParams] = useState({
+    title: '',
+    author: '',
+    isbn: '',
+    genre: '',
+  });
+  const debouncedSearchParams = useDebounce(searchParams, 500); // Debounce for 500ms
   const [results, setResults] = useState<BookResult[]>([]);
+  const [visibleResultsCount, setVisibleResultsCount] = useState(9); // New state for pagination
   const [loading, setLoading] = useState(false);
   const [addingBookId, setAddingBookId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -106,11 +111,17 @@ export default function AddBookPage() {
   });
 
   const handleSearch = async () => {
-    if (!query) return;
+    const { title, author, isbn, genre } = debouncedSearchParams;
+    if (!title && !author && !isbn && !genre) {
+      setResults([]);
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    setResults([]);
     setShowManualForm(false);
+    setVisibleResultsCount(9); // Reset visible results count
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
@@ -119,7 +130,13 @@ export default function AddBookPage() {
         throw new Error("Utilisateur non authentifié.");
       }
 
-            const response = await fetch(`/api/library/search?query=${encodeURIComponent(query)}`, {
+      let queryParams = new URLSearchParams();
+      if (title) queryParams.append('title', title);
+      if (author) queryParams.append('author', author);
+      if (isbn) queryParams.append('isbn', isbn);
+      if (genre) queryParams.append('genre', genre);
+
+      const response = await fetch(`/api/library/search?${queryParams.toString()}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
         },
@@ -129,7 +146,29 @@ export default function AddBookPage() {
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      setResults(data.items || []);
+
+      // De-duplicate results based on book ID
+      const uniqueResults = data.items ? Array.from(new Map(data.items.map((item: any) => [item.id, item])).values()) : [];
+
+      // Fetch more details for results that are missing them
+      const detailedResults = await Promise.all(
+        uniqueResults.map(async (book: any) => {
+          if (!book.volumeInfo.description || !book.volumeInfo.imageLinks?.thumbnail) {
+            try {
+              const detailsResponse = await fetch(`/api/books/${book.id}`);
+              if (detailsResponse.ok) {
+                const detailsData = await detailsResponse.json();
+                return detailsData; // Return the more detailed book data
+              }
+            } catch (e) {
+              console.error(`Failed to fetch details for book ${book.id}`, e);
+            }
+          }
+          return book; // Return original book if details are already present or fetch failed
+        })
+      );
+
+      setResults(detailedResults);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -138,17 +177,17 @@ export default function AddBookPage() {
   };
 
   useEffect(() => {
-    if (debouncedQuery) {
+    if (debouncedSearchParams.title || debouncedSearchParams.author || debouncedSearchParams.isbn || debouncedSearchParams.genre) {
       handleSearch();
     } else {
       setResults([]);
     }
-  }, [debouncedQuery]);
+  }, [debouncedSearchParams]);
 
   const addBookToLibrary = async (bookData: any, bookIdForLoading: string | null = null) => {
     setLoading(true);
     setAddingBookId(bookIdForLoading);
-    console.log('Book data being sent from frontend:', bookData); // Add this log
+    console.log('Book data being sent from frontend:', bookData);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
@@ -157,8 +196,7 @@ export default function AddBookPage() {
         throw new Error("Utilisateur non authentifié.");
       }
 
-            console.log('Book data being sent from frontend:', bookData); // Debug log
-            const response = await fetch('/api/library/add', {
+      const response = await fetch('/api/library/add', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,14 +211,14 @@ export default function AddBookPage() {
       }
 
       toast({ title: 'Succès', description: 'Livre ajouté à votre bibliothèque !' });
-      setQuery('');
+      setSearchParams({ title: '', author: '', isbn: '', genre: '' });
       setResults([]);
       setShowManualForm(false);
     } catch (e: any) {
       toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
     } finally {
       setLoading(false);
-      setAddingBookId(null); // Réinitialiser l\'ID du livre en cours d\'ajout
+      setAddingBookId(null);
     }
   };
 
@@ -193,8 +231,8 @@ export default function AddBookPage() {
       });
       return;
     }
-    console.log('Book data being sent to backend:', book); // Add this line
-    addBookToLibrary(book, book.id); // Passer l\'ID du livre pour le chargement
+    console.log('Book data being sent to backend:', book);
+    addBookToLibrary(book, book.id);
   };
 
   const handleManualSubmit = async (values: ManualBookFormValues) => {
@@ -214,11 +252,11 @@ export default function AddBookPage() {
     }
 
     setLoading(true);
-    setAddingBookId(null); // For manual books, no Google Books ID
+    setAddingBookId(null);
 
     const bookToAdd = {
-      isManual: true, // Flag for manual entry
-      googleBooksId: null, // No Google Books ID for manual entry
+      isManual: true,
+      googleBooksId: null,
       isbn: values.isbn || null,
       title: values.title,
       author: values.author || null,
@@ -255,11 +293,9 @@ export default function AddBookPage() {
       }
 
       toast({ title: 'Succès', description: 'Livre ajouté à votre bibliothèque !' });
-      // Reset form and state after successful submission
       manualForm.reset();
-      setChaptersInput([]); // Clear chapters input
+      setChaptersInput([]);
       setShowManualForm(false);
-      // No need to setQuery or setResults as this is manual form
     } catch (e: any) {
       toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
     } finally {
@@ -276,23 +312,48 @@ export default function AddBookPage() {
         </Button>
         <h1 className="text-3xl font-bold">Ajouter un Nouveau Livre</h1>
       </div>
-      <div className="flex space-x-2 mb-6">
-        <Input
-          type="text"
-          placeholder="Rechercher des livres par titre, auteur, ISBN..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter') {
-              handleSearch();
-            }
-          }}
-          className="flex-grow"
-        />
-        <Button disabled={loading}>
-          {loading ? 'Recherche...' : 'Rechercher'}
-        </Button>
-      </div>
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Rechercher un livre</CardTitle>
+          <CardDescription>Utilisez les filtres ci-dessous pour trouver un livre.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-4">
+            <div className="flex space-x-2">
+              <Input
+                type="text"
+                placeholder="Titre du livre"
+                value={searchParams.title}
+                onChange={(e) => setSearchParams({ ...searchParams, title: e.target.value })}
+                className="flex-grow"
+              />
+              <Input
+                type="text"
+                placeholder="Auteur"
+                value={searchParams.author}
+                onChange={(e) => setSearchParams({ ...searchParams, author: e.target.value })}
+                className="flex-grow"
+              />
+            </div>
+            <div className="flex space-x-2">
+              <Input
+                type="text"
+                placeholder="ISBN"
+                value={searchParams.isbn}
+                onChange={(e) => setSearchParams({ ...searchParams, isbn: e.target.value })}
+                className="flex-grow"
+              />
+              <Input
+                type="text"
+                placeholder="Genre"
+                value={searchParams.genre}
+                onChange={(e) => setSearchParams({ ...searchParams, genre: e.target.value })}
+                className="flex-grow"
+              />
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {error && <p className="text-red-500 mb-4">Erreur : {error}</p>}
 
@@ -300,7 +361,7 @@ export default function AddBookPage() {
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-4">Résultats de la recherche</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {results.map((book) => (
+            {results.slice(0, visibleResultsCount).map((book) => (
               <Card key={book.id} className="flex flex-col">
                 <CardHeader>
                   <CardTitle>{book.volumeInfo.title}</CardTitle>
@@ -331,15 +392,22 @@ export default function AddBookPage() {
               </Card>
             ))}
           </div>
+          {visibleResultsCount < results.length && (
+            <div className="text-center mt-6">
+              <Button onClick={() => setVisibleResultsCount(prevCount => prevCount + 9)}>
+                Afficher plus
+              </Button>
+            </div>
+          )}
           <div className="text-center mt-6">
             <Button variant="outline" onClick={() => setShowManualForm(true)}>Ajouter manuellement</Button>
           </div>
         </div>
       )}
 
-      {(results.length === 0 && query && !loading && !showManualForm) && (
+      {(results.length === 0 && (searchParams.title || searchParams.author || searchParams.isbn || searchParams.genre) && !loading && !showManualForm) && (
         <div className="text-center mb-6">
-          <p className="text-gray-600">Aucun résultat trouvé pour "{query}".</p>
+          <p className="text-gray-600">Aucun résultat trouvé pour votre recherche.</p>
           <Button variant="outline" onClick={() => setShowManualForm(true)} className="mt-4">Ajouter manuellement</Button>
         </div>
       )}
