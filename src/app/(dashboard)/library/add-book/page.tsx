@@ -21,6 +21,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
+import dynamic from 'next/dynamic';
+
+const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), {
+  ssr: false,
+  loading: () => <p>Chargement du scanner...</p>, // Optional loading component
+});
 
 interface BookResult {
   id?: string | null;
@@ -76,6 +82,7 @@ export default function AddBookPage() {
   const [addingBookId, setAddingBookId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showManualForm, setShowManualForm] = useState(false);
+  const [showScanner, setShowScanner] = useState(false); // State for scanner visibility
   const [chaptersInput, setChaptersInput] = useState<ChapterInput[]>([]);
   let nextChapterId = 0;
   const supabase = createClient();
@@ -304,6 +311,15 @@ export default function AddBookPage() {
     }
   };
 
+  const handleScan = (isbn: string) => {
+    setSearchParams({ ...searchParams, isbn });
+    setShowScanner(false);
+  };
+
+  const handleCloseScanner = () => {
+    setShowScanner(false);
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex items-center mb-6">
@@ -354,6 +370,16 @@ export default function AddBookPage() {
           </form>
         </CardContent>
       </Card>
+
+      <div className="mb-6 md:hidden"> {/* Only show on mobile */}
+        <Button onClick={() => setShowScanner(true)} className="w-full">
+          Scanner le code-barre
+        </Button>
+      </div>
+
+      {showScanner && (
+        <BarcodeScanner onScan={handleScan} onClose={handleCloseScanner} />
+      )}
 
       {error && <p className="text-red-500 mb-4">Erreur : {error}</p>}
 
@@ -416,7 +442,7 @@ export default function AddBookPage() {
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Ajouter un livre manuellement</CardTitle>
-            <CardDescription>Saisissez les informations du livre si la recherche n'a rien donné.</CardDescription>
+            <CardDescription>Saisissez les informations du livre si la recherche n\'a rien donné.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...manualForm}>

@@ -25,7 +25,15 @@ export async function findOrCreateBook(supabase: any, bookData: any, userId: str
   const coverUrl = bookInfo.imageLinks?.thumbnail || bookInfo.imageLinks?.smallThumbnail || bookData.coverUrl;
   const pageCount = bookInfo.pageCount;
   const genre = bookInfo.categories ? bookInfo.categories.join(', ') : bookData.genre;
-  const publishedDate = bookInfo.publishedDate;
+  let publishedDate = bookInfo.publishedDate;
+  if (publishedDate) {
+    const dateParts = publishedDate.split('-');
+    if (dateParts.length === 1) { // Only year
+      publishedDate = `${publishedDate}-01-01`;
+    } else if (dateParts.length === 2) { // Year and month
+      publishedDate = `${publishedDate}-01`;
+    }
+  }
   const publisher = bookInfo.publisher;
   const isManual = bookData.isManual || !isGoogleBooks;
 
