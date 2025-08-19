@@ -18,7 +18,15 @@ export async function GET(request: Request) {
   const userId = user.id;
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
-  const archived = searchParams.get('archived'); // Get archived status
+  const archived = searchParams.get('archived');
+
+  const statusNameToId: { [key: string]: number } = {
+    to_read: 1,
+    reading: 2,
+    finished: 3,
+  };
+
+  const statusId = status ? statusNameToId[status] : undefined;
 
   let isArchived: boolean | undefined;
   if (archived === 'true') {
@@ -26,10 +34,9 @@ export async function GET(request: Request) {
   } else if (archived === 'false') {
     isArchived = false;
   }
-  // If 'archived' param is not present, getUserBooks will default to non-archived
 
   try {
-    const books = await getUserBooks(supabase, userId, status || undefined, isArchived); // Pass isArchived
+    const books = await getUserBooks(supabase, userId, statusId, isArchived);
     return NextResponse.json(books);
   } catch (error: any) {
     console.error('Error fetching user books:', error.message);

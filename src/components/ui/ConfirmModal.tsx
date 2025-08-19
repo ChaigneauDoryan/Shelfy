@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -10,7 +9,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "./alert-dialog"; // Assurez-vous que le chemin est correct
+} from "./alert-dialog"; // Vérifie le chemin
 import { Button } from "./button";
 
 interface ConfirmModalProps {
@@ -21,7 +20,7 @@ interface ConfirmModalProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  isConfirming?: boolean; // Pour gérer l'état de chargement du bouton de confirmation
+  isConfirming?: boolean;
 }
 
 export function ConfirmModal({
@@ -35,16 +34,28 @@ export function ConfirmModal({
   isConfirming = false,
 }: ConfirmModalProps) {
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
+    <AlertDialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{message}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isConfirming}>{cancelText}</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} disabled={isConfirming}>
-            {isConfirming ? 'Chargement...' : confirmText}
+          <AlertDialogCancel disabled={isConfirming}>
+            {cancelText}
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={isConfirming}
+          >
+            {isConfirming ? "Chargement..." : confirmText}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

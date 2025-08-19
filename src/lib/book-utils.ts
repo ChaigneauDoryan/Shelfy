@@ -1,7 +1,27 @@
-import { cookies } from 'next/headers';
 import { createClient } from './supabase/server';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { checkAndAwardBadges } from './badge-utils';
 
-export async function getReadingStatusId(supabase: any, statusName: string): Promise<number> {
+type Book = {
+  id: string;
+  title: string;
+  author: string;
+  cover_url: string;
+  page_count: number;
+};
+
+type UserBook = {
+  id: string;
+  status_id: number;
+  rating?: number;
+  started_at?: string;
+  finished_at?: string;
+  current_page: number;
+  is_archived: boolean;
+  book: Book;
+};
+
+export async function getReadingStatusId(supabase: SupabaseClient, statusName: string): Promise<number> {
   const { data, error } = await supabase
     .from('reading_statuses')
     .select('id')
@@ -9,12 +29,13 @@ export async function getReadingStatusId(supabase: any, statusName: string): Pro
     .single();
 
   if (error || !data) {
+    console.error('Error in getReadingStatusId:', error);
     throw new Error(`Status '${statusName}' not found.`);
   }
   return data.id;
 }
 
-export async function findOrCreateBook(supabase: any, bookData: any, userId: string) {
+export async function findOrCreateBook(supabase: SupabaseClient, bookData: any, userId: string) {
   const isGoogleBooks = bookData.volumeInfo !== undefined;
   const bookInfo = isGoogleBooks ? bookData.volumeInfo : bookData;
 
@@ -102,7 +123,7 @@ export async function findOrCreateBook(supabase: any, bookData: any, userId: str
   }
 }
 
-export async function addUserBook(supabase: any, userId: string, bookId: string, bookData: any) {
+export async function addUserBook(supabase: SupabaseClient, userId: string, bookId: string, bookData: any) {
   const { readingPace } = bookData;
 
   try {
@@ -144,42 +165,56 @@ export async function addUserBook(supabase: any, userId: string, bookId: string,
   }
 }
 
-export async function getUserBooks(supabase: any, userId: string, statusName?: string, isArchived?: boolean) {
-
+export async function getUserBooks(
+  supabase: SupabaseClient,
+  userId: string,
+  statusId?: number,
+  isArchived?: boolean
+): Promise<UserBook[]> {
   let query = supabase
-    .from('user_books')
-    .select(`
+    .from("user_books")
+    .select(
+      `
       id,
       status_id,
       rating,
       started_at,
       finished_at,
       current_page,
+      is_archived,
       book:books(*)
-    `)
-    .eq('user_id', userId);
+    `
+    )
+    .eq("user_id", userId);
 
-  if (statusName) {
-    const statusId = await getReadingStatusId(supabase, statusName);
-    query = query.eq('status_id', statusId);
+  if (statusId) {
+    query = query.eq("status_id", statusId);
   }
 
-  // Add is_archived filter
-  if (isArchived !== undefined) { // Apply filter only if isArchived is explicitly true or false
-    query = query.eq('is_archived', isArchived);
+  if (isArchived !== undefined) {
+    query = query.eq("is_archived", isArchived);
   }
-  // If isArchived is undefined, no filter is applied, showing all books (archived and non-archived)
 
   const { data, error } = await query;
 
   if (error) {
-    console.error('Error fetching user books:', error);
-    throw new Error('Failed to fetch user books.');
+    console.error(
+      "Error fetching user books. Full error object:",
+      JSON.stringify(error, null, 2)
+    );
+    throw new Error("Failed to fetch user books.");
   }
-  return data;
+
+  // ✅ normaliser le retour : book est un objet, pas un tableau
+  return (
+    data?.map((item: any) => ({
+      ...item,
+      book: Array.isArray(item.book) ? item.book[0] : item.book,
+    })) as UserBook[]
+  ) || [];
 }
 
-export async function getUserBookById(supabase: any, userBookId: string, userId: string) {
+export async function getUserBookById(supabase: SupabaseClient, userBookId: string, userId: string) {
   const { data, error } = await supabase
     .from('user_books')
     .select(`
@@ -201,8 +236,8 @@ export async function getUserBookById(supabase: any, userBookId: string, userId:
   return data;
 }
 
-export async function updateUserBookStatus(supabase: any, userBookId: string, statusName: string, userId: string) {
-  const statusId = await getReadingStatusId(cookieStore, statusName);
+export async function updateUserBookStatus(supabase: SupabaseClient, userBookId: string, statusName: string, userId: string) {
+  const statusId = await getReadingStatusId(supabase, statusName);
   const updateData: any = { status_id: statusId, updated_at: new Date() };
 
   if (statusName === 'finished') {
@@ -221,10 +256,17 @@ export async function updateUserBookStatus(supabase: any, userBookId: string, st
     console.error('Error updating user book status:', error);
     throw new Error('Failed to update book status.');
   }
-  return data;
+
+  let awardedBadges = [];
+  // Check for badges after finishing a book
+  if (statusName === 'finished') {
+    awardedBadges = await checkAndAwardBadges(supabase, userId);
+  }
+
+  return { updatedBook: data, awardedBadges };
 }
 
-export async function deleteUserBook(supabase: any, userBookId: string, userId: string) {
+export async function deleteUserBook(supabase: SupabaseClient, userBookId: string, userId: string) {
   const { error } = await supabase
     .from('user_books')
     .delete()
@@ -244,8 +286,7 @@ export async function deleteUserBook(supabase: any, userBookId: string, userId: 
 
 
 
-export async function addPageComment(supabase: any, userBookId: string, pageNumber: number, commentText: string) {
-
+export async function addPageComment(supabase: SupabaseClient, userBookId: string, pageNumber: number, commentText: string) {
   const { data, error } = await supabase
     .from('user_book_comments') // Assuming this is the existing table
     .insert({

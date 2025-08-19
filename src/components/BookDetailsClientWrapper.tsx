@@ -4,20 +4,60 @@ import { useState } from 'react';
 import AddCommentForm from '@/components/AddCommentForm';
 import BookCommentTimeline from '@/components/BookCommentTimeline';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button'; // Keep Button for "Ajouter un commentaire"
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Import Select components
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface BookDetailsClientWrapperProps {
   userBookId: string;
-  userBook: any; // Pass the entire userBook object
+  userBook: any;
 }
 
-export default function BookDetailsClientWrapper({ userBookId, userBook }: BookDetailsClientWrapperProps) {
+export default function BookDetailsClientWrapper({ userBookId, userBook: initialUserBook }: BookDetailsClientWrapperProps) {
+  const [userBook, setUserBook] = useState(initialUserBook); // Use state for userBook
   const [refreshKey, setRefreshKey] = useState(0);
-  const [showCommentForm, setShowCommentForm] = useState(false); // State for form visibility
+  const [showCommentForm, setShowCommentForm] = useState(false);
+  const { toast } = useToast(); // Initialize useToast
 
   const handleCommentAdded = () => {
     setRefreshKey(prevKey => prevKey + 1);
-    setShowCommentForm(false); // Hide form after comment is added
+    setShowCommentForm(false);
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      const response = await fetch(`/api/library/${userBookId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update book status.');
+      }
+
+      const { updatedBook, awardedBadges } = await response.json();
+      setUserBook(updatedBook); // Update the book details
+
+      // Display toast for awarded badges
+      if (awardedBadges && awardedBadges.length > 0) {
+        awardedBadges.forEach((badge: any) => {
+          toast({
+            title: 'Nouveau badge débloqué !',
+            description: `Vous avez obtenu le badge : ${badge.name}`,
+          });
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Erreur',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -37,19 +77,31 @@ export default function BookDetailsClientWrapper({ userBookId, userBook }: BookD
           )}
           <div>
             <p className="text-sm text-gray-600 mb-4">{userBook.book.description}</p>
-            <p className="text-sm">Statut : {userBook.status_id}</p>
+            <div className="flex items-center space-x-2">
+              <p className="text-sm">Statut :</p>
+              <Select onValueChange={handleStatusChange} defaultValue={userBook.status_id === 1 ? 'to_read' : userBook.status_id === 2 ? 'reading' : 'finished'}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="to_read">À lire</SelectItem>
+                  <SelectItem value="reading">En cours</SelectItem>
+                  <SelectItem value="finished">Terminé</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <p className="text-sm">Page actuelle : {userBook.current_page}</p>
             {/* Add more book details as needed */}
           </div>
         </div>
       </CardContent>
       <div className="p-4">
-        <div className="flex justify-end mb-4"> {/* Adjusted for delete button */}
+        <div className="flex justify-end mb-4">
           <Button onClick={() => setShowCommentForm(!showCommentForm)}>
             {showCommentForm ? 'Annuler' : 'Ajouter un commentaire'}
           </Button>
         </div>
-        {showCommentForm && ( // Conditionally render the form
+        {showCommentForm && (
           <AddCommentForm userBookId={userBookId} onCommentAdded={handleCommentAdded} />
         )}
         {userBook.book.page_count && (

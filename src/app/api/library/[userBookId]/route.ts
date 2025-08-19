@@ -49,45 +49,45 @@ export async function DELETE(request: Request, context: any) {
   }
 }
 
-export async function PUT(request: Request, context: any) {
-  const supabase = await createClient(cookies());
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-  }
-
-  const userId = user.id;
-  const { userBookId } = await context.params;
-
-  try {
-    const requestBody = await request.json(); // Log the raw request body
-    const { is_archived } = requestBody; // Destructure from the logged body
-
-    if (is_archived === undefined || typeof is_archived !== 'boolean') {
-      console.error('Invalid is_archived:', is_archived); // Log the invalid value
+                                                                                                    
+export async function PUT(request: Request, context: any) {                                         
+  const supabase = await createClient(cookies());                                                                                                    
+  const {                                                                                           
+    data: { user },                                                                                 
+  } = await supabase.auth.getUser();                                                                
+                                                                                                    
+  if (!user) {                                                                                      
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });                         
+  }                                                                                                 
+                                                                                                    
+  const userId = user.id;                                                                           
+  const { userBookId } = await context.params;                                                      
+                                                                                                    
+  try {                                                                                             
+    const requestBody = await request.json(); // Log the raw request body                           
+    const { is_archived } = requestBody; // Destructure from the logged body                        
+                                                                                                    
+    if (is_archived === undefined || typeof is_archived !== 'boolean') {                            
+      console.error('Invalid is_archived:', is_archived); // Log the invalid value                  
       return NextResponse.json({ error: 'Missing or invalid is_archived status' }, { status: 400 });
-    }
-
-    const { data, error } = await supabase
-      .from('user_books')
-      .update({ is_archived: is_archived, updated_at: new Date().toISOString() })
-      .eq('id', userBookId)
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating archive status:', error);
-      return NextResponse.json({ message: 'Failed to update archive status.' }, { status: 500 });
-    }
-
-    return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Unexpected error updating archive status:', error.message);
-    return NextResponse.json({ message: 'An unexpected error occurred.' }, { status: 500 });
-  }
-}
+    }                                                                                               
+                                                                                                    
+    const { data, error } = await supabase                                                          
+      .from('user_books')                                                                           
+      .update({ is_archived: is_archived, updated_at: new Date().toISOString() })                   
+      .eq('id', userBookId)                                                                         
+      .eq('user_id', userId)                                                                        
+      .select()                                                                                     
+      .single();                                                                                    
+                                                                                                    
+    if (error) {                                                                                    
+      console.error('Error updating archive status:', error);                                       
+      return NextResponse.json({ message: 'Failed to update archive status.' }, { status: 500 });   
+    }                                                                                               
+                                                                                                    
+    return NextResponse.json(data);                                                                 
+  } catch (error: any) {                                                                            
+    console.error('Unexpected error updating archive status:', error.message);                      
+    return NextResponse.json({ message: 'An unexpected error occurred.' }, { status: 500 });        
+  }                                                                                                 
+}                                                                                                                                                                                      

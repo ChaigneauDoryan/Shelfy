@@ -7,17 +7,18 @@ import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ConfirmModal } from '@/components/ui/ConfirmModal'; // Import ConfirmModal
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, X } from 'lucide-react';
 
-interface Book {
+export interface Book {
   id: string;
   status_id: number;
   rating: number | null;
   started_at: string | null;
   finished_at: string | null;
-  current_page: number | null; // Added current_page
-  is_archived?: boolean; // Added is_archived property
+  current_page: number | null;
+  is_archived?: boolean;
   book: {
     id: string;
     title: string;
@@ -29,15 +30,101 @@ interface Book {
   };
 }
 
+// Composant modal custom pour éviter les problèmes avec ConfirmModal
+const CustomConfirmModal = ({ 
+  isOpen, 
+  onClose, 
+  onConfirm, 
+  title, 
+  message 
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  message: string;
+}) => {
+  // Fermer avec Escape
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+      // Empêcher le scroll du body
+      document.body.style.overflow = 'hidden';
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+    >
+      {/* Overlay cliquable */}
+      <div 
+        className="absolute inset-0"
+        onClick={onClose}
+      />
+      
+      {/* Contenu de la modal */}
+      <div className="relative bg-white rounded-lg shadow-lg max-w-md w-full mx-4 p-6">
+        {/* Bouton de fermeture */}
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        
+        {/* Titre */}
+        <h2 className="text-lg font-semibold mb-4 pr-8">{title}</h2>
+        
+        {/* Message */}
+        <p className="text-gray-600 mb-6">{message}</p>
+        
+        {/* Boutons */}
+        <div className="flex justify-end space-x-2">
+          <Button
+            variant="outline"
+            onClick={onClose}
+          >
+            Annuler
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+          >
+            Confirmer
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const READING_STATUSES = [
   { name: 'all', label: 'Tous les livres', bgColorClass: 'bg-gray-400' },
   { name: 'to_read', label: 'À lire', bgColorClass: 'bg-blue-500' },
   { name: 'reading', label: 'En cours', bgColorClass: 'bg-yellow-500' },
-  { name: 'finished', label: 'Terminés', bgColorClass: 'bg-green-500' },
+  { name: 'finished', label: 'Terminé', bgColorClass: 'bg-green-500' },
 ];
 
 const ARCHIVE_STATUSES = [
-  { name: 'all', label: 'Tous les livres (Archive)', queryValue: undefined }, // undefined means don't send 'archived' param
+  { name: 'all', label: 'Tous les livres (Archive)', queryValue: undefined },
   { name: 'non_archived', label: 'Non archivés', queryValue: false },
   { name: 'archived', label: 'Archivés', queryValue: true },
 ];
@@ -47,11 +134,14 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterArchiveStatus, setFilterArchiveStatus] = useState<string>('all'); // New state for archive filter
-  const [showConfirmModal, setShowConfirmModal] = useState(false); // State for confirmation modal
-  const [bookToDeleteId, setBookToDeleteId] = useState<string | null>(null); // State to store ID of book to delete
-  const [showArchiveConfirmModal, setShowArchiveConfirmModal] = useState(false); // State for archive confirmation modal
-  const [bookToArchiveId, setBookToArchiveId] = useState<string | null>(null); // State to store ID of book to archive/unarchive
+  const [filterArchiveStatus, setFilterArchiveStatus] = useState<string>('all');
+  
+  // États pour les modales
+  const [modals, setModals] = useState({
+    delete: { isOpen: false, bookId: null as string | null },
+    archive: { isOpen: false, bookId: null as string | null }
+  });
+
   const supabase = createClient();
   const { toast } = useToast();
   const router = useRouter();
@@ -74,7 +164,7 @@ export default function LibraryPage() {
       if (archivedStatus !== undefined) {
         url += `archived=${archivedStatus}&`;
       }
-      url = url.slice(0, -1); // Remove trailing '&' or '?'
+      url = url.slice(0, -1);
 
       const response = await fetch(url, {
         headers: {
@@ -97,12 +187,27 @@ export default function LibraryPage() {
     }
   };
 
-  const handleDeleteBook = async () => {
-    if (!bookToDeleteId) return;
+  // Fonctions pour gérer les modales
+  const closeModal = (type: 'delete' | 'archive') => {
+    setModals(prev => ({
+      ...prev,
+      [type]: { isOpen: false, bookId: null }
+    }));
+  };
 
-    setShowConfirmModal(false); // Close modal after confirmation
+  const openModal = (type: 'delete' | 'archive', bookId: string) => {
+    setModals(prev => ({
+      ...prev,
+      [type]: { isOpen: true, bookId }
+    }));
+  };
+
+  const handleDeleteBook = async () => {
+    const bookId = modals.delete.bookId;
+    if (!bookId) return;
+
     try {
-      const response = await fetch(`/api/library/${bookToDeleteId}`, {
+      const response = await fetch(`/api/library/${bookId}`, {
         method: 'DELETE',
       });
 
@@ -115,8 +220,11 @@ export default function LibraryPage() {
         title: 'Succès',
         description: 'Livre supprimé avec succès de votre bibliothèque.',
       });
-      setBookToDeleteId(null); // Clear the book to delete ID
-      fetchBooks(filterStatus, ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue); // Refresh the list of books
+      
+      // Recharger les données
+      const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
+      await fetchBooks(filterStatus, selectedArchiveStatus);
+      
     } catch (e: any) {
       toast({
         title: 'Erreur',
@@ -126,13 +234,11 @@ export default function LibraryPage() {
     }
   };
 
-  const handleArchiveBook = async (bookId: string) => {
+  const handleArchiveBook = async () => {
+    const bookId = modals.archive.bookId;
     if (!bookId) return;
 
-    setShowArchiveConfirmModal(false); // Close modal after confirmation
-    
     try {
-      // Find the book to determine its current archive status
       const book = books.find(b => b.id === bookId);
       const newArchiveStatus = !book?.is_archived;
 
@@ -153,8 +259,49 @@ export default function LibraryPage() {
         title: 'Succès',
         description: `Livre ${newArchiveStatus ? 'archivé' : 'désarchivé'} avec succès.`,
       });
-      setBookToArchiveId(null); // Clear the book to archive ID
-      fetchBooks(filterStatus, ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue); // Refresh the list of books
+      
+      // Recharger les données
+      const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
+      await fetchBooks(filterStatus, selectedArchiveStatus);
+      
+    } catch (e: any) {
+      toast({
+        title: 'Erreur',
+        description: e.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleStatusChange = async (bookId: string, newStatus: string) => {
+    try {
+      const response = await fetch(`/api/library/${bookId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update book status.');
+      }
+
+      const { awardedBadges } = await response.json();
+
+      if (awardedBadges && awardedBadges.length > 0) {
+        awardedBadges.forEach((badge: any) => {
+          toast({
+            title: 'Nouveau badge débloqué !',
+            description: `Vous avez obtenu le badge : ${badge.name}`,
+            icon: badge.icon_name,
+          });
+        });
+      }
+
+      const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
+      await fetchBooks(filterStatus, selectedArchiveStatus);
     } catch (e: any) {
       toast({
         title: 'Erreur',
@@ -169,6 +316,13 @@ export default function LibraryPage() {
     fetchBooks(filterStatus, selectedArchiveStatus);
   }, [filterStatus, filterArchiveStatus]);
 
+  // Obtenir les infos du livre pour l'archivage
+  const getArchiveBookInfo = () => {
+    if (!modals.archive.bookId) return { isCurrentlyArchived: false };
+    const book = books.find(b => b.id === modals.archive.bookId);
+    return { isCurrentlyArchived: book?.is_archived || false };
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -178,7 +332,7 @@ export default function LibraryPage() {
         </Link>
       </div>
 
-      <div className="mb-6 flex space-x-4"> {/* Added flex and space-x-4 */}
+      <div className="mb-6 flex space-x-4">
         <Select onValueChange={setFilterStatus} defaultValue={filterStatus}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Filtrer par statut" />
@@ -223,8 +377,7 @@ export default function LibraryPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {!loading && !error && books.map((userBook) => {
-          const bookToArchive = books.find(b => b.id === userBook.id);
-          const isCurrentlyArchived = bookToArchive?.is_archived || false;
+          const isCurrentlyArchived = userBook?.is_archived || false;
           
           return (
             <Card key={userBook.id} className="flex flex-col">
@@ -265,60 +418,71 @@ export default function LibraryPage() {
                 <Link href={`/library/${userBook.id}`} className="flex-1">
                   <Button className="w-full">Voir les détails</Button>
                 </Link>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.preventDefault(); // Prevent navigation
-                    setBookToArchiveId(userBook.id);
-                    setShowArchiveConfirmModal(true);
-                  }}
-                >
-                  {isCurrentlyArchived ? 'Désarchiver' : 'Archiver'}
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={(e) => {
-                    e.preventDefault(); // Prevent navigation
-                    setBookToDeleteId(userBook.id);
-                    setShowConfirmModal(true);
-                  }}
-                >
-                  Supprimer
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>Modifier le statut</DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onSelect={() => handleStatusChange(userBook.id, 'to_read')}>
+                          <div className="flex items-center">
+                            <span className="w-2 h-2 rounded-full mr-2 bg-blue-500"></span>
+                            À lire
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleStatusChange(userBook.id, 'reading')}>
+                          <div className="flex items-center">
+                            <span className="w-2 h-2 rounded-full mr-2 bg-yellow-500"></span>
+                            En cours
+                          </div>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleStatusChange(userBook.id, 'finished')}>
+                          <div className="flex items-center">
+                            <span className="w-2 h-2 rounded-full mr-2 bg-green-500"></span>
+                            Terminé
+                          </div>
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuItem onSelect={() => openModal('archive', userBook.id)}>
+                      {isCurrentlyArchived ? 'Désarchiver' : 'Archiver'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => openModal('delete', userBook.id)}>
+                      Supprimer
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </Card>
           );
         })}
       </div>
 
-      <ConfirmModal
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
+      {/* Modal de suppression avec composant custom */}
+      <CustomConfirmModal
+        isOpen={modals.delete.isOpen}
+        onClose={() => closeModal('delete')}
         onConfirm={handleDeleteBook}
         title="Confirmer la suppression"
         message="Êtes-vous sûr de vouloir supprimer ce livre de votre bibliothèque ? Cette action est irréversible."
       />
 
-      {/* Calcul de l'état d'archivage pour le modal */}
-      {(() => {
-        const bookToArchive = books.find(b => b.id === bookToArchiveId);
-        const isCurrentlyArchived = bookToArchive?.is_archived || false;
-        
-        return (
-          <ConfirmModal
-            isOpen={showArchiveConfirmModal}
-            onClose={() => setShowArchiveConfirmModal(false)}
-            onConfirm={() => handleArchiveBook(bookToArchiveId!)}
-            title={isCurrentlyArchived ? "Confirmer le désarchivage" : "Confirmer l'archivage"}
-            message={isCurrentlyArchived 
-              ? "Êtes-vous sûr de vouloir désarchiver ce livre ?" 
-              : "Êtes-vous sûr de vouloir archiver ce livre ? Il sera masqué de la vue par défaut."
-            }
-          />
-        );
-      })()}
+      {/* Modal d'archivage avec composant custom */}
+      <CustomConfirmModal
+        isOpen={modals.archive.isOpen}
+        onClose={() => closeModal('archive')}
+        onConfirm={handleArchiveBook}
+        title={getArchiveBookInfo().isCurrentlyArchived ? "Confirmer le désarchivage" : "Confirmer l'archivage"}
+        message={getArchiveBookInfo().isCurrentlyArchived 
+          ? "Êtes-vous sûr de vouloir désarchiver ce livre ?" 
+          : "Êtes-vous sûr de vouloir archiver ce livre ? Il sera masqué de la vue par défaut."
+        }
+      />
     </div>
   );
 }

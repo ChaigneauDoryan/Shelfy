@@ -194,7 +194,6 @@ export default function AddBookPage() {
   const addBookToLibrary = async (bookData: any, bookIdForLoading: string | null = null) => {
     setLoading(true);
     setAddingBookId(bookIdForLoading);
-    console.log('Book data being sent from frontend:', bookData);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const accessToken = session?.access_token;
@@ -238,7 +237,6 @@ export default function AddBookPage() {
       });
       return;
     }
-    console.log('Book data being sent to backend:', book);
     addBookToLibrary(book, book.id);
   };
 
@@ -274,8 +272,6 @@ export default function AddBookPage() {
       publishedDate: values.published_date || null,
       publisher: values.publisher || null,
     };
-
-    console.log('Book data being sent from frontend (manual):', bookToAdd);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();

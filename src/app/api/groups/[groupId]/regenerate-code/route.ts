@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest, context: any) {
   const { groupId } = context.params;
 
   try {
-    const result = await regenerateInvitationCode(supabase, groupId, userId);
+     const result = await regenerateInvitationCode(supabase, groupId, userId);
     return NextResponse.json(result);
   } catch (error: unknown) {
     console.error('Error regenerating invitation code:', error);
