@@ -9,7 +9,7 @@ const aggregateData = (data: any[], period: 'week' | 'month' | 'year') => {
   if (!data) return [];
 
   const aggregated = data.reduce((acc, item) => {
-    const date = new Date(item.finished_date);
+    const date = new Date(item.finished_at);
     let key = '';
 
     if (period === 'week') {
@@ -41,11 +41,27 @@ export default function ReadingActivityChart() {
     const fetchActivity = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data, error } = await supabase.rpc('get_reading_activity', { p_user_id: user.id });
+        const { data, error } = await supabase
+          .from('user_books')
+          .select('finished_at')
+          .eq('user_id', user.id)
+          .not('finished_at', 'is', null);
+
         if (error) {
           console.error('Error fetching reading activity:', error);
         } else {
-          setRawData(data || []);
+          const counts = data.reduce((acc: { [key: string]: number }, item: any) => {
+            const date = new Date(item.finished_at).toISOString().split('T')[0];
+            acc[date] = (acc[date] || 0) + 1;
+            return acc;
+          }, {});
+
+          const formattedData = Object.keys(counts).map(date => ({
+            finished_at: date,
+            books_count: counts[date]
+          }));
+
+          setRawData(formattedData || []);
         }
       }
       setLoading(false);

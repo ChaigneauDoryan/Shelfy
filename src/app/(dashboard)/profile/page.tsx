@@ -37,7 +37,7 @@ export default function ProfilePage() {
   const [badges, setBadges] = useState<any[]>([]);
   const [topGenres, setTopGenres] = useState<any[]>([]);
   const [topAuthors, setTopAuthors] = useState<any[]>([]);
-  const [readingPace, setReadingPace] = useState<string | null>(null);
+  const [readingPace, setReadingPace] = useState<'occasional' | 'regular' | 'passionate' | null>(null);
   const [loading, setLoading] = useState(true);
   const [avatarUrl, setAvatarUrl] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
@@ -100,28 +100,74 @@ export default function ProfilePage() {
           setBadges(formattedBadges);
         }
 
-        // Fetch top genres
-        const { data: genresData, error: genresError } = await supabase.rpc('get_top_genres', { p_user_id: user.id });
-        if (genresError) {
-          console.error('Error fetching top genres:', genresError);
-        } else {
-          setTopGenres(genresData || []);
-        }
+        // Fetch and calculate reading pace
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const { data: recentBooks, error: paceError } = await supabase
+          .from('user_books')
+          .select('id')
+          .eq('user_id', user.id)
+          .not('finished_at', 'is', null)
+          .gte('finished_at', thirtyDaysAgo.toISOString());
 
-        // Fetch top authors
-        const { data: authorsData, error: authorsError } = await supabase.rpc('get_top_authors', { p_user_id: user.id });
-        if (authorsError) {
-          console.error('Error fetching top authors:', authorsError);
-        } else {
-          setTopAuthors(authorsData || []);
-        }
-
-        // Fetch reading pace
-        const { data: paceData, error: paceError } = await supabase.rpc('get_reading_pace', { p_user_id: user.id });
         if (paceError) {
           console.error('Error fetching reading pace:', paceError);
         } else {
-          setReadingPace(paceData);
+          const bookCount = recentBooks?.length || 0;
+          if (bookCount >= 4) {
+            setReadingPace('passionate');
+          } else if (bookCount >= 2) {
+            setReadingPace('regular');
+          } else if (bookCount >= 1) {
+            setReadingPace('occasional');
+          } else {
+            setReadingPace(null);
+          }
+        }
+
+        // Fetch top genres and authors
+        const { data: userBooks, error: userBooksError } = await supabase
+          .from('user_books')
+          .select(`
+            books (
+              genre,
+              author
+            )
+          `)
+          .eq('user_id', user.id)
+          .eq('is_archived', false);
+
+        if (userBooksError) {
+          console.error('Error fetching user books for word cloud:', userBooksError);
+        } else {
+          const genreCounts: { [key: string]: number } = {};
+          const authorCounts: { [key: string]: number } = {};
+
+          userBooks.forEach((item: any) => {
+            if (item.books?.genre) {
+              const genres = item.books.genre.split(',').map((g: string) => g.trim());
+              genres.forEach((genre: string) => {
+                genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+              });
+            }
+            if (item.books?.author) {
+              const authors = item.books.author.split(',').map((a: string) => a.trim());
+              authors.forEach((author: string) => {
+                authorCounts[author] = (authorCounts[author] || 0) + 1;
+              });
+            }
+          });
+
+          const topGenresData = Object.keys(genreCounts)
+            .map(genre => ({ name: genre, count: genreCounts[genre] }))
+            .sort((a, b) => b.count - a.count);
+
+          const topAuthorsData = Object.keys(authorCounts)
+            .map(author => ({ name: author, count: authorCounts[author] }))
+            .sort((a, b) => b.count - a.count);
+
+          setTopGenres(topGenresData);
+          setTopAuthors(topAuthorsData);
         }
       }
       setLoading(false);
@@ -216,7 +262,7 @@ export default function ProfilePage() {
           <CardContent className="space-y-6">
             <WordCloud data={topGenres} title="Genres Favoris" />
             <WordCloud data={topAuthors} title="Auteurs Favoris" />
-            <PaceDisplay pace={readingPace as any} />
+            <PaceDisplay pace={readingPace} />
           </CardContent>
         </Card>
 
