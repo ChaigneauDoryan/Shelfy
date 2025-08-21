@@ -7,18 +7,18 @@ export async function POST(request: Request) {
   const supabase = await createClient(cookies());
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = session.user.id;
+  const userId = user.id;
   const createGroupDto = await request.json();
 
   try {
-    const group = await createGroup(createGroupDto, userId);
+    const group = await createGroup(supabase, createGroupDto, userId);
     return NextResponse.json(group);
   } catch (error: any) {
     console.error('Error creating group:', error.message);

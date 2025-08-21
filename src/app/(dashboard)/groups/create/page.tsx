@@ -68,8 +68,7 @@ export default function CreateGroupPage() {
       }
       // --- Fin du débogage ---
 
-      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-      const response = await fetch(`${apiBaseUrl}/groups`, {
+      const response = await fetch(`/api/groups`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -3,8 +3,11 @@ import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { leaveGroup } from '@/lib/group-utils';
 
-export async function DELETE(request: NextRequest, context: any) {
-  const { groupId } = context.params;
+export async function DELETE(
+  request: NextRequest, 
+  { params }: { params: Promise<{ groupId: string }> }
+) {
+  const { groupId } = await params;
   const supabase = await createClient(cookies());
 
   const {
@@ -18,7 +21,8 @@ export async function DELETE(request: NextRequest, context: any) {
   const userId = session.user.id;
 
   try {
-    const result = await leaveGroup(groupId, userId);
+    // Correction: passage du client supabase comme premier argument
+    const result = await leaveGroup(supabase, groupId, userId);
     return NextResponse.json(result);
   } catch (error: unknown) {
     console.error('Error leaving group:', error);

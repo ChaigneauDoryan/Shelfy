@@ -7,18 +7,18 @@ export async function POST(request: Request) {
   const supabase = await createClient(cookies());
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = session.user.id;
+  const userId = user.id;
   const { invitationCode } = await request.json();
 
   try {
-    const result = await joinGroup(invitationCode, userId);
+    const result = await joinGroup(supabase, invitationCode, userId);
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error joining group:', error.message);
