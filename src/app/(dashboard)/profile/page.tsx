@@ -23,7 +23,8 @@ import BadgeCard from '@/components/BadgeCard'
 import WordCloud from '@/components/WordCloud'
 import PaceDisplay from '@/components/PaceDisplay'
 import useSWR from 'swr'
-import { useSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react';
+import PageHeader from '@/components/ui/PageHeader';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Le nom d'utilisateur doit contenir au moins 2 caractères." }),
@@ -100,10 +101,10 @@ export default function ProfilePage() {
   return (
     <div className="container mx-auto p-4">
       <div className="space-y-8">
-        <header>
-          <h1 className="text-3xl font-bold text-gray-800">Gestion du Profil</h1>
-          <p className="text-gray-600">Mettez à jour vos informations personnelles.</p>
-        </header>
+        <PageHeader
+          title="Gestion du Profil"
+          description="Mettez à jour vos informations personnelles."
+        />
         <Card>
           <CardHeader>
             <CardTitle>Vos Statistiques</CardTitle>

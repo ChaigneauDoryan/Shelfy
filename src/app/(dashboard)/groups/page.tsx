@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from 'next-auth/react';
+import PageHeader from '@/components/ui/PageHeader';
 
 export default function GroupsPage() {
   const { data: session, status } = useSession();
@@ -97,10 +98,10 @@ export default function GroupsPage() {
   return (
     <div className="space-y-8 p-4">
       <header className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-4xl font-extrabold text-gray-900">Vos Groupes de Lecture</h1>
-          <p className="text-lg text-gray-600 mt-2">Connectez-vous avec d'autres passionnés de lecture.</p>
-        </div>
+        <PageHeader
+          title="Vos Groupes de Lecture"
+          description="Connectez-vous avec d'autres passionnés de lecture."
+        />
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full">
           <Dialog open={isJoinModalOpen} onOpenChange={setIsJoinModalOpen}>
             <DialogTrigger asChild>
@@ -140,7 +141,7 @@ export default function GroupsPage() {
       </header>
 
       <section>
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Mes Groupes</h2>
+        <h2 className="text-2xl font-semibold text-foreground mb-4">Mes Groupes</h2>
         {myGroups && myGroups.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {myGroups.map((group: any) => (
@@ -163,7 +164,7 @@ export default function GroupsPage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Découvrir des Groupes</h2>
+        <h2 className="text-2xl font-semibold text-foreground mb-4">Découvrir des Groupes</h2>
         <Card className="border-dashed border-2 border-gray-300 p-6 text-center">
           <CardHeader>
             <CardTitle className="text-gray-700">Bientôt disponible !</CardTitle>

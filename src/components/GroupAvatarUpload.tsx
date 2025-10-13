@@ -6,17 +6,57 @@ import { FaUpload, FaSpinner } from 'react-icons/fa'
 interface GroupAvatarUploadProps {
   onUpload: (url: string) => void;
   existingAvatarUrl?: string | null;
+  groupName?: string; // Add groupName prop
 }
 
-export default function GroupAvatarUpload({ onUpload, existingAvatarUrl }: GroupAvatarUploadProps) {
+// Helper function to generate a color based on the text
+const stringToColor = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  let color = '#';
+  for (let i = 0; i < 3; i++) {
+    const value = (hash >> (i * 8)) & 0xFF;
+    color += ('00' + value.toString(16)).substr(-2);
+  }
+  return color;
+};
+
+// Helper function to generate a data URL for a text avatar
+const generateAvatarFromText = (text: string, size = 128) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+
+  // Background color
+  const bgColor = stringToColor(text);
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, size, size);
+
+  // Text
+  ctx.fillStyle = '#FFFFFF'; // White text
+  ctx.font = `bold ${size / 2}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text.charAt(0).toUpperCase(), size / 2, size / 2);
+
+  return canvas.toDataURL();
+};
+
+export default function GroupAvatarUpload({ onUpload, existingAvatarUrl, groupName }: GroupAvatarUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(existingAvatarUrl || null);
+  const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (existingAvatarUrl) {
       setAvatarUrl(existingAvatarUrl);
+    } else if (groupName) {
+      setGeneratedAvatarUrl(generateAvatarFromText(groupName));
     }
-  }, [existingAvatarUrl]);
+  }, [existingAvatarUrl, groupName]);
 
   async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
     try {
@@ -28,7 +68,8 @@ export default function GroupAvatarUpload({ onUpload, existingAvatarUrl }: Group
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const fileName = `group-${Date.now()}.${fileExt}`;
+      const uniqueId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const fileName = `group-${Date.now()}-${uniqueId}.${fileExt}`;
 
       // Appel à notre API d'upload Vercel Blob
       const response = await fetch(`/api/avatar/upload?filename=${fileName}`,
@@ -53,11 +94,13 @@ export default function GroupAvatarUpload({ onUpload, existingAvatarUrl }: Group
     }
   }
 
+  const displayAvatar = avatarUrl || generatedAvatarUrl;
+
   return (
     <div className="flex flex-col items-center space-y-4">
       <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="Avatar du groupe" className="w-full h-full object-cover" />
+        {displayAvatar ? (
+          <img src={displayAvatar} alt="Avatar du groupe" className="w-full h-full object-cover" />
         ) : (
           <span className="text-gray-500">Avatar</span>
         )}

@@ -102,7 +102,7 @@ export default function CreateGroupPage() {
                   <FormItem className="flex flex-col items-center">
                     <FormLabel>Avatar du groupe (Optionnel)</FormLabel>
                     <FormControl>
-                      <GroupAvatarUpload onUpload={(url) => field.onChange(url)} />
+                      <GroupAvatarUpload onUpload={(url) => field.onChange(url)} groupName={form.watch('name')} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
