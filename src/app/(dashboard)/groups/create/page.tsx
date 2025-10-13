@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -19,23 +18,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-import { createClient } from "@/lib/supabase/client";
-
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
-
-import { jwtDecode } from 'jwt-decode';
+import { useSession } from 'next-auth/react';
 
 const createGroupSchema = z.object({
   name: z.string().min(3, { message: "Le nom du groupe doit contenir au moins 3 caractères." }).max(50, { message: "Le nom du groupe ne peut pas dépasser 50 caractères." }),
   description: z.string().max(280, { message: "La description ne peut pas dépasser 280 caractères." }).optional(),
-  avatar_url: z.string().url({ message: "Veuillez fournir une URL valide." }).optional(),
+  avatar_url: z.string().url({ message: "Veuillez fournir une URL valide." }).optional().or(z.literal('')), // Permettre chaîne vide
 });
 
 type CreateGroupFormValues = z.infer<typeof createGroupSchema>;
 
 export default function CreateGroupPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,26 +49,14 @@ export default function CreateGroupPage() {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
+      if (status !== 'authenticated') {
         throw new Error("Utilisateur non authentifié.");
       }
-
-      // --- Débogage du JWT ---
-      try {
-        const decodedToken = jwtDecode(accessToken);
-      } catch (e) {
-        console.error("Error decoding JWT:", e);
-      }
-      // --- Fin du débogage ---
 
       const response = await fetch(`/api/groups`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(values),
       });
@@ -83,7 +67,7 @@ export default function CreateGroupPage() {
       }
 
       router.push('/groups');
-      router.refresh(); // Pour forcer le re-rendu de la page des groupes
+      router.refresh();
 
     } catch (err: any) {
       setError(err.message);
@@ -91,6 +75,15 @@ export default function CreateGroupPage() {
       setLoading(false);
     }
   };
+
+  if (status === 'loading') {
+    return <div>Chargement...</div>;
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/auth/login');
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-4">

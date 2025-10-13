@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -22,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
 import dynamic from 'next/dynamic';
+import { useSession } from 'next-auth/react';
 
 const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), {
   ssr: false,
@@ -41,7 +41,10 @@ interface BookResult {
     categories?: string[];
     publishedDate?: string;
     publisher?: string;
-    industryIdentifiers?: { type: string; identifier: string }[];
+    industryIdentifiers?: {
+      type: string;
+      identifier: string;
+    }[];
   };
 }
 
@@ -50,7 +53,7 @@ const manualBookSchema = z.object({
   author: z.string().optional(),
   description: z.string().optional(),
   cover_url: z.string().url("URL de couverture invalide.").optional().or(z.literal('')),
-    page_count: z.string().optional(),
+  page_count: z.string().optional(),
   genre: z.string().optional(),
   isbn: z.string().optional(),
   published_date: z.string().optional(),
@@ -69,6 +72,7 @@ interface ChapterInput {
 
 export default function AddBookPage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [searchParams, setSearchParams] = useState({
     title: '',
     author: '',
@@ -85,22 +89,21 @@ export default function AddBookPage() {
   const [showScanner, setShowScanner] = useState(false); // State for scanner visibility
   const [chaptersInput, setChaptersInput] = useState<ChapterInput[]>([]);
   let nextChapterId = 0;
-  const supabase = createClient();
   const { toast } = useToast();
 
-  const handleAddChapter = () => {
+  const handleAddChapter = useCallback(() => {
     setChaptersInput(prev => [...prev, { id: nextChapterId++, chapter_number: prev.length + 1, title: '', page_start: 0, page_end: 0 }]);
-  };
+  }, []);
 
-  const handleRemoveChapter = (id: number) => {
+  const handleRemoveChapter = useCallback((id: number) => {
     setChaptersInput(prev => prev.filter(chapter => chapter.id !== id));
-  };
+  }, []);
 
-  const handleChapterChange = (id: number, field: keyof ChapterInput, value: any) => {
+  const handleChapterChange = useCallback((id: number, field: keyof ChapterInput, value: any) => {
     setChaptersInput(prev => prev.map(chapter =>
       chapter.id === id ? { ...chapter, [field]: value } : chapter
     ));
-  };
+  }, []);
 
   const manualForm = useForm<ManualBookFormValues>({
     resolver: zodResolver(manualBookSchema),
@@ -117,7 +120,7 @@ export default function AddBookPage() {
     },
   });
 
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     const { title, author, isbn, genre } = debouncedSearchParams;
     if (!title && !author && !isbn && !genre) {
       setResults([]);
@@ -130,10 +133,7 @@ export default function AddBookPage() {
     setVisibleResultsCount(9); // Reset visible results count
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
+      if (status !== 'authenticated') {
         throw new Error("Utilisateur non authentifié.");
       }
 
@@ -143,11 +143,7 @@ export default function AddBookPage() {
       if (isbn) queryParams.append('isbn', isbn);
       if (genre) queryParams.append('genre', genre);
 
-      const response = await fetch(`/api/library/search?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
+      const response = await fetch(`/api/library/search?${queryParams.toString()}`);
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
@@ -181,7 +177,7 @@ export default function AddBookPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearchParams, status]);
 
   useEffect(() => {
     if (debouncedSearchParams.title || debouncedSearchParams.author || debouncedSearchParams.isbn || debouncedSearchParams.genre) {
@@ -189,16 +185,13 @@ export default function AddBookPage() {
     } else {
       setResults([]);
     }
-  }, [debouncedSearchParams]);
+  }, [debouncedSearchParams, handleSearch]);
 
-  const addBookToLibrary = async (bookData: any, bookIdForLoading: string | null = null) => {
+  const addBookToLibrary = useCallback(async (bookData: any, bookIdForLoading: string | null = null) => {
     setLoading(true);
     setAddingBookId(bookIdForLoading);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
+      if (status !== 'authenticated') {
         throw new Error("Utilisateur non authentifié.");
       }
 
@@ -206,7 +199,6 @@ export default function AddBookPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(bookData),
       });
@@ -226,9 +218,9 @@ export default function AddBookPage() {
       setLoading(false);
       setAddingBookId(null);
     }
-  };
+  }, [status, toast]);
 
-  const handleAddFromSearch = async (book: BookResult) => {
+  const handleAddFromSearch = useCallback(async (book: BookResult) => {
     if (!book || !book.id || typeof book.id !== 'string' || book.id.trim() === '') {
       toast({
         title: 'Erreur',
@@ -238,9 +230,9 @@ export default function AddBookPage() {
       return;
     }
     addBookToLibrary(book, book.id);
-  };
+  }, [addBookToLibrary, toast]);
 
-  const handleManualSubmit = async (values: ManualBookFormValues) => {
+  const handleManualSubmit = useCallback(async (values: ManualBookFormValues) => {
     let pageCount: number | null = null;
     if (values.page_count) {
       const parsedPageCount = Number(values.page_count);
@@ -274,10 +266,7 @@ export default function AddBookPage() {
     };
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
+      if (status !== 'authenticated') {
         throw new Error("Utilisateur non authentifié.");
       }
 
@@ -285,7 +274,6 @@ export default function AddBookPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(bookToAdd),
       });
@@ -305,21 +293,30 @@ export default function AddBookPage() {
       setLoading(false);
       setAddingBookId(null);
     }
-  };
+  }, [status, toast, manualForm]);
 
-  const handleScan = (isbn: string) => {
-    setSearchParams({ ...searchParams, isbn });
+  const handleScan = useCallback((isbn: string) => {
+    setSearchParams(prev => ({ ...prev, isbn }));
     setShowScanner(false);
-  };
+  }, []);
 
-  const handleCloseScanner = () => {
+  const handleCloseScanner = useCallback(() => {
     setShowScanner(false);
-  };
+  }, []);
+
+  if (status === 'loading') {
+    return <div>Chargement...</div>;
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/auth/login');
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-4">
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="icon" onClick={() => router.back()} className="mr-2">
+        <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ChevronLeft className="h-6 w-6" />
         </Button>
         <h1 className="text-3xl font-bold">Ajouter un Nouveau Livre</h1>
@@ -367,7 +364,7 @@ export default function AddBookPage() {
         </CardContent>
       </Card>
 
-      <div className="mb-6 md:hidden"> {/* Only show on mobile */}
+      <div className="mb-6 md:hidden">
         <Button onClick={() => setShowScanner(true)} className="w-full">
           Scanner le code-barre
         </Button>
@@ -438,7 +435,7 @@ export default function AddBookPage() {
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Ajouter un livre manuellement</CardTitle>
-            <CardDescription>Saisissez les informations du livre si la recherche n\'a rien donné.</CardDescription>
+            <CardDescription>Saisissez les informations du livre si la recherche n'a rien donné.</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...manualForm}>

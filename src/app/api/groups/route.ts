@@ -1,24 +1,23 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { createGroup } from '@/lib/group-utils';
+import { getSession } from '@/lib/auth'; // Assumant que vous aurez un helper pour la session
 
 export async function POST(request: Request) {
-  const supabase = await createClient(cookies());
+  // La récupération de l'utilisateur se fera via votre nouvelle solution d'authentification (ex: NextAuth.js)
+  // Voici un exemple de ce à quoi cela pourrait ressembler.
+  // Vous devrez créer ce helper `getSession`.
+  const session = await getSession();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = user.id;
+  const userId = session.user.id;
   const createGroupDto = await request.json();
 
   try {
-    const group = await createGroup(supabase, createGroupDto, userId);
+    
+    const group = await createGroup(createGroupDto, userId);
     return NextResponse.json(group);
   } catch (error: any) {
     console.error('Error creating group:', error.message);

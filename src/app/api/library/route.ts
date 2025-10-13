@@ -1,42 +1,29 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
-import { getUserBooks } from '@/lib/book-utils';
+import { getSession } from '@/lib/auth'; // Helper à créer
+import { getUserBooks, getReadingStatusId } from '@/lib/book-utils';
 
 export async function GET(request: Request) {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  const session = await getSession();
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = user.id;
+  const userId = session.user.id;
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
   const archived = searchParams.get('archived');
 
-  const statusNameToId: { [key: string]: number } = {
-    to_read: 1,
-    reading: 2,
-    finished: 3,
-  };
-
-  const statusId = status ? statusNameToId[status] : undefined;
-
-  let isArchived: boolean | undefined;
-  if (archived === 'true') {
-    isArchived = true;
-  } else if (archived === 'false') {
-    isArchived = false;
-  }
-
   try {
-    const books = await getUserBooks(supabase, userId, statusId, isArchived);
+    const statusId = status ? await getReadingStatusId(status) : undefined;
+
+    let isArchived: boolean | undefined;
+    if (archived === 'true') {
+      isArchived = true;
+    } else if (archived === 'false') {
+      isArchived = false;
+    }
+
+    const books = await getUserBooks(userId, statusId, isArchived);
     return NextResponse.json(books);
   } catch (error: any) {
     console.error('Error fetching user books:', error.message);

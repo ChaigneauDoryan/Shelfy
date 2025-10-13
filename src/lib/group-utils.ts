@@ -1,4 +1,5 @@
-import { SupabaseClient } from '@supabase/supabase-js';
+
+import { prisma } from '@/lib/prisma';
 
 function generateCode(length: number) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -9,189 +10,151 @@ function generateCode(length: number) {
   return result;
 }
 
-export async function createGroup(supabase: SupabaseClient, createGroupDto: { name: string; description?: string; avatar_url?: string }, userId: string) {
+export async function createGroup(createGroupDto: { name: string; description?: string; avatar_url?: string }, userId: string) {
   const { name, description, avatar_url } = createGroupDto;
 
   const invitation_code = generateCode(10);
 
-  const { data: group, error: groupError } = await supabase
-    .from('groups')
-    .insert({
-      name,
-      description,
-      avatar_url,
-      created_by: userId,
-      invitation_code,
-    })
-    .select()
-    .single();
-
-  if (groupError) {
-    console.error('Error creating group:', groupError);
-    throw new Error('Failed to create group.');
-  }
-
-  const { error: memberError } = await supabase
-    .from('group_members')
-    .insert({
-      group_id: group.id,
-      user_id: userId,
-      role: 'admin',
+  // Utilise une transaction pour s'assurer que la création du groupe ET l'ajout du membre admin réussissent ou échouent ensemble
+  const group = await prisma.$transaction(async (tx) => {
+    const newGroup = await tx.group.create({
+      data: {
+        name,
+        description,
+        avatar_url,
+        created_by_id: userId,
+        invitation_code,
+      },
     });
 
-  if (memberError) {
-    console.error('Error adding creator to group:', memberError);
-    throw new Error('Failed to add creator to group.');
-  }
+    await tx.groupMember.create({
+      data: {
+        group_id: newGroup.id,
+        user_id: userId,
+        role: 'admin',
+      },
+    });
+
+    return newGroup;
+  });
 
   return group;
 }
 
-export async function deleteGroup(supabase: SupabaseClient, groupId: string, userId: string): Promise<void> {
-  // Debugging step: Check if the user is an admin
-  const { data: member, error: memberCheckError } = await supabase
-    .from('group_members')
-    .select('role')
-    .eq('group_id', groupId)
-    .eq('user_id', userId)
-    .single();
+export async function deleteGroup(groupId: string, userId: string): Promise<void> {
+  const member = await prisma.groupMember.findUnique({
+    where: {
+      group_id_user_id: {
+        group_id: groupId,
+        user_id: userId,
+      },
+    },
+    select: {
+      role: true,
+    },
+  });
 
-  if (memberCheckError || !member || member.role !== 'admin') {
+  if (!member || member.role !== 'admin') {
     throw new Error('User is not an admin of this group.');
   }
 
-  // First, delete all members of the group
-  const { error: memberError } = await supabase
-    .from('group_members')
-    .delete()
-    .eq('group_id', groupId);
-
-  if (memberError) {
-    console.error('Error deleting group members:', memberError);
-    throw new Error('Failed to delete group members.');
-  }
-
-  // Then, delete the group itself
-  const { error: groupError } = await supabase
-    .from('groups')
-    .delete()
-    .eq('id', groupId);
-
-  if (groupError) {
-    console.error('Error deleting group:', groupError);
-    throw new Error('Failed to delete group or not authorized.');
-  }
+  // Prisma gère la suppression en cascade (définie dans le schéma), 
+  // donc supprimer le groupe supprimera automatiquement les GroupMember.
+  await prisma.group.delete({
+    where: { id: groupId },
+  });
 }
 
-export async function updateGroup(supabase: SupabaseClient, groupId: string, updateGroupDto: { name?: string; description?: string; avatar_url?: string }) {
-  const { data, error } = await supabase
-    .from('groups')
-    .update(updateGroupDto)
-    .eq('id', groupId)
-    .select()
-    .single();
+export async function updateGroup(groupId: string, updateGroupDto: { name?: string; description?: string; avatar_url?: string }) {
+  const updatedGroup = await prisma.group.update({
+    where: { id: groupId },
+    data: updateGroupDto,
+  });
 
-  if (error) {
-    console.error('Error updating group:', error);
-    throw new Error('Failed to update group.');
-  }
-
-  return data;
+  return updatedGroup;
 }
 
-export async function joinGroup(supabase: SupabaseClient, invitationCode: string, userId: string) {
-  const { data: group, error: groupError } = await supabase
-    .from('groups')
-    .select('id')
-    .eq('invitation_code', invitationCode)
-    .single();
+export async function joinGroup(invitationCode: string, userId: string) {
+  const group = await prisma.group.findUnique({
+    where: { invitation_code: invitationCode },
+    select: { id: true },
+  });
 
-  if (groupError || !group) {
-    throw new Error('Code d\'invitation invalide ou expiré.');
+  if (!group) {
+    throw new Error("Code d'invitation invalide ou expiré.");
   }
 
-  const { data: existingMember, error: memberCheckError } = await supabase
-    .from('group_members')
-    .select('id')
-    .eq('group_id', group.id)
-    .eq('user_id', userId)
-    .single();
-
-  if (memberCheckError && memberCheckError.code !== 'PGRST116') {
-    throw new Error('Erreur lors de la vérification des membres.');
-  }
+  const existingMember = await prisma.groupMember.findUnique({
+    where: {
+      group_id_user_id: {
+        group_id: group.id,
+        user_id: userId,
+      },
+    },
+  });
 
   if (existingMember) {
     throw new Error('Vous êtes déjà membre de ce groupe.');
   }
 
-  const { error: insertError } = await supabase
-    .from('group_members')
-    .insert({
+  await prisma.groupMember.create({
+    data: {
       group_id: group.id,
       user_id: userId,
       role: 'member',
-    });
-
-  if (insertError) {
-    console.error('Error adding user to group:', insertError);
-    throw new Error('Échec de l\'ajout au groupe.');
-  }
+    },
+  });
 
   return { message: 'Groupe rejoint avec succès !' };
 }
 
-export async function leaveGroup(supabase: SupabaseClient, groupId: string, userId: string) {
-  const { data: member, error: memberError } = await supabase
-    .from('group_members')
-    .select('id')
-    .eq('group_id', groupId)
-    .eq('user_id', userId)
-    .single();
+export async function leaveGroup(groupId: string, userId: string) {
+  const existingMember = await prisma.groupMember.findUnique({
+    where: {
+      group_id_user_id: {
+        group_id: groupId,
+        user_id: userId,
+      },
+    },
+  });
 
-  if (memberError || !member) {
-    throw new Error('Vous n\'êtes pas membre de ce groupe ou le groupe n\'existe pas.');
+  if (!existingMember) {
+    throw new Error("Vous n'êtes pas membre de ce groupe ou le groupe n'existe pas.");
   }
 
-  const { error: deleteError } = await supabase
-    .from('group_members')
-    .delete()
-    .eq('group_id', groupId)
-    .eq('user_id', userId);
-
-  if (deleteError) {
-    console.error('Error leaving group:', deleteError);
-    throw new Error('Échec de la sortie du groupe.');
-  }
+  await prisma.groupMember.delete({
+    where: {
+      id: existingMember.id,
+    },
+  });
 
   return { message: 'Vous avez quitté le groupe avec succès.' };
 }
 
-export async function regenerateInvitationCode(supabase: SupabaseClient, groupId: string, userId: string) {
-  const { data: member, error: memberError } = await supabase
-    .from('group_members')
-    .select('role')
-    .eq('group_id', groupId)
-    .eq('user_id', userId)
-    .single();
+export async function regenerateInvitationCode(groupId: string, userId: string) {
+  const member = await prisma.groupMember.findUnique({
+    where: {
+      group_id_user_id: {
+        group_id: groupId,
+        user_id: userId,
+      },
+    },
+    select: { role: true },
+  });
 
-  if (memberError || !member || (member.role !== 'admin' && member.role !== 'owner')) {
+  if (!member || (member.role !== 'admin' && member.role !== 'owner')) {
     throw new Error('Unauthorized: User is not an admin or owner of this group.');
   }
 
   const newCode = generateCode(10);
 
-  const { data, error } = await supabase
-    .from('groups')
-    .update({ invitation_code: newCode })
-    .eq('id', groupId)
-    .select('invitation_code')
-    .single();
+  const updatedGroup = await prisma.group.update({
+    where: { id: groupId },
+    data: { invitation_code: newCode },
+    select: {
+      invitation_code: true,
+    },
+  });
 
-  if (error) {
-    console.error('Error regenerating invitation code:', error);
-    throw new Error('Impossible de régénérer le code d\'invitation.');
-  }
-
-  return data;
+  return updatedGroup;
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,14 +18,13 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-import { createClient } from "@/lib/supabase/client";
-
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
+import { useSession } from 'next-auth/react';
 
 const editGroupSchema = z.object({
   name: z.string().min(3, { message: "Le nom du groupe doit contenir au moins 3 caractères." }).max(50, { message: "Le nom du groupe ne peut pas dépasser 50 caractères." }),
   description: z.string().max(280, { message: "La description ne peut pas dépasser 280 caractères." }).optional(),
-  avatar_url: z.string().url({ message: "Veuillez fournir une URL valide." }).optional(),
+  avatar_url: z.string().url({ message: "Veuillez fournir une URL valide." }).optional().or(z.literal('')), // Permettre chaîne vide
 });
 
 type EditGroupFormValues = z.infer<typeof editGroupSchema>;
@@ -35,7 +33,7 @@ export default function EditGroupPage() {
   const router = useRouter();
   const params = useParams();
   const groupId = params.groupId as string;
-  const supabase = createClient();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [group, setGroup] = useState<any>(null);
@@ -51,42 +49,36 @@ export default function EditGroupPage() {
 
   useEffect(() => {
     const fetchGroup = async () => {
-      const { data, error } = await supabase
-        .from('groups')
-        .select('*')
-        .eq('id', groupId)
-        .single();
+      if (!session?.user?.id || !groupId) return;
 
-      if (error) {
+      const response = await fetch(`/api/groups/${groupId}`);
+      if (!response.ok) {
         setError('Impossible de charger les informations du groupe.');
-      } else {
-        setGroup(data);
-        form.reset(data);
+        return;
       }
+      const data = await response.json();
+      setGroup(data);
+      form.reset({
+        name: data.name,
+        description: data.description || '',
+        avatar_url: data.avatar_url || '',
+      });
     };
 
-    if (groupId) {
+    if (groupId && status === 'authenticated') {
       fetchGroup();
     }
-  }, [groupId, supabase, form]);
+  }, [groupId, status, session, form]);
 
   const onSubmit = async (values: EditGroupFormValues) => {
     setLoading(true);
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
-        throw new Error("Utilisateur non authentifié.");
-      }
-
       const response = await fetch(`/api/groups/${groupId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(values),
       });
@@ -106,7 +98,7 @@ export default function EditGroupPage() {
     }
   };
 
-  if (!group) {
+  if (status === 'loading' || !group) {
     return (
       <div className="container mx-auto p-4">
         <Card className="max-w-2xl mx-auto">
@@ -119,6 +111,11 @@ export default function EditGroupPage() {
         </Card>
       </div>
     );
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/auth/login');
+    return null;
   }
 
   return (

@@ -1,41 +1,19 @@
-// layout.tsx
-import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
-import { redirect, notFound } from "next/navigation";
-import ClientLayoutContent from "./ClientLayoutContent";
+
+// Le middleware s'occupe de la protection de cette route.
+// Ce layout n'a plus besoin de récupérer de données.
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/auth/login");
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("username, avatar_url")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError) {
-    console.error("Error fetching user profile:", profileError);
-    // Dans un layout, on ne peut pas retourner NextResponse
-    // On utilise notFound() ou on affiche une erreur dans l'UI
-    notFound();
-  }
 
   return (
-    <ClientLayoutContent user={user} profile={profile}>
-      {children}
-    </ClientLayoutContent>
+    <div className="flex flex-col min-h-screen overflow-x-hidden">
+      {/* La TopNavbar est maintenant autonome grâce au SessionProvider et au hook useSession */}
+      <main className="flex-1 p-4 md:p-8 bg-gray-100/50">
+        {children}
+      </main>
+    </div>
   );
 }

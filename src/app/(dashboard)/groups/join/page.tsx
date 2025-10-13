@@ -16,7 +16,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { createClient } from '@/lib/supabase/client';
+import { useSession } from 'next-auth/react';
 
 const joinGroupSchema = z.object({
   invitationCode: z.string().min(1, { message: "Veuillez saisir un code d'invitation." }),
@@ -26,7 +26,7 @@ type JoinGroupFormValues = z.infer<typeof joinGroupSchema>;
 
 export default function JoinGroupPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,10 +42,7 @@ export default function JoinGroupPage() {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
+      if (status !== 'authenticated') {
         throw new Error("Utilisateur non authentifié.");
       }
 
@@ -53,7 +50,6 @@ export default function JoinGroupPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ invitationCode: values.invitationCode }),
       });
@@ -72,6 +68,15 @@ export default function JoinGroupPage() {
       setLoading(false);
     }
   };
+
+  if (status === 'loading') {
+    return <div>Chargement...</div>;
+  }
+
+  if (status === 'unauthenticated') {
+    router.push('/auth/login');
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-4">

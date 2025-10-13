@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { useSession } from 'next-auth/react';
 
 interface AddCommentFormProps {
   userBookId: string;
@@ -15,11 +15,11 @@ interface AddCommentFormProps {
 }
 
 export default function AddCommentForm({ userBookId, onCommentAdded }: AddCommentFormProps) {
+  const { data: session, status } = useSession();
   const [pageNumber, setPageNumber] = useState<string>('');
   const [commentTitle, setCommentTitle] = useState<string>('');
   const [commentText, setCommentText] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const supabase = createClient();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,10 +27,7 @@ export default function AddCommentForm({ userBookId, onCommentAdded }: AddCommen
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
+      if (status !== 'authenticated') {
         throw new Error("Utilisateur non authentifié.");
       }
 
@@ -38,7 +35,6 @@ export default function AddCommentForm({ userBookId, onCommentAdded }: AddCommen
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           page_number: parseInt(pageNumber),

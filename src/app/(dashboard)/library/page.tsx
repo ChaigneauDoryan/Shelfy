@@ -1,15 +1,16 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, X } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 export interface Book {
   id: string;
@@ -130,6 +131,8 @@ const ARCHIVE_STATUSES = [
 ];
 
 export default function LibraryPage() {
+  const { data: session, status } = useSession();
+  const user = session?.user;
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,35 +145,24 @@ export default function LibraryPage() {
     archive: { isOpen: false, bookId: null as string | null }
   });
 
-  const supabase = createClient();
   const { toast } = useToast();
   const router = useRouter();
 
-  const fetchBooks = async (status?: string, archivedStatus?: boolean | undefined) => {
+  const fetchBooks = async (statusFilter?: string, archivedFilter?: boolean | undefined) => {
+    if (!user?.id) return;
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
-        throw new Error("Utilisateur non authentifié.");
-      }
-
       let url = `/api/library?`;
-      if (status && status !== 'all') {
-        url += `status=${status}&`;
+      if (statusFilter && statusFilter !== 'all') {
+        url += `status=${statusFilter}&`;
       }
-      if (archivedStatus !== undefined) {
-        url += `archived=${archivedStatus}&`;
+      if (archivedFilter !== undefined) {
+        url += `archived=${archivedFilter}&`;
       }
       url = url.slice(0, -1);
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
+      const response = await fetch(url);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -295,7 +287,7 @@ export default function LibraryPage() {
           toast({
             title: 'Nouveau badge débloqué !',
             description: `Vous avez obtenu le badge : ${badge.name}`,
-            icon: badge.icon_name,
+            // icon: badge.icon_name, // L'icône n'est pas gérée ici
           });
         });
       }
@@ -312,9 +304,13 @@ export default function LibraryPage() {
   };
 
   useEffect(() => {
-    const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
-    fetchBooks(filterStatus, selectedArchiveStatus);
-  }, [filterStatus, filterArchiveStatus]);
+    if (user?.id) {
+      const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
+      fetchBooks(filterStatus, selectedArchiveStatus);
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
+    }
+  }, [filterStatus, filterArchiveStatus, user, status]);
 
   // Obtenir les infos du livre pour l'archivage
   const getArchiveBookInfo = () => {
@@ -322,6 +318,14 @@ export default function LibraryPage() {
     const book = books.find(b => b.id === modals.archive.bookId);
     return { isCurrentlyArchived: book?.is_archived || false };
   };
+
+  if (loading || status === 'loading') {
+    return <p>Chargement de votre bibliothèque...</p>;
+  }
+
+  if (!user) {
+    return <div>Veuillez vous connecter pour voir votre bibliothèque.</div>;
+  }
 
   return (
     <div className="container mx-auto p-4">
@@ -362,9 +366,6 @@ export default function LibraryPage() {
           </SelectContent>
         </Select>
       </div>
-
-      {loading && <p>Chargement de votre bibliothèque...</p>}
-      {error && <p className="text-red-500">Erreur : {error}</p>}
 
       {!loading && !error && books.length === 0 && (
         <p className="text-lg text-gray-600">

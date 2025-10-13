@@ -1,28 +1,26 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+import { getSession } from '@/lib/auth'; // Helper à créer
 import { joinGroup } from '@/lib/group-utils';
 
 export async function POST(request: Request) {
-  const supabase = await createClient(cookies());
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  const session = await getSession();
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = user.id;
+  const userId = session.user.id;
   const { invitationCode } = await request.json();
 
+  if (!invitationCode) {
+    return NextResponse.json({ message: 'Invitation code is required.' }, { status: 400 });
+  }
+
   try {
-    const result = await joinGroup(supabase, invitationCode, userId);
+    const result = await joinGroup(invitationCode, userId);
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error joining group:', error.message);
-    if (error.message === 'Code d\'invitation invalide ou expiré.') {
+    if (error.message === "Code d'invitation invalide ou expiré.") {
       return NextResponse.json({ message: error.message }, { status: 400 });
     } else if (error.message === 'Vous êtes déjà membre de ce groupe.') {
       return NextResponse.json({ message: error.message }, { status: 409 });

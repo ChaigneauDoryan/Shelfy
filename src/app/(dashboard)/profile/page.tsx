@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { createClient } from "@/lib/supabase/client"
 import { Textarea } from "@/components/ui/textarea"
 import AvatarUpload from '@/components/AvatarUpload'
 import { useToast } from "@/hooks/use-toast"
@@ -23,183 +22,79 @@ import ReadingActivityChart from '@/components/ReadingActivityChart'
 import BadgeCard from '@/components/BadgeCard'
 import WordCloud from '@/components/WordCloud'
 import PaceDisplay from '@/components/PaceDisplay'
+import useSWR from 'swr'
+import { useSession } from 'next-auth/react'
 
 const profileFormSchema = z.object({
-  username: z.string().min(2, { message: "Le nom d'utilisateur doit contenir au moins 2 caractères." }),
+  name: z.string().min(2, { message: "Le nom d'utilisateur doit contenir au moins 2 caractères." }),
   bio: z.string().max(280, { message: "La biographie ne peut pas dépasser 280 caractères." }).optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<any>(null);
-  const [stats, setStats] = useState<any>(null);
-  const [badges, setBadges] = useState<any[]>([]);
-  const [topGenres, setTopGenres] = useState<any[]>([]);
-  const [topAuthors, setTopAuthors] = useState<any[]>([]);
-  const [readingPace, setReadingPace] = useState<'occasional' | 'regular' | 'passionate' | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [avatarUrl, setAvatarUrl] = useState('');
-  const [userId, setUserId] = useState<string | null>(null);
-  const supabase = createClient();
+  const { data: session, status } = useSession();
+  const userId = session?.user?.id;
+
+  const { data, error, isLoading, mutate } = useSWR(userId ? '/api/profile/stats' : null, fetcher);
 
   const { toast } = useToast();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      username: "",
-      
+      name: "",
       bio: "",
     },
   });
 
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+
   useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (error) {
-          console.error(error);
-        } else if (data) {
-          setProfile(data);
-          form.reset({
-            username: data.username,
-            bio: data.bio || "",
-          });
-          setAvatarUrl(data.avatar_url || '');
-        }
-
-        // Fetch stats
-        const { data: statsData, error: statsError } = await supabase.rpc('get_user_stats', { p_user_id: user.id });
-        if (statsError) {
-          console.error('Error fetching stats:', statsError);
-        } else {
-          setStats(statsData[0]);
-        }
-
-        // Fetch badges
-        const { data: badgesData, error: badgesError } = await supabase
-          .from('user_badges')
-          .select(`
-            unlocked_at,
-            badges (*)
-          `)
-          .eq('user_id', user.id);
-
-        if (badgesError) {
-          console.error('Error fetching badges:', badgesError);
-        } else {
-          const formattedBadges = badgesData.map((item: any) => ({ ...item.badges, unlocked_at: item.unlocked_at }));
-          setBadges(formattedBadges);
-        }
-
-        // Fetch and calculate reading pace
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const { data: recentBooks, error: paceError } = await supabase
-          .from('user_books')
-          .select('id')
-          .eq('user_id', user.id)
-          .not('finished_at', 'is', null)
-          .gte('finished_at', thirtyDaysAgo.toISOString());
-
-        if (paceError) {
-          console.error('Error fetching reading pace:', paceError);
-        } else {
-          const bookCount = recentBooks?.length || 0;
-          if (bookCount >= 4) {
-            setReadingPace('passionate');
-          } else if (bookCount >= 2) {
-            setReadingPace('regular');
-          } else if (bookCount >= 1) {
-            setReadingPace('occasional');
-          } else {
-            setReadingPace(null);
-          }
-        }
-
-        // Fetch top genres and authors
-        const { data: userBooks, error: userBooksError } = await supabase
-          .from('user_books')
-          .select(`
-            books (
-              genre,
-              author
-            )
-          `)
-          .eq('user_id', user.id)
-          .eq('is_archived', false);
-
-        if (userBooksError) {
-          console.error('Error fetching user books for word cloud:', userBooksError);
-        } else {
-          const genreCounts: { [key: string]: number } = {};
-          const authorCounts: { [key: string]: number } = {};
-
-          userBooks.forEach((item: any) => {
-            if (item.books?.genre) {
-              const genres = item.books.genre.split(',').map((g: string) => g.trim());
-              genres.forEach((genre: string) => {
-                genreCounts[genre] = (genreCounts[genre] || 0) + 1;
-              });
-            }
-            if (item.books?.author) {
-              const authors = item.books.author.split(',').map((a: string) => a.trim());
-              authors.forEach((author: string) => {
-                authorCounts[author] = (authorCounts[author] || 0) + 1;
-              });
-            }
-          });
-
-          const topGenresData = Object.keys(genreCounts)
-            .map(genre => ({ name: genre, count: genreCounts[genre] }))
-            .sort((a, b) => b.count - a.count);
-
-          const topAuthorsData = Object.keys(authorCounts)
-            .map(author => ({ name: author, count: authorCounts[author] }))
-            .sort((a, b) => b.count - a.count);
-
-          setTopGenres(topGenresData);
-          setTopAuthors(topAuthorsData);
-        }
-      }
-      setLoading(false);
-    };
-
-    fetchProfile();
-  }, [form, supabase]);
+    if (data && !isLoading) {
+      form.reset({
+        name: data.profile?.name || "",
+        bio: data.profile?.bio || "",
+      });
+      setAvatarUrl(data.profile?.image || '');
+    }
+  }, [data, isLoading, form]);
 
   async function onSubmit(values: ProfileFormValues) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          username: values.username,
-          bio: values.bio,
-          avatar_url: avatarUrl,
-          updated_at: new Date(),
-        })
-        .eq('id', user.id);
+    if (!userId) return;
 
-      if (error) {
-        console.error(error);
-        toast({ title: 'Erreur', description: "La mise à jour du profil a échoué.", variant: 'destructive', duration: 5000 });
-      } else {
-        toast({ title: 'Succès', description: "Votre profil a été mis à jour avec succès.", duration: 5000 });
-      }
+    const response = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: values.name,
+        bio: values.bio,
+        image: avatarUrl, // L'avatar est géré par AvatarUpload et mis à jour ici
+      }),
+    });
+
+    if (!response.ok) {
+      toast({ title: 'Erreur', description: "La mise à jour du profil a échoué.", variant: 'destructive', duration: 5000 });
+    } else {
+      toast({ title: 'Succès', description: "Votre profil a été mis à jour avec succès.", duration: 5000 });
+      mutate(); // Revalider les données après la mise à jour
     }
   }
 
-  if (loading) {
-    return <div>Chargement...</div>;
+  if (isLoading || status === 'loading') {
+    return <div>Chargement du profil...</div>;
+  }
+
+  if (error) {
+    return <div>Erreur lors du chargement du profil: {error.message}</div>;
+  }
+
+  if (!session?.user) {
+    return <div>Veuillez vous connecter pour voir votre profil.</div>;
   }
 
   return (
@@ -215,15 +110,15 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="flex justify-around">
             <div className="text-center">
-              <p className="text-2xl font-bold">{stats?.total_books_read || 0}</p>
+              <p className="text-2xl font-bold">{data?.stats?.total_books_read || 0}</p>
               <p className="text-sm text-gray-600">Livres Lus</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold">{stats?.total_pages_read || 0}</p>
+              <p className="text-2xl font-bold">{data?.stats?.total_pages_read || 0}</p>
               <p className="text-sm text-gray-600">Pages Lues</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold">{stats?.average_rating?.toFixed(1) || 'N/A'}</p>
+              <p className="text-2xl font-bold">{data?.stats?.average_rating?.toFixed(1) || 'N/A'}</p>
               <p className="text-sm text-gray-600">Note Moyenne</p>
             </div>
           </CardContent>
@@ -234,6 +129,7 @@ export default function ProfilePage() {
             <CardTitle>Activité de Lecture</CardTitle>
           </CardHeader>
           <CardContent>
+            {/* ReadingActivityChart doit être mis à jour pour utiliser les nouvelles données */}
             <ReadingActivityChart />
           </CardContent>
         </Card>
@@ -243,9 +139,9 @@ export default function ProfilePage() {
             <CardTitle>Mes Badges</CardTitle>
           </CardHeader>
           <CardContent>
-            {badges.length > 0 ? (
+            {data?.badges && data.badges.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {badges.map(badge => (
+                {data.badges.map((badge: any) => (
                   <BadgeCard key={badge.id} badge={badge} />
                 ))}
               </div>
@@ -260,9 +156,9 @@ export default function ProfilePage() {
             <CardTitle>Vos Préférences de Lecture</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <WordCloud data={topGenres} title="Genres Favoris" />
-            <WordCloud data={topAuthors} title="Auteurs Favoris" />
-            <PaceDisplay pace={readingPace} />
+            <WordCloud data={data?.topGenres} title="Genres Favoris" />
+            <WordCloud data={data?.topAuthors} title="Auteurs Favoris" />
+            <PaceDisplay pace={data?.readingPace} />
           </CardContent>
         </Card>
 
@@ -275,14 +171,17 @@ export default function ProfilePage() {
               <AvatarUpload
                 userId={userId}
                 initialAvatarUrl={avatarUrl}
-                onUpload={(url: string) => setAvatarUrl(url)}
+                onUpload={(url: string) => {
+                  setAvatarUrl(url);
+                  mutate(); // Revalider les données après l'upload de l'avatar
+                }}
               />
             )}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <FormField
                   control={form.control}
-                  name="username"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Nom d'utilisateur</FormLabel>

@@ -1,24 +1,20 @@
+
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+import { getSession } from '@/lib/auth'; // Helper à créer
 import { regenerateInvitationCode } from '@/lib/group-utils';
 
-export async function PATCH(request: NextRequest, context: any) {
-  const supabase = await createClient(cookies());
+export async function PATCH(request: NextRequest, { params }: { params: { groupId: string } }) {
+  const session = await getSession();
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId } = context.params;
+  const { groupId } = params;
 
   try {
-     const result = await regenerateInvitationCode(supabase, groupId, userId);
+    const result = await regenerateInvitationCode(groupId, userId);
     return NextResponse.json(result);
   } catch (error: unknown) {
     console.error('Error regenerating invitation code:', error);

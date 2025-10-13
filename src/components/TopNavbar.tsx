@@ -1,92 +1,190 @@
 'use client'
 
-import { FaHome, FaSearch, FaBook, FaUser, FaUsers, FaBars, FaTimes } from 'react-icons/fa';
-import Link from 'next/link';
-import { User } from '@supabase/supabase-js';
-import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useState } from "react";
+import { Menu, BookText } from "lucide-react";
+import Link from "next/link";
+import { User } from '@prisma/client';
+import { useTheme } from 'next-themes';
+import { FaSun, FaMoon, FaDesktop, FaUser } from 'react-icons/fa';
+import { useSession, signOut } from 'next-auth/react';
 
-interface TopNavbarProps {
-  user: User | null;
-  profile: { username: string; avatar_url: string } | null;
-  onSignOut: () => void;
-}
+export default function TopNavbar() {
+  const { data: session } = useSession();
+  const user = session?.user as User | null;
+  const profile = user ? { username: user.name || '', avatar_url: user.image || '' } : null;
 
-export default function TopNavbar({ user, profile, onSignOut }: TopNavbarProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
+  const handleSignOut = async () => {
+    await signOut({ callbackUrl: '/' });
+  };
+  const { setTheme, theme } = useTheme();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('');
   };
 
   return (
-    <nav className="bg-gray-800 text-white py-2 px-4 md:px-6 shadow-lg rounded-xl mx-auto mt-4 flex items-center gap-x-8 relative">
-      <div className="text-xl font-bold">
-        Codex
-      </div>
-
-      {/* Desktop Menu */}
-      <div className="hidden md:flex flex-grow space-x-10">
-        <Link href="/dashboard" className="flex items-center text-base hover:text-gray-300 transition duration-300">
-          <FaHome className="mr-2" /> Dashboard
-        </Link>
-        <Link href="/discover" className="flex items-center text-base hover:text-gray-300 transition duration-300">
-          <FaSearch className="mr-2" /> Découvrir
-        </Link>
-        <Link href="/library" className="flex items-center text-base hover:text-gray-300 transition duration-300">
-          <FaBook className="mr-2" /> Mes Livres
-        </Link>
-        <Link href="/groups" className="flex items-center text-base hover:text-gray-300 transition duration-300">
-          <FaUsers className="mr-2" /> Groupes de Lecture
-        </Link>
-        <Link href="/profile" className="flex items-center text-base hover:text-gray-300 transition duration-300">
-          <FaUser className="mr-2" /> Mon Profil
-        </Link>
-      </div>
-
-      {/* Desktop Sign Out Button */}
-      <div className="hidden md:block">
-        {user && (
-          <Button onClick={onSignOut} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
-            Déconnexion
-          </Button>
-        )}
-      </div>
-
-      {/* Mobile Menu Button */}
-      <div className="md:hidden flex items-center ml-auto">
-        <button onClick={toggleMenu} className="text-white focus:outline-none">
-          {isMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
-        </button>
-      </div>
-
-      {/* Mobile Menu Overlay */}
-      {isMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-gray-800 shadow-lg rounded-b-xl py-4 z-50">
-          <div className="flex flex-col items-center space-y-4">
-            <Link href="/dashboard" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
-              <FaHome className="mr-2" /> Dashboard
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-14 items-center">
+        <div className="mr-4 hidden md:flex">
+          <Link className="mr-6 flex items-center space-x-2" href="/dashboard">
+            <BookText className="h-6 w-6" />
+            <span className="hidden font-bold sm:inline-block">
+              Codex
+            </span>
+          </Link>
+          <nav className="flex items-center space-x-6 text-sm font-medium">
+            <Link
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+              href="/dashboard"
+            >
+              Dashboard
             </Link>
-            <Link href="/discover" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
-              <FaSearch className="mr-2" /> Découvrir
+            <Link
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+              href="/discover"
+            >
+              Découvrir
             </Link>
-            <Link href="/library" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
-              <FaBook className="mr-2" /> Mes Livres
+            <Link
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+              href="/library"
+            >
+              Mes Livres
             </Link>
-            <Link href="/groups" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
-              <FaUsers className="mr-2" /> Groupes de Lecture
+            <Link
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+              href="/groups"
+            >
+              Groupes de Lecture
             </Link>
-            <Link href="/profile" className="flex items-center text-lg hover:text-gray-300 transition duration-300" onClick={toggleMenu}>
-              <FaUser className="mr-2" /> Mon Profil
-            </Link>
-            {user && (
-              <Button onClick={() => { onSignOut(); toggleMenu(); }} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 w-auto">
-                Déconnexion
-              </Button>
-            )}
+          </nav>
+        </div>
+        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+          <div className="md:hidden">
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Toggle Menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="top">
+                <div className="grid gap-2 py-6">
+                  <Link
+                    className="flex items-center space-x-2"
+                    href="/dashboard"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <BookText className="h-6 w-6" />
+                    <span className="font-bold">Codex</span>
+                  </Link>
+                  <Link
+                    className="flex w-full items-center py-2 text-lg font-semibold"
+                    href="/dashboard"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    className="flex w-full items-center py-2 text-lg font-semibold"
+                    href="/discover"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Découvrir
+                  </Link>
+                  <Link
+                    className="flex w-full items-center py-2 text-lg font-semibold"
+                    href="/library"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Mes Livres
+                  </Link>
+                  <Link
+                    className="flex w-full items-center py-2 text-lg font-semibold"
+                    href="/groups"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Groupes de Lecture
+                  </Link>
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+          <div className="flex items-center space-x-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-foreground hover:bg-muted">
+                  {theme === 'light' && <FaSun className="h-5 w-5" />}
+                  {theme === 'dark' && <FaMoon className="h-5 w-5" />}
+                  {theme === 'system' && <FaDesktop className="h-5 w-5" />}
+                  {!theme && <FaDesktop className="h-5 w-5" />}
+                  <span className="sr-only">Toggle theme</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setTheme('light')}>
+                  <FaSun className="mr-2 h-4 w-4" />
+                  Clair
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme('dark')}>
+                  <FaMoon className="mr-2 h-4 w-4" />
+                  Sombre
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme('system')}>
+                  <FaDesktop className="mr-2 h-4 w-4" />
+                  Système
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={profile?.avatar_url} alt={profile?.username} />
+                    <AvatarFallback>{getInitials(profile?.username || 'U')}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end" forceMount>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{profile?.username}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="flex items-center">
+                      <FaUser className="mr-2 h-4 w-4" />
+                      Mon Profil
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut}>
+                  Déconnexion
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-      )}
-    </nav>
+      </div>
+    </header>
   );
 }

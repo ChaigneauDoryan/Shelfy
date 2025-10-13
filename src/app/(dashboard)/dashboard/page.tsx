@@ -1,37 +1,31 @@
-import { cookies } from "next/headers";
+
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
-import { getUserBooks } from "@/lib/book-utils";
+import { getSession } from "@/lib/auth"; // Notre nouveau helper
+import { getUserBooks, getReadingStatusId } from "@/lib/book-utils"; // Nos fonctions Prisma
 
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { CurrentlyReading, CurrentlyReadingSkeleton } from "@/components/dashboard/CurrentlyReading";
 import { RecentlyFinished, RecentlyFinishedSkeleton } from "@/components/dashboard/RecentlyFinished";
+import { redirect } from "next/navigation";
 
-// This component fetches and displays the user's currently reading books
+// Ce composant récupère et affiche les livres en cours de lecture
 async function CurrentlyReadingData() {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-  const { data: { user } } = await supabase.auth.getUser();
+  const session = await getSession();
+  if (!session?.user?.id) return <CurrentlyReading books={[]} />;
 
-  if (!user) return <CurrentlyReading books={[]} />;
-
-  // Assuming 'En cours' is the status name for reading. Adjust if necessary.
-  const currentlyReadingBooks = await getUserBooks(supabase, user.id, 2, false);
+  const readingStatusId = await getReadingStatusId('reading');
+  const currentlyReadingBooks = await getUserBooks(session.user.id, readingStatusId, false);
   return <CurrentlyReading books={currentlyReadingBooks || []} />;
 }
 
-// This component fetches and displays the user's recently finished books
+// Ce composant récupère et affiche les livres récemment terminés
 async function RecentlyFinishedData() {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-  const { data: { user } } = await supabase.auth.getUser();
+  const session = await getSession();
+  if (!session?.user?.id) return <RecentlyFinished books={[]} />;
 
-  if (!user) return <RecentlyFinished books={[]} />;
-
-  // Fetch by status ID 3 for 'finished'
-  const recentlyFinishedBooks = await getUserBooks(supabase, user.id, 3, false);
+  const finishedStatusId = await getReadingStatusId('finished');
+  const recentlyFinishedBooks = await getUserBooks(session.user.id, finishedStatusId, false);
   
-  // Sort by finished_at date and take the latest 4
   const sortedBooks = (recentlyFinishedBooks || []).sort((a: any, b: any) => 
     new Date(b.finished_at).getTime() - new Date(a.finished_at).getTime()
   ).slice(0, 4);
@@ -40,19 +34,16 @@ async function RecentlyFinishedData() {
 }
 
 export default async function DashboardPage() {
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
+  const session = await getSession();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("username")
-    .eq("id", user?.id)
-    .single();
+  if (!session?.user) {
+    // Normalement géré par le middleware, mais c'est une sécurité supplémentaire
+    redirect('/auth/login');
+  }
 
   return (
     <div className="space-y-8">
-      <DashboardHeader username={profile?.username || 'lecteur'} />
+      <DashboardHeader username={session.user.name || 'lecteur'} />
 
       <Suspense fallback={<CurrentlyReadingSkeleton />}>
         <CurrentlyReadingData />

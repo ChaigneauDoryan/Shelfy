@@ -1,0 +1,157 @@
+// prisma/schema.prisma
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- TABLES POUR NEXTAUTH.JS ---
+
+model Account {
+  id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String  @db.Uuid
+  type              String  @db.VarChar(255)
+  provider          String  @db.VarChar(255)
+  providerAccountId String  @db.VarChar(255)
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String? @db.VarChar(255)
+  scope             String? @db.Text
+  id_token          String? @db.Text
+  session_state     String? @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name          String?   @db.VarChar(255)
+  email         String?   @unique @db.VarChar(255)
+  emailVerified DateTime?
+  image         String?   @db.Text
+  bio           String?   @db.Text
+  password      String?   @db.Text // Doit être un hash, donc potentiellement long
+  
+  accounts      Account[]
+  createdGroups Group[]   @relation("GroupCreator")
+  memberships   GroupMember[]
+  userBooks     UserBook[]
+  userBadges    UserBadge[]
+}
+
+
+
+
+// --- TABLES DE L'APPLICATION ---
+
+model Group {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String      @db.VarChar(255)
+  description     String?     @db.Text
+  avatar_url      String?     @db.Text
+  invitation_code String      @unique @db.VarChar(255)
+  created_at      DateTime    @default(now())
+
+  created_by_id   String      @db.Uuid
+  creator         User        @relation("GroupCreator", fields: [created_by_id], references: [id])
+  members         GroupMember[]
+}
+
+model GroupMember {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_id  String   @db.Uuid
+  user_id   String   @db.Uuid
+  role      String   @default("member") @db.VarChar(50)
+  joined_at DateTime @default(now())
+
+  group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([group_id, user_id])
+}
+
+model Book {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  google_books_id String?     @unique @db.VarChar(255)
+  isbn            String?     @db.VarChar(20)
+  title           String      @db.Text
+  author          String      @db.Text
+  description     String?     @db.Text
+  cover_url       String?     @db.Text
+  page_count      Int?
+  genre           String?     @db.VarChar(255)
+  published_date  DateTime?
+  publisher       String?     @db.VarChar(255)
+  created_at      DateTime    @default(now())
+
+  created_by_id   String      @db.Uuid
+  userBooks       UserBook[]
+}
+
+model UserBook {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String    @db.Uuid
+  book_id      String    @db.Uuid
+  status_id    Int
+  rating       Int?
+  started_at   DateTime?
+  finished_at  DateTime?
+  current_page Int       @default(0)
+  is_archived  Boolean   @default(false)
+  reading_pace String?   @db.VarChar(255)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  book    Book    @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  status  ReadingStatus @relation(fields: [status_id], references: [id])
+  comments UserBookComment[]
+
+  @@unique([user_id, book_id])
+}
+
+model UserBookComment {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_book_id String   @db.Uuid
+  page_number  Int
+  comment_text String   @db.Text
+  created_at   DateTime @default(now())
+
+  userBook UserBook @relation(fields: [user_book_id], references: [id], onDelete: Cascade)
+}
+
+model ReadingStatus {
+  id          Int      @id
+  status_name String   @unique @db.VarChar(255)
+  userBooks   UserBook[]
+}
+
+model Badge {
+  id          Int      @id
+  name        String   @unique @db.VarChar(255)
+  description String   @db.Text
+  icon_url    String?
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String   @db.Uuid
+  badge_id    Int
+  unlocked_at DateTime @default(now())
+
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badge_id], references: [id])
+
+  @@unique([user_id, badge_id])
+}

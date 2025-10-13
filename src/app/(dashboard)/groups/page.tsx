@@ -1,6 +1,5 @@
 'use client';
 
-import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -18,55 +17,43 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useSession } from 'next-auth/react';
 
 export default function GroupsPage() {
-  const supabase = createClient();
+  const { data: session, status } = useSession();
+  const user = session?.user;
   const [myGroups, setMyGroups] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [invitationCode, setInvitationCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
-  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false); // Nouvel état pour la modale
+  const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const { toast } = useToast();
 
-  const fetchAndSetGroups = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('group_members')
-      .select(
-        `
-          role,
-          groups (*,
-            group_members(count),
-            invitation_code
-          )
-        `
-      )
-      .eq('user_id', userId);
-
-    if (error) {
+  const fetchAndSetGroups = async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      const response = await fetch('/api/groups/my-groups');
+      if (!response.ok) {
+        throw new Error('Failed to fetch groups');
+      }
+      const data = await response.json();
+      setMyGroups(data);
+    } catch (error) {
       console.error('Error fetching user groups:', error);
-    } else {
-      const groups = data.map((item: any) => ({
-        ...item.groups,
-        members_count: item.groups.group_members[0]?.count || 0,
-        user_role: item.role,
-      }));
-      setMyGroups(groups);
+      toast({ title: 'Erreur', description: 'Échec du chargement des groupes.', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      if (user) {
-        await fetchAndSetGroups(user.id);
-      }
+    if (user?.id) {
+      fetchAndSetGroups();
+    } else if (status === 'unauthenticated') {
       setLoading(false);
-    };
-
-    fetchUser();
-  }, [supabase]);
+    }
+  }, [user, status]);
 
   const handleJoinGroup = async () => {
     if (!invitationCode) {
@@ -75,18 +62,10 @@ export default function GroupsPage() {
     }
     setIsJoining(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
-        throw new Error('Utilisateur non authentifié.');
-      }
-
       const response = await fetch('/api/groups/join', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ invitationCode }),
       });
@@ -97,11 +76,9 @@ export default function GroupsPage() {
       }
 
       toast({ title: 'Succès', description: 'Vous avez rejoint le groupe !' });
-      setIsJoinModalOpen(false); // Fermer la modale en cas de succès
-      setInvitationCode(''); // Réinitialiser le champ du code
-      if (user) {
-        await fetchAndSetGroups(user.id); // Re-fetch groups
-      }
+      setIsJoinModalOpen(false);
+      setInvitationCode('');
+      fetchAndSetGroups(); // Re-fetch groups
     } catch (error: any) {
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
     } finally {
@@ -109,8 +86,12 @@ export default function GroupsPage() {
     }
   };
 
-  if (loading) {
+  if (loading || status === 'loading') {
     return <div>Chargement...</div>;
+  }
+
+  if (!user) {
+    return <div>Veuillez vous connecter pour voir vos groupes.</div>;
   }
 
   return (
@@ -121,7 +102,7 @@ export default function GroupsPage() {
           <p className="text-lg text-gray-600 mt-2">Connectez-vous avec d'autres passionnés de lecture.</p>
         </div>
         <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full">
-          <Dialog open={isJoinModalOpen} onOpenChange={setIsJoinModalOpen}> {/* Contrôlé par l'état */}
+          <Dialog open={isJoinModalOpen} onOpenChange={setIsJoinModalOpen}>
             <DialogTrigger asChild>
               <Button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg shadow-md flex items-center">
                 <FaPlus className="mr-2" /> Rejoindre un groupe
@@ -158,13 +139,12 @@ export default function GroupsPage() {
         </div>
       </header>
 
-      {/* Section Mes Groupes */}
       <section>
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Mes Groupes</h2>
         {myGroups && myGroups.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {myGroups.map((group: any) => (
-              <GroupCard key={group.id} group={group} currentUserId={user?.id || ''} onGroupChange={() => user && fetchAndSetGroups(user.id)} />
+              <GroupCard key={group.id} group={group} currentUserId={user?.id || ''} onGroupChange={fetchAndSetGroups} />
             ))}
           </div>
         ) : (
@@ -182,7 +162,6 @@ export default function GroupsPage() {
         )}
       </section>
 
-      {/* Section Découvrir des Groupes (Placeholder) */}
       <section className="mt-10">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Découvrir des Groupes</h2>
         <Card className="border-dashed border-2 border-gray-300 p-6 text-center">

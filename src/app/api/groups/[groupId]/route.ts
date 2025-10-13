@@ -1,27 +1,66 @@
+
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+import { getSession } from '@/lib/auth'; // Assumant que vous aurez un helper pour la session
 import { deleteGroup, updateGroup } from '@/lib/group-utils';
+import { prisma } from '@/lib/prisma';
 
-export async function DELETE(
-  request: Request, 
-  { params }: { params: Promise<{ groupId: string }> }
-) {
-  const supabase = await createClient(cookies());
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+// GET /api/groups/[groupId] - Récupérer les détails d'un groupe
+export async function GET(request: Request, { params }: { params: { groupId: string } }) {
+  const session = await getSession();
+  if (!session?.user) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = user.id;
-  const { groupId } = await params;
+  const { groupId } = params;
 
   try {
-    await deleteGroup(supabase, groupId, userId);
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!group) {
+      return NextResponse.json({ message: 'Group not found' }, { status: 404 });
+    }
+
+    // Vérifier si l'utilisateur est membre du groupe pour pouvoir le voir
+    const isMember = group.members.some((member) => member.user_id === session.user.id);
+    if (!isMember) {
+      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
+    }
+
+    return NextResponse.json(group);
+  } catch (error) {
+    console.error('Error fetching group:', error);
+    return NextResponse.json({ message: 'Failed to fetch group' }, { status: 500 });
+  }
+}
+
+// DELETE /api/groups/[groupId] - Supprimer un groupe
+export async function DELETE(request: Request, { params }: { params: { groupId: string } }) {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
+  const userId = session.user.id;
+  const { groupId } = params;
+
+  try {
+    
+    await deleteGroup(groupId, userId);
     return NextResponse.json({ message: 'Groupe supprimé avec succès.' });
   } catch (error: any) {
     console.error('Error deleting group:', error.message);
@@ -29,25 +68,19 @@ export async function DELETE(
   }
 }
 
-export async function PATCH(
-  request: Request, 
-  { params }: { params: Promise<{ groupId: string }> }
-) {
-  const supabase = await createClient(cookies());
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+// PATCH /api/groups/[groupId] - Mettre à jour un groupe
+export async function PATCH(request: Request, { params }: { params: { groupId: string } }) {
+  const session = await getSession();
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId } = await params;
+  const { groupId } = params;
   const updateGroupDto = await request.json();
 
   try {
-    const group = await updateGroup(supabase, groupId, updateGroupDto);
+    
+    const group = await updateGroup(groupId, updateGroupDto);
     return NextResponse.json(group);
   } catch (error: any) {
     console.error('Error updating group:', error.message);

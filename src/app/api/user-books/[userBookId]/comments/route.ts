@@ -1,122 +1,102 @@
+
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+import { getSession } from '@/lib/auth'; // Helper à créer
+import { prisma } from '@/lib/prisma';
 import { getReadingStatusId } from '@/lib/book-utils';
 
-// Interface pour le contexte de la route avec params comme Promise
-interface RouteContext {
-  params: Promise<{ userBookId: string }>;
-}
-
-export async function GET(request: Request, context: RouteContext) {
-  const { userBookId } = await context.params;
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
+// GET /api/user-books/[userBookId]/comments
+export async function GET(request: Request, { params }: { params: { userBookId: string } }) {
+  const session = await getSession();
+  if (!session?.user) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  try {
-    const { data: comments, error } = await supabase
-      .from('user_book_comments')
-      .select('id, page_number, comment_text, created_at, updated_at, comment_title')
-      .eq('user_book_id', userBookId)
-      .order('page_number', { ascending: true });
+  const { userBookId } = params;
 
-    if (error) {
-      console.error('Error fetching comments:', error);
-      return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 });
+  try {
+    // Vérifier que l'utilisateur a le droit de voir ce userBook
+    const userBook = await prisma.userBook.findFirst({
+      where: { id: userBookId, user_id: session.user.id },
+    });
+
+    if (!userBook) {
+      return NextResponse.json({ message: 'Not found or forbidden' }, { status: 404 });
     }
+
+    const comments = await prisma.userBookComment.findMany({
+      where: { user_book_id: userBookId },
+      orderBy: { created_at: 'asc' }, // ou page_number
+    });
 
     return NextResponse.json(comments);
   } catch (error) {
-    console.error('Unexpected error fetching comments:', error);
-    return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
+    console.error('Error fetching comments:', error);
+    return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 500 });
   }
 }
 
-export async function POST(request: Request, context: RouteContext) {
-  const { userBookId } = await context.params;
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
+// POST /api/user-books/[userBookId]/comments
+export async function POST(request: Request, { params }: { params: { userBookId: string } }) {
+  const session = await getSession();
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
+  const { userBookId } = params;
+
   try {
-    const { page_number, comment_title, comment_text } = await request.json();
+    const { page_number, comment_text } = await request.json();
 
-    if (!page_number || !comment_title || !comment_text) {
-      return NextResponse.json({ error: 'Missing required fields: page_number, comment_title, comment_text' }, { status: 400 });
+    if (page_number === undefined || !comment_text) {
+      return NextResponse.json({ error: 'Missing required fields: page_number, comment_text' }, { status: 400 });
     }
 
-    // Check if this is the first comment for this user_book_id
-    const { count: commentsCount, error: countError } = await supabase
-      .from('user_book_comments')
-      .select('id', { count: 'exact' })
-      .eq('user_book_id', userBookId);
+    const newComment = await prisma.$transaction(async (tx) => {
+      // 1. Vérifier que l'utilisateur est propriétaire du userBook
+      const userBook = await tx.userBook.findFirst({
+        where: { id: userBookId, user_id: session.user.id },
+        include: { _count: { select: { comments: true } } },
+      });
 
-    if (countError) {
-      console.error('Error counting comments before insert:', countError);
-      // Proceed without status update if count fails
-    }
+      if (!userBook) {
+        throw new Error('Not found or forbidden');
+      }
 
-    const isFirstComment = (commentsCount || 0) === 0; // If count is 0, this is the first comment
+      // 2. Créer le commentaire
+      const createdComment = await tx.userBookComment.create({
+        data: {
+          user_book_id: userBookId,
+          page_number: page_number,
+          comment_text: comment_text,
+        },
+      });
 
-    // Insert the comment
-    const { data: newComment, error: commentError } = await supabase
-      .from('user_book_comments')
-      .insert({
-        user_book_id: userBookId,
-        page_number,
-        comment_title,
-        comment_text,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+      // 3. Mettre à jour le userBook (statut et page actuelle)
+      const isFirstComment = userBook._count.comments === 0;
+      let statusUpdate = {};
 
-    if (commentError) {
-      console.error('Error inserting comment:', commentError);
-      return NextResponse.json({ error: 'Failed to add comment' }, { status: 500 });
-    }
+      if (isFirstComment) {
+        const readingStatusId = await getReadingStatusId('reading');
+        statusUpdate = { status_id: readingStatusId };
+      }
 
-    let updateData: any = {
-      current_page: page_number,
-      updated_at: new Date().toISOString(),
-    };
+      await tx.userBook.update({
+        where: { id: userBookId },
+        data: {
+          current_page: page_number,
+          ...statusUpdate,
+        },
+      });
 
-    // If it's the first comment, update status to "reading"
-    if (isFirstComment) {
-      const readingStatusId = await getReadingStatusId(supabase, 'reading');
-      updateData.status_id = readingStatusId;
-    }
-
-    // Update user_books table
-    const { error: updateError } = await supabase
-      .from('user_books')
-      .update(updateData)
-      .eq('id', userBookId);
-
-    if (updateError) {
-      console.error('Error updating user_book:', updateError);
-      // Continue without failing the comment addition
-    }
+      return createdComment;
+    });
 
     return NextResponse.json(newComment, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Unexpected error adding comment:', error);
+    if (error.message === 'Not found or forbidden') {
+      return NextResponse.json({ error: error.message }, { status: 404 });
+    }
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });
   }
 }

@@ -1,21 +1,17 @@
-
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
-
-import { createClient } from '@/lib/supabase/client'
-import { User } from '@supabase/supabase-js'
 import { Toaster } from '@/components/ui/toaster';
+import TopNavbar from "@/components/TopNavbar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = Geist({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
@@ -25,36 +21,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClient();
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      setLoading(false);
-    };
-    fetchUser();
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) {
-    return (
-      <html lang="fr">
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          <div className="flex items-center justify-center min-h-screen">Chargement...</div>
-        </body>
-      </html>
-    );
-  }
-
   return (
     <html lang="fr">
       <body
@@ -63,6 +29,15 @@ export default function RootLayout({
         
         <Providers>{children}</Providers>
         <Toaster />
+        <footer className="bg-background border-t py-6 w-full">
+          <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
+            <p>&copy; {new Date().getFullYear()} Codex. Tous droits réservés.</p>
+            <div className="flex space-x-4 mt-3 md:mt-0">
+              <a href="/mentions-legales" className="hover:underline">Mentions Légales</a>
+              <a href="/politique-confidentialite" className="hover:underline">Politique de Confidentialité</a>
+            </div>
+          </div>
+        </footer>
       </body>
     </html>
   );

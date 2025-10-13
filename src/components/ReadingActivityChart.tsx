@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { createClient } from '@/lib/supabase/client';
+import { useSession } from 'next-auth/react';
 
 // Fonction pour agréger les données par période
 const aggregateData = (data: any[], period: 'week' | 'month' | 'year') => {
@@ -32,47 +32,42 @@ const aggregateData = (data: any[], period: 'week' | 'month' | 'year') => {
 };
 
 export default function ReadingActivityChart() {
+  const { data: session, status } = useSession();
+  const userId = session?.user?.id;
   const [rawData, setRawData] = useState<any[]>([]);
-  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
+  const [period, setPeriod] = useState<'month'>('month');
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   useEffect(() => {
     const fetchActivity = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data, error } = await supabase
-          .from('user_books')
-          .select('finished_at')
-          .eq('user_id', user.id)
-          .not('finished_at', 'is', null);
-
-        if (error) {
-          console.error('Error fetching reading activity:', error);
-        } else {
-          const counts = data.reduce((acc: { [key: string]: number }, item: any) => {
-            const date = new Date(item.finished_at).toISOString().split('T')[0];
-            acc[date] = (acc[date] || 0) + 1;
-            return acc;
-          }, {});
-
-          const formattedData = Object.keys(counts).map(date => ({
-            finished_at: date,
-            books_count: counts[date]
-          }));
-
-          setRawData(formattedData || []);
+      if (!userId) return;
+      setLoading(true);
+      try {
+        const response = await fetch('/api/profile/reading-activity');
+        if (!response.ok) {
+          throw new Error('Failed to fetch reading activity');
         }
+        const data = await response.json();
+        setRawData(data || []);
+      } catch (error) {
+        console.error('Error fetching reading activity:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
-    fetchActivity();
-  }, [supabase]);
+    if (userId) {
+      fetchActivity();
+    }
+  }, [userId]);
 
   const chartData = aggregateData(rawData, period);
 
-  if (loading) {
+  if (loading || status === 'loading') {
     return <div>Chargement du graphique...</div>;
+  }
+
+  if (!userId) {
+    return <div>Veuillez vous connecter pour voir votre activité.</div>;
   }
 
   return (

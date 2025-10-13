@@ -1,71 +1,36 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+// export { default } from "next-auth/middleware";
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.delete(name)
-        },
+import { withAuth } from "next-auth/middleware"
+
+export default withAuth(
+  // `withAuth` étend votre `Request` avec l'objet `user`.
+  // Vous pouvez faire des vérifications de rôle ici.
+  function middleware(req) {
+    // console.log(req.nextauth.token)
+  },
+  {
+    callbacks: {
+      authorized: ({ req, token }) => {
+        // Si un token existe, l'utilisateur est autorisé
+        return !!token
       },
+    },
+    pages: {
+        signIn: '/auth/login', // Page de connexion personnalisée
     }
-  )
+  }
+)
 
-  // IMPORTANT: rafraîchit la session utilisateur si nécessaire.
-  await supabase.auth.getUser()
 
-  return response
-}
-
+// Spécifie les routes à protéger
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - auth (authentication routes)
-     * - api/auth (auth api routes)
-     */
-    '/((?!_next/static|_next/image|favicon.ico|auth|api/auth).*)',
+    '/dashboard/:path*',
+    '/discover/:path*',
+    '/library/:path*',
+    '/groups/:path*',
+    '/profile/:path*',
+    '/reviews/:path*',
   ],
-}
+};

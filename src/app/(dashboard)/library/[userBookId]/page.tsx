@@ -1,34 +1,27 @@
-import { cookies } from 'next/headers';
-import { notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import { getUserBookById } from '@/lib/book-utils';
+
+import { notFound, redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth'; // Notre nouveau helper
+import { getUserBookById } from '@/lib/book-utils'; // Nos fonctions Prisma
 import BookDetailsClientWrapper from '@/components/BookDetailsClientWrapper';
 
 interface PageProps {
-  params: Promise<{ userBookId: string }>; // params est maintenant une Promise
-  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>; // searchParams aussi
+  params: { userBookId: string };
 }
 
-export default async function BookDetailPage({ params, searchParams }: PageProps) {
-  // Attendre la résolution de params
-  const { userBookId } = await params;
-  const cookieStore = cookies();
-  const supabase = await createClient(cookieStore);
+export default async function BookDetailPage({ params }: PageProps) {
+  const { userBookId } = params;
+  const session = await getSession();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    notFound(); // Or redirect to login
+  if (!session?.user?.id) {
+    redirect('/auth/login');
   }
 
-  const userId = user.id;
+  const userId = session.user.id;
 
   let userBook: any = null;
 
   try {
-    userBook = await getUserBookById(supabase, userBookId, userId);
+    userBook = await getUserBookById(userBookId, userId);
     if (!userBook) {
       notFound();
     }

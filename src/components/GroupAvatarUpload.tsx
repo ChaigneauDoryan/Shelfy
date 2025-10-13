@@ -1,8 +1,6 @@
-
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { FaUpload, FaSpinner } from 'react-icons/fa'
 
 interface GroupAvatarUploadProps {
@@ -11,7 +9,6 @@ interface GroupAvatarUploadProps {
 }
 
 export default function GroupAvatarUpload({ onUpload, existingAvatarUrl }: GroupAvatarUploadProps) {
-  const supabase = createClient();
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(existingAvatarUrl || null);
 
@@ -31,19 +28,21 @@ export default function GroupAvatarUpload({ onUpload, existingAvatarUrl }: Group
 
       const file = event.target.files[0];
       const fileExt = file.name.split('.').pop();
-      const filePath = `${Date.now()}.${fileExt}`;
+      const fileName = `group-${Date.now()}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('group-avatars')
-        .upload(filePath, file);
+      // Appel à notre API d'upload Vercel Blob
+      const response = await fetch(`/api/avatar/upload?filename=${fileName}`,
+        {
+          method: 'POST',
+          body: file,
+        }
+      );
 
-      if (uploadError) {
-        throw uploadError;
+      if (!response.ok) {
+        throw new Error('Failed to upload image to Vercel Blob');
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('group-avatars')
-        .getPublicUrl(filePath);
+      const { url: publicUrl } = await response.json();
 
       setAvatarUrl(publicUrl);
       onUpload(publicUrl);

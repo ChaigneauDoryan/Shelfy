@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input' // Pour le slider de zoom
+import { Input } from '@/components/ui/input'
+import { useSession } from 'next-auth/react'
 
 interface AvatarUploadProps {
   userId: string;
@@ -30,32 +30,44 @@ function getCroppedImg(image: HTMLImageElement, crop: Crop, scale = 1): Promise<
 
   const scaleX = image.naturalWidth / image.width;
   const scaleY = image.naturalHeight / image.height;
-  
+
   const pixelRatio = window.devicePixelRatio;
 
-  canvas.width = Math.floor(crop.width * scaleX * pixelRatio);
-  canvas.height = Math.floor(crop.height * scaleY * pixelRatio);
+  // Déterminer la taille du côté du carré à partir du crop
+  // On prend la plus petite dimension pour s'assurer que le cercle rentre
+  const cropPixelWidth = crop.width * scaleX;
+  const cropPixelHeight = crop.height * scaleY;
+  const size = Math.min(cropPixelWidth, cropPixelHeight); // Le diamètre du cercle
+
+  canvas.width = Math.floor(size * pixelRatio);
+  canvas.height = Math.floor(size * pixelRatio);
 
   ctx.scale(pixelRatio, pixelRatio);
   ctx.imageSmoothingQuality = 'high';
 
-  const cropX = crop.x * scaleX;
-  const cropY = crop.y * scaleY;
+  // Clear the canvas to ensure transparency
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const sourceWidth = crop.width * scaleX;
-  const sourceHeight = crop.height * scaleY;
+  // Calculer les coordonnées source pour centrer le carré dans le crop
+  const sourceX = crop.x * scaleX + (cropPixelWidth - size) / 2;
+  const sourceY = crop.y * scaleY + (cropPixelHeight - size) / 2;
 
-  // Dessine uniquement la partie recadrée de l'image sur le canvas
+  // Appliquer un masque circulaire
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2, false);
+  ctx.clip();
+
+  // Dessine la partie carrée de l'image sur le canvas circulaire
   ctx.drawImage(
     image,
-    cropX, // Point de départ X sur l'image source
-    cropY, // Point de départ Y sur l'image source
-    sourceWidth, // Largeur à prendre sur l'image source
-    sourceHeight, // Hauteur à prendre sur l'image source
+    sourceX, // Point de départ X sur l'image source
+    sourceY, // Point de départ Y sur l'image source
+    size, // Largeur à prendre sur l'image source (carré)
+    size, // Hauteur à prendre sur l'image source (carré)
     0, // Point de destination X sur le canvas
     0, // Point de destination Y sur le canvas
-    crop.width * scaleX, // Largeur de destination sur le canvas
-    crop.height * scaleY // Hauteur de destination sur le canvas
+    size, // Largeur de destination sur le canvas
+    size // Hauteur de destination sur le canvas
   );
 
   return new Promise((resolve, reject) => {
@@ -70,7 +82,7 @@ function getCroppedImg(image: HTMLImageElement, crop: Crop, scale = 1): Promise<
 }
 
 export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: AvatarUploadProps) {
-  const supabase = createClient();
+  const { data: session } = useSession();
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
   const [src, setSrc] = useState<string | null>(null);
@@ -95,25 +107,31 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: Ava
   }
 
   const handleCrop = async () => {
+    if (!session?.user?.id) return; // S'assurer que l'utilisateur est connecté
+
     if (imgRef.current && crop?.width && crop?.height) {
       setUploading(true);
       setIsModalOpen(false);
 
       try {
         const croppedImageBlob = await getCroppedImg(imgRef.current, crop, scale);
-        const filePath = `${userId}/${Date.now()}.png`;
+        // Generate a more unique file name to prevent caching issues
+        const uniqueId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const fileName = `${session.user.id}-${Date.now()}-${uniqueId}.png`;
 
-        if (avatarUrl) {
-          const oldFileName = avatarUrl.split('/').pop();
-          if (oldFileName) {
-            await supabase.storage.from('avatars').remove([`${userId}/${oldFileName}`]);
+        // Appel à notre API d'upload Vercel Blob
+        const response = await fetch(`/api/avatar/upload?filename=${fileName}`,
+          {
+            method: 'POST',
+            body: croppedImageBlob,
           }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to upload image to Vercel Blob');
         }
 
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, croppedImageBlob);
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+        const { url: publicUrl } = await response.json();
         
         setAvatarUrl(publicUrl);
         onUpload(publicUrl);
@@ -131,8 +149,8 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: Ava
   return (
     <div className="flex flex-col items-center space-y-4">
       <img 
-        src={avatarUrl || `https://via.placeholder.com/150`} 
-        alt="Avatar" 
+        src={avatarUrl || `https://via.placeholder.com/150`}
+        alt="Avatar"
         className="w-32 h-32 rounded-full object-cover bg-gray-200"
       />
       <div>
@@ -165,7 +183,7 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: Ava
                 <img 
                   ref={imgRef} 
                   src={src} 
-                  alt="Source" 
+                  alt="Source"
                   style={{ transform: `scale(${scale})` }}
                   onLoad={onImageLoad}
                 />

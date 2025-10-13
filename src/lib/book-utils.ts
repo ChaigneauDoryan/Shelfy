@@ -1,41 +1,24 @@
-import { createClient } from './supabase/server';
-import { SupabaseClient } from '@supabase/supabase-js';
+
+import { prisma } from './prisma';
 import { checkAndAwardBadges } from './badge-utils';
 
-type Book = {
-  id: string;
-  title: string;
-  author: string;
-  cover_url: string;
-  page_count: number;
-};
+// Note: Les types Book et UserBook sont maintenant générés par Prisma.
+// Nous pouvons les importer si nécessaire, mais souvent ce n'est pas obligatoire
+// car le typage de retour de Prisma est très bon.
 
-type UserBook = {
-  id: string;
-  status_id: number;
-  rating?: number;
-  started_at?: string;
-  finished_at?: string;
-  current_page: number;
-  is_archived: boolean;
-  book: Book;
-};
+export async function getReadingStatusId(statusName: string): Promise<number> {
+  const status = await prisma.readingStatus.findUnique({
+    where: { status_name: statusName },
+    select: { id: true },
+  });
 
-export async function getReadingStatusId(supabase: SupabaseClient, statusName: string): Promise<number> {
-  const { data, error } = await supabase
-    .from('reading_statuses')
-    .select('id')
-    .eq('status_name', statusName)
-    .single();
-
-  if (error || !data) {
-    console.error('Error in getReadingStatusId:', error);
+  if (!status) {
     throw new Error(`Status '${statusName}' not found.`);
   }
-  return data.id;
+  return status.id;
 }
 
-export async function findOrCreateBook(supabase: SupabaseClient, bookData: any, userId: string) {
+export async function findOrCreateBook(bookData: any, userId: string) {
   const isGoogleBooks = bookData.volumeInfo !== undefined;
   const bookInfo = isGoogleBooks ? bookData.volumeInfo : bookData;
 
@@ -48,11 +31,10 @@ export async function findOrCreateBook(supabase: SupabaseClient, bookData: any, 
   const genre = bookInfo.categories ? bookInfo.categories.join(', ') : bookData.genre;
   let publishedDate = bookInfo.publishedDate;
   if (publishedDate) {
-    const dateParts = publishedDate.split('-');
-    if (dateParts.length === 1) { // Only year
-      publishedDate = `${publishedDate}-01-01`;
-    } else if (dateParts.length === 2) { // Year and month
-      publishedDate = `${publishedDate}-01`;
+    try {
+      publishedDate = new Date(publishedDate).toISOString();
+    } catch (e) {
+      publishedDate = null; // Invalide date format
     }
   }
   const publisher = bookInfo.publisher;
@@ -65,241 +47,150 @@ export async function findOrCreateBook(supabase: SupabaseClient, bookData: any, 
     isbn = isbn13 ? isbn13.identifier : (isbn10 ? isbn10.identifier : null);
   }
 
-  let book: any = null;
-  try {
-    if (!isManual && googleBooksId) {
-      let { data, error } = await supabase
-        .from('books')
-        .select('*')
-        .eq('google_books_id', googleBooksId)
-        .single();
-
-      if (error && error.code === 'PGRST116') { // PGRST116: no rows found
-        if (isbn) {
-          let { data: bookByIsbn, error: isbnError } = await supabase
-            .from('books')
-            .select('*')
-            .eq('isbn', isbn)
-            .single();
-          
-          if (!isbnError && bookByIsbn) {
-            book = bookByIsbn;
-          }
-        }
-      } else if (data) {
-        book = data;
-      }
+  // Logique de recherche simplifiée avec Prisma
+  if (!isManual && (googleBooksId || isbn)) {
+    const existingBook = await prisma.book.findFirst({
+      where: {
+        OR: [
+          { google_books_id: googleBooksId ? String(googleBooksId) : undefined },
+          { isbn: isbn ? String(isbn) : undefined },
+        ],
+      },
+    });
+    if (existingBook) {
+      return existingBook;
     }
-
-    if (!book) {
-      const { data: newBook, error: insertError } = await supabase
-        .from('books')
-        .insert({
-          google_books_id: isManual ? null : googleBooksId,
-          isbn: isbn,
-          title: title,
-          author: author,
-          description: description,
-          cover_url: coverUrl,
-          page_count: pageCount,
-          genre: genre,
-          published_date: publishedDate,
-          publisher: publisher,
-          created_by: userId,
-        })
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error('Error inserting new book:', insertError);
-        return { data: null, error: insertError };
-      }
-      book = newBook;
-    }
-    return { data: book, error: null };
-  } catch (e: any) {
-    console.error('Error in findOrCreateBook:', e.message);
-    return { data: null, error: { message: e.message } };
   }
+
+  // Si non trouvé, créer le livre
+  const newBook = await prisma.book.create({
+    data: {
+      google_books_id: isManual ? null : googleBooksId,
+      isbn: isbn,
+      title: title,
+      author: author,
+      description: description,
+      cover_url: coverUrl,
+      page_count: pageCount,
+      genre: genre,
+      published_date: publishedDate,
+      publisher: publisher,
+      created_by_id: userId,
+    },
+  });
+
+  return newBook;
 }
 
-export async function addUserBook(supabase: SupabaseClient, userId: string, bookId: string, bookData: any) {
+export async function addUserBook(userId: string, bookId: string, bookData: any) {
   const { readingPace } = bookData;
 
-  try {
-    const { data: existingUserBook, error: userBookError } = await supabase
-      .from('user_books')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('book_id', bookId)
-      .single();
+  const existingUserBook = await prisma.userBook.findUnique({
+    where: { user_id_book_id: { user_id: userId, book_id: bookId } },
+  });
 
-    if (existingUserBook) {
-      throw new Error('Ce livre est déjà dans votre bibliothèque.');
-    }
+  if (existingUserBook) {
+    throw new Error('Ce livre est déjà dans votre bibliothèque.');
+  }
 
-    const insertData: any = {
+  const userBook = await prisma.userBook.create({
+    data: {
       user_id: userId,
       book_id: bookId,
       status_id: 1, // Default: 'to_read' (ID 1)
-    };
+      reading_pace: readingPace,
+    },
+  });
 
-    if (readingPace) {
-      insertData.reading_pace = readingPace;
-    }
-
-    const { data: userBook, error: insertError } = await supabase
-      .from('user_books')
-      .insert(insertData)
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Error adding book to user library:', insertError);
-      throw new Error('Failed to add book to your library.');
-    }
-
-    return userBook;
-  } catch (e) {
-    throw e; 
-  }
+  return userBook;
 }
 
-export async function getUserBooks(
-  supabase: SupabaseClient,
-  userId: string,
-  statusId?: number,
-  isArchived?: boolean
-): Promise<UserBook[]> {
-  let query = supabase
-    .from("user_books")
-    .select(
-      `
-      id,
-      status_id,
-      rating,
-      started_at,
-      finished_at,
-      current_page,
-      is_archived,
-      book:books(*)
-    `
-    )
-    .eq("user_id", userId);
-
-  if (statusId) {
-    query = query.eq("status_id", statusId);
-  }
-
-  if (isArchived !== undefined) {
-    query = query.eq("is_archived", isArchived);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error(
-      "Error fetching user books. Full error object:",
-      JSON.stringify(error, null, 2)
-    );
-    throw new Error("Failed to fetch user books.");
-  }
-
-  // ✅ normaliser le retour : book est un objet, pas un tableau
-  return (
-    data?.map((item: any) => ({
-      ...item,
-      book: Array.isArray(item.book) ? item.book[0] : item.book,
-    })) as UserBook[]
-  ) || [];
+export async function getUserBooks(userId: string, statusId?: number, isArchived?: boolean) {
+  const userBooks = await prisma.userBook.findMany({
+    where: {
+      user_id: userId,
+      status_id: statusId,
+      is_archived: isArchived,
+    },
+    include: {
+      book: true, // Inclure l'objet livre complet
+    },
+    orderBy: {
+      created_at: 'desc',
+    },
+  });
+  return userBooks;
 }
 
-export async function getUserBookById(supabase: SupabaseClient, userBookId: string, userId: string) {
-  const { data, error } = await supabase
-    .from('user_books')
-    .select(`
-      id,
-      status_id,
-      rating,
-      started_at,
-      finished_at,
-      book:books(*)
-    `)
-    .eq('id', userBookId)
-    .eq('user_id', userId)
-    .single();
+export async function getUserBookById(userBookId: string, userId: string) {
+  const userBook = await prisma.userBook.findFirst({
+    where: {
+      id: userBookId,
+      user_id: userId,
+    },
+    include: {
+      book: true,
+    },
+  });
 
-  if (error) {
-    console.error('Error fetching user book:', error.message, error.code, error);
+  if (!userBook) {
     throw new Error('Failed to fetch user book.');
   }
-  return data;
+  return userBook;
 }
 
-export async function updateUserBookStatus(supabase: SupabaseClient, userBookId: string, statusName: string, userId: string) {
-  const statusId = await getReadingStatusId(supabase, statusName);
-  const updateData: any = { status_id: statusId, updated_at: new Date() };
+export async function updateUserBookStatus(userBookId: string, statusName: string, userId: string) {
+  const statusId = await getReadingStatusId(statusName);
+  const updateData: any = { status_id: statusId };
 
   if (statusName === 'finished') {
     updateData.finished_at = new Date();
   }
 
-  const { data, error } = await supabase
-    .from('user_books')
-    .update(updateData)
-    .eq('id', userBookId)
-    .eq('user_id', userId)
-    .select()
-    .single();
+  const updatedBook = await prisma.userBook.update({
+    where: { id: userBookId, user_id: userId },
+    data: updateData,
+  });
 
-  if (error) {
-    console.error('Error updating user book status:', error);
-    throw new Error('Failed to update book status.');
-  }
+  let awardedBadges: any[] = [];
+  // La logique de badge doit aussi être migrée pour utiliser Prisma
+  // if (statusName === 'finished') {
+  //   awardedBadges = await checkAndAwardBadges(userId);
+  // }
 
-  let awardedBadges = [];
-  // Check for badges after finishing a book
-  if (statusName === 'finished') {
-    awardedBadges = await checkAndAwardBadges(supabase, userId);
-  }
-
-  return { updatedBook: data, awardedBadges };
+  return { updatedBook, awardedBadges };
 }
 
-export async function deleteUserBook(supabase: SupabaseClient, userBookId: string, userId: string) {
-  const { error } = await supabase
-    .from('user_books')
-    .delete()
-    .eq('id', userBookId)
-    .eq('user_id', userId);
-
-  if (error) {
-    console.error('Error deleting user book:', error);
-    throw new Error('Failed to delete user book.');
-  }
+export async function deleteUserBook(userBookId: string, userId: string) {
+  await prisma.userBook.delete({
+    where: {
+      id: userBookId,
+      user_id: userId, // Assure que seul le propriétaire peut supprimer
+    },
+  });
   return { message: 'Livre supprimé de votre bibliothèque.' };
 }
 
-
-
-
-
-
-
-export async function addPageComment(supabase: SupabaseClient, userBookId: string, pageNumber: number, commentText: string) {
-  const { data, error } = await supabase
-    .from('user_book_comments') // Assuming this is the existing table
-    .insert({
+export async function addPageComment(userBookId: string, pageNumber: number, commentText: string) {
+  const newComment = await prisma.userBookComment.create({
+    data: {
       user_book_id: userBookId,
       page_number: pageNumber,
       comment_text: commentText,
-    })
-    .select()
-    .single();
+    },
+  });
+  return newComment;
+}
 
-  if (error) {
-    console.error('Error adding page comment:', error);
-    throw new Error('Failed to add page comment.');
-  }
-  return data;
+export async function updateUserBookArchiveStatus(userBookId: string, userId: string, isArchived: boolean) {
+  const updatedUserBook = await prisma.userBook.update({
+    where: {
+      id: userBookId,
+      user_id: userId,
+    },
+    data: {
+      is_archived: isArchived,
+    },
+  });
+  return updatedUserBook;
 }

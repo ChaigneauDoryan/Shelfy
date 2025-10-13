@@ -1,21 +1,15 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+import { getSession } from '@/lib/auth'; // Helper à créer
 import { updateUserBookStatus } from '@/lib/book-utils';
 
-export async function PATCH(request: Request, context: any) {
-  const supabase = await createClient(cookies());
-
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
+export async function PATCH(request: Request, { params }: { params: { userBookId: string } }) {
+  const session = await getSession();
+  if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { userBookId } = context.params;
+  const { userBookId } = params;
   const { status } = await request.json();
 
   if (!status) {
@@ -23,8 +17,8 @@ export async function PATCH(request: Request, context: any) {
   }
 
   try {
-    const updatedBook = await updateUserBookStatus(supabase, userBookId, status, userId);
-    return NextResponse.json(updatedBook);
+    const result = await updateUserBookStatus(userBookId, status, userId);
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error updating user book status:', error.message);
     return NextResponse.json({ message: 'Failed to update book status.' }, { status: 500 });

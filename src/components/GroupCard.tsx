@@ -1,14 +1,13 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { FaUsers, FaBookOpen, FaTrash, FaPencilAlt } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { useState } from 'react';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/hooks/use-toast';
+import { useSession } from 'next-auth/react';
 
 interface GroupCardProps {
   group: {
@@ -26,7 +25,7 @@ interface GroupCardProps {
 
 export default function GroupCard({ group, currentUserId, onGroupChange }: GroupCardProps) {
   const router = useRouter();
-  const supabase = createClient();
+  const { data: session, status } = useSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -42,13 +41,10 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
 
   const handleRegenerateCode = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-      if (!accessToken) throw new Error("Non authentifié");
+      if (status !== 'authenticated') throw new Error("Non authentifié");
 
       const response = await fetch(`/api/groups/${group.id}/regenerate-code`, {
         method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${accessToken}` },
       });
 
       if (!response.ok) throw new Error("Échec de la régénération");
@@ -57,7 +53,7 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
       setCurrentInvitationCode(data.invitation_code);
       toast({ title: 'Succès', description: "Le code d'invitation a été régénéré." });
 
-    } catch (error) {
+    } catch (error: any) {
       toast({ title: 'Erreur', description: "Impossible de régénérer le code.", variant: 'destructive' });
     }
   };
@@ -65,10 +61,7 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
   const handleDeleteConfirm = async () => {
     setIsDeleting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
+      if (status !== 'authenticated') {
         toast({
           title: "Erreur",
           description: "Vous devez être connecté pour supprimer un groupe.",
@@ -81,10 +74,6 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
 
       const response = await fetch(`/api/groups/${group.id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
       });
 
       if (!response.ok) {
@@ -112,10 +101,7 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
   const handleLeaveConfirm = async () => {
     setIsLeaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      if (!accessToken) {
+      if (status !== 'authenticated') {
         toast({
           title: "Erreur",
           description: "Vous devez être connecté pour quitter un groupe.",
@@ -128,10 +114,6 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
 
       const response = await fetch(`/api/groups/${group.id}/leave`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
       });
 
       if (!response.ok) {
@@ -240,4 +222,3 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
     </Card>
   );
 }
-
