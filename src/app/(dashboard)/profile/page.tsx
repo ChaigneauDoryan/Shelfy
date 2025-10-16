@@ -40,28 +40,27 @@ export default function ProfilePage() {
   const userId = session?.user?.id;
 
   const { data, error, isLoading, mutate } = useSWR(userId ? '/api/profile/stats' : null, fetcher);
-
   const { toast } = useToast();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      name: "",
+      name: session?.user?.name ?? "",
       bio: "",
     },
   });
 
-  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(undefined);
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(session?.user?.image ?? undefined);
 
   useEffect(() => {
-    if (data && !isLoading) {
+    if (session?.user) {
       form.reset({
-        name: data.profile?.name || "",
-        bio: data.profile?.bio || "",
+        name: session.user.name ?? "",
+        bio: data?.profile?.bio || "",
       });
-      setAvatarUrl(data.profile?.image || '');
+      setAvatarUrl(session.user.image ?? '');
     }
-  }, [data, isLoading, form]);
+  }, [session, data, form]);
 
   async function onSubmit(values: ProfileFormValues) {
     if (!userId) return;

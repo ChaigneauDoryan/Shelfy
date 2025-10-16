@@ -4,11 +4,8 @@ import { getSession } from '@/lib/auth'; // Notre nouveau helper
 import { getUserBookById } from '@/lib/book-utils'; // Nos fonctions Prisma
 import BookDetailsClientWrapper from '@/components/BookDetailsClientWrapper';
 
-interface PageProps {
-  params: { userBookId: string };
-}
-
-export default async function BookDetailPage({ params }: PageProps) {
+export default async function BookDetailPage(props: { params: { userBookId: string } }) {
+  const { params } = await Promise.resolve(props);
   const { userBookId } = params;
   const session = await getSession();
 

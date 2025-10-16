@@ -141,7 +141,7 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
   const isAdmin = group.user_role === 'admin';
 
   return (
-    <Card key={group.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out flex flex-col">
+    <Card key={group.id} className="min-w-[400px] overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out flex flex-col">
       <CardHeader className="flex flex-row items-center space-x-4 p-4">
         <img src={group.avatar_url || `https://via.placeholder.com/150/33FF57/FFFFFF?text=${group.name.substring(0, 2)}`} alt={group.name} className="w-16 h-16 rounded-full object-cover border-2 border-blue-500" />
         <div className="flex-grow">
@@ -173,9 +173,9 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
         {isAdmin && currentInvitationCode && (
           <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
             <p className="text-sm text-gray-600 mb-1">Code d'invitation :</p>
-            <div className="flex items-center justify-between">
-              <span className="font-mono text-lg tracking-widest text-gray-800">{currentInvitationCode}</span>
-              <div className="flex items-center space-x-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
+              <span className="font-mono text-lg tracking-widest text-gray-800 block">{currentInvitationCode}</span>
+              <div className="flex items-center space-x-2 flex-shrink-0">
                 <Button size="sm" variant="ghost" onClick={handleCopyCode}>Copier</Button>
                 <Button size="sm" variant="outline" onClick={handleRegenerateCode}>Régénérer</Button>
               </div>
