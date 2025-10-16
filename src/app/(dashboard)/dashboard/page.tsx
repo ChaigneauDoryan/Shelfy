@@ -26,9 +26,11 @@ async function RecentlyFinishedData() {
   const finishedStatusId = await getReadingStatusId('finished');
   const recentlyFinishedBooks = await getUserBooks(session.user.id, finishedStatusId, false);
   
-  const sortedBooks = (recentlyFinishedBooks || []).sort((a: any, b: any) => 
-    new Date(b.finished_at).getTime() - new Date(a.finished_at).getTime()
-  ).slice(0, 4);
+  const sortedBooks = (recentlyFinishedBooks || []).sort((a: any, b: any) => {
+    const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
+    const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;
+    return dateB - dateA;
+  }).slice(0, 4);
 
   return <RecentlyFinished books={sortedBooks} />;
 }
