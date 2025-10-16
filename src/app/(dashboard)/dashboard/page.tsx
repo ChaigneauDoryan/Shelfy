@@ -8,31 +8,40 @@ import { CurrentlyReading, CurrentlyReadingSkeleton } from "@/components/dashboa
 import { RecentlyFinished, RecentlyFinishedSkeleton } from "@/components/dashboard/RecentlyFinished";
 import { redirect } from "next/navigation";
 
-// Ce composant récupère et affiche les livres en cours de lecture
 async function CurrentlyReadingData() {
-  const session = await getSession();
-  if (!session?.user?.id) return <CurrentlyReading books={[]} />;
+  try {
+    const session = await getSession();
+    if (!session?.user?.id) return <CurrentlyReading books={[]} />;
 
-  const readingStatusId = await getReadingStatusId('reading');
-  const currentlyReadingBooks = await getUserBooks(session.user.id, readingStatusId, false);
-  return <CurrentlyReading books={currentlyReadingBooks || []} />;
+    const readingStatusId = await getReadingStatusId('reading');
+    const currentlyReadingBooks = await getUserBooks(session.user.id, readingStatusId, false);
+    return <CurrentlyReading books={currentlyReadingBooks || []} />;
+  } catch (error) {
+    console.error("Error in CurrentlyReadingData:", error);
+    return <div>Error loading currently reading books.</div>;
+  }
 }
 
 // Ce composant récupère et affiche les livres récemment terminés
 async function RecentlyFinishedData() {
-  const session = await getSession();
-  if (!session?.user?.id) return <RecentlyFinished books={[]} />;
+  try {
+    const session = await getSession();
+    if (!session?.user?.id) return <RecentlyFinished books={[]} />;
 
-  const finishedStatusId = await getReadingStatusId('finished');
-  const recentlyFinishedBooks = await getUserBooks(session.user.id, finishedStatusId, false);
-  
-  const sortedBooks = (recentlyFinishedBooks || []).sort((a: any, b: any) => {
-    const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
-    const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;
-    return dateB - dateA;
-  }).slice(0, 4);
+    const finishedStatusId = await getReadingStatusId('finished');
+    const recentlyFinishedBooks = await getUserBooks(session.user.id, finishedStatusId, false);
+    
+    const sortedBooks = (recentlyFinishedBooks || []).sort((a: any, b: any) => {
+      const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
+      const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;
+      return dateB - dateA;
+    }).slice(0, 4);
 
-  return <RecentlyFinished books={sortedBooks} />;
+    return <RecentlyFinished books={sortedBooks} />;
+  } catch (error) {
+    console.error("Error in RecentlyFinishedData:", error);
+    return <div>Error loading recently finished books.</div>;
+  }
 }
 
 export default async function DashboardPage() {

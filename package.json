@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && prisma migrate deploy && npm run seed && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --target es2015",
