@@ -1,49 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { FaUpload, FaSpinner } from 'react-icons/fa'
+import { generateAvatarFromText } from '@/lib/avatar-utils';
 
 interface GroupAvatarUploadProps {
   onUpload: (url: string) => void;
   existingAvatarUrl?: string | null;
   groupName?: string; // Add groupName prop
 }
-
-// Helper function to generate a color based on the text
-const stringToColor = (str: string) => {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  let color = '#';
-  for (let i = 0; i < 3; i++) {
-    const value = (hash >> (i * 8)) & 0xFF;
-    color += ('00' + value.toString(16)).substr(-2);
-  }
-  return color;
-};
-
-// Helper function to generate a data URL for a text avatar
-const generateAvatarFromText = (text: string, size = 128) => {
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-
-  // Background color
-  const bgColor = stringToColor(text);
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(0, 0, size, size);
-
-  // Text
-  ctx.fillStyle = '#FFFFFF'; // White text
-  ctx.font = `bold ${size / 2}px Arial`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text.charAt(0).toUpperCase(), size / 2, size / 2);
-
-  return canvas.toDataURL();
-};
 
 export default function GroupAvatarUpload({ onUpload, existingAvatarUrl, groupName }: GroupAvatarUploadProps) {
   const [uploading, setUploading] = useState(false);
@@ -53,8 +19,10 @@ export default function GroupAvatarUpload({ onUpload, existingAvatarUrl, groupNa
   useEffect(() => {
     if (existingAvatarUrl) {
       setAvatarUrl(existingAvatarUrl);
-    } else if (groupName) {
+    } else if (groupName && groupName.length > 0) {
       setGeneratedAvatarUrl(generateAvatarFromText(groupName));
+    } else {
+      setGeneratedAvatarUrl(null); // Clear generated avatar if groupName is empty
     }
   }, [existingAvatarUrl, groupName]);
 
@@ -87,8 +55,9 @@ export default function GroupAvatarUpload({ onUpload, existingAvatarUrl, groupNa
 
       setAvatarUrl(publicUrl);
       onUpload(publicUrl);
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
+      alert(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -100,7 +69,7 @@ export default function GroupAvatarUpload({ onUpload, existingAvatarUrl, groupNa
     <div className="flex flex-col items-center space-y-4">
       <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
         {displayAvatar ? (
-          <img src={displayAvatar} alt="Avatar du groupe" className="w-full h-full object-cover" />
+          <Image src={displayAvatar} alt="Avatar du groupe" width={128} height={128} className="w-full h-full object-cover" />
         ) : (
           <span className="text-gray-500">Avatar</span>
         )}

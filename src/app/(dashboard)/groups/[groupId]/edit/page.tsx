@@ -20,6 +20,7 @@ import {
 
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
 import { useSession } from 'next-auth/react';
+import JoinRequestsManager from '@/components/JoinRequestsManager';
 
 const editGroupSchema = z.object({
   name: z.string().min(3, { message: "Le nom du groupe doit contenir au moins 3 caractères." }).max(50, { message: "Le nom du groupe ne peut pas dépasser 50 caractères." }),
@@ -175,6 +176,10 @@ export default function EditGroupPage() {
           </Form>
         </CardContent>
       </Card>
+
+      <div className="mt-8">
+        <JoinRequestsManager groupId={groupId} />
+      </div>
     </div>
   );
 }

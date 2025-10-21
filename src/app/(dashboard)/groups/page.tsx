@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { FaPlus } from 'react-icons/fa';
 import GroupCard from '@/components/GroupCard';
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { Group, RoleInGroup } from "@prisma/client";
 import {
   Dialog,
   DialogContent,
@@ -18,43 +19,43 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from 'next-auth/react';
+import DiscoverGroups from '@/components/DiscoverGroups';
+import MyPendingGroupRequests from '@/components/MyPendingGroupRequests';
 import PageHeader from '@/components/ui/PageHeader';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+
+type GroupWithMembership = Group & {
+  members_count: number;
+  user_role: RoleInGroup;
+};
 
 export default function GroupsPage() {
   const { data: session, status } = useSession();
   const user = session?.user;
-  const [myGroups, setMyGroups] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [invitationCode, setInvitationCode] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const { toast } = useToast();
 
-  const fetchAndSetGroups = async () => {
-    if (!user?.id) return;
-    setLoading(true);
-    try {
+  const fetchAndSetGroups = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['myGroups', user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['pendingGroupRequests', user?.id] });
+    queryClient.invalidateQueries({ queryKey: ['discoverGroups'] });
+  }, [queryClient, user?.id]);
+
+  const { data: myGroups, isLoading: isLoadingMyGroups } = useQuery<GroupWithMembership[]>({
+    queryKey: ['myGroups', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
       const response = await fetch('/api/groups/my-groups');
       if (!response.ok) {
         throw new Error('Failed to fetch groups');
       }
-      const data = await response.json();
-      setMyGroups(data);
-    } catch (error) {
-      console.error('Error fetching user groups:', error);
-      toast({ title: 'Erreur', description: 'Échec du chargement des groupes.', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.id) {
-      fetchAndSetGroups();
-    } else if (status === 'unauthenticated') {
-      setLoading(false);
-    }
-  }, [user, status]);
+      return response.json();
+    },
+    enabled: !!user?.id,
+  });
 
   const handleJoinGroup = async () => {
     if (!invitationCode) {
@@ -79,21 +80,25 @@ export default function GroupsPage() {
       toast({ title: 'Succès', description: 'Vous avez rejoint le groupe !' });
       setIsJoinModalOpen(false);
       setInvitationCode('');
-      fetchAndSetGroups(); // Re-fetch groups
-    } catch (error: any) {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+      queryClient.invalidateQueries({ queryKey: ['myGroups', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['pendingGroupRequests', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['discoverGroups'] });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
+      toast({ title: 'Erreur', description: errorMessage, variant: 'destructive' });
     } finally {
       setIsJoining(false);
     }
   };
 
-  if (loading || status === 'loading') {
+  if (isLoadingMyGroups || status === 'loading') {
     return <div>Chargement...</div>;
   }
 
   if (!user) {
     return <div>Veuillez vous connecter pour voir vos groupes.</div>;
   }
+
 
   return (
     <div className="space-y-8 p-4">
@@ -144,14 +149,14 @@ export default function GroupsPage() {
         <h2 className="text-2xl font-semibold text-foreground mb-4">Mes Groupes</h2>
         {myGroups && myGroups.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {myGroups.map((group: any) => (
+            {myGroups.map((group) => (
               <GroupCard key={group.id} group={group} currentUserId={user?.id || ''} onGroupChange={fetchAndSetGroups} />
             ))}
           </div>
         ) : (
           <Card className="border-dashed border-2 border-gray-300 p-6 text-center">
             <CardHeader>
-              <CardTitle className="text-gray-700">Vous n'êtes dans aucun groupe</CardTitle>
+              <CardTitle className="text-gray-700">Vous n&apos;êtes dans aucun groupe</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-gray-500">Créez un nouveau groupe ou rejoignez-en un pour commencer à discuter !</p>
@@ -164,16 +169,11 @@ export default function GroupsPage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="text-2xl font-semibold text-foreground mb-4">Découvrir des Groupes</h2>
-        <Card className="border-dashed border-2 border-gray-300 p-6 text-center">
-          <CardHeader>
-            <CardTitle className="text-gray-700">Bientôt disponible !</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-500">Explorez et rejoignez de nouveaux groupes de lecture ici.</p>
-            <Button variant="secondary" className="mt-4">Rechercher des groupes</Button>
-          </CardContent>
-        </Card>
+        <MyPendingGroupRequests />
+      </section>
+
+      <section className="mt-10">
+        <DiscoverGroups />
       </section>
     </div>
   );

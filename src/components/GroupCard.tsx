@@ -8,6 +8,8 @@ import { useState } from 'react';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useToast } from '@/hooks/use-toast';
 import { useSession } from 'next-auth/react';
+import Image from 'next/image';
+import { generateAvatarFromText } from '@/lib/avatar-utils';
 
 interface GroupCardProps {
   group: {
@@ -53,8 +55,9 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
       setCurrentInvitationCode(data.invitation_code);
       toast({ title: 'Succès', description: "Le code d'invitation a été régénéré." });
 
-    } catch (error: any) {
-      toast({ title: 'Erreur', description: "Impossible de régénérer le code.", variant: 'destructive' });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
+      toast({ title: 'Erreur', description: errorMessage, variant: 'destructive' });
     }
   };
 
@@ -86,10 +89,11 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
         description: "Groupe supprimé avec succès !",
       });
       onGroupChange(); // Appeler la fonction de rafraîchissement
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
       toast({
         title: "Erreur",
-        description: `Erreur lors de la suppression du groupe : ${error.message}`,
+        description: `Erreur lors de la suppression du groupe : ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -126,10 +130,11 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
         description: "Vous avez quitté le groupe avec succès !",
       });
       onGroupChange(); // Appeler la fonction de rafraîchissement
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
       toast({
         title: "Erreur",
-        description: `Erreur lors de la sortie du groupe : ${error.message}`,
+        description: `Erreur lors de la sortie du groupe : ${errorMessage}`,
         variant: "destructive",
       });
     } finally {
@@ -140,10 +145,18 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
 
   const isAdmin = group.user_role === 'admin';
 
+  const avatarSrc = group.avatar_url || (group.name ? generateAvatarFromText(group.name, 64) : undefined);
+
   return (
     <Card key={group.id} className="min-w-[400px] overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out flex flex-col">
       <CardHeader className="flex flex-row items-center space-x-4 p-4">
-        <img src={group.avatar_url || `https://via.placeholder.com/150/33FF57/FFFFFF?text=${group.name.substring(0, 2)}`} alt={group.name} className="w-16 h-16 rounded-full object-cover border-2 border-blue-500" />
+        <Image 
+          src={avatarSrc || 'https://via.placeholder.com/64'} 
+          alt={group.name}
+          width={64}
+          height={64}
+          className="w-16 h-16 rounded-full object-cover border-2 border-blue-500" 
+        />
         <div className="flex-grow">
           <CardTitle className="text-xl font-semibold text-gray-900">{group.name}</CardTitle>
           <p className="text-sm text-gray-500 flex items-center"><FaUsers className="mr-1" /> {group.members_count || 0} membre{((group.members_count || 0) > 1 || (group.members_count || 0) === 0) ? 's' : ''}</p>

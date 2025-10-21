@@ -10,6 +10,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- ENUMS ---
+
+enum RoleInGroup {
+  ADMIN
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 // --- TABLES POUR NEXTAUTH.JS ---
 
 model Account {
@@ -31,8 +44,6 @@ model Account {
   @@unique([provider, providerAccountId])
 }
 
-
-
 model User {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String?   @db.VarChar(255)
@@ -41,16 +52,16 @@ model User {
   image         String?   @db.Text
   bio           String?   @db.Text
   password      String?   @db.Text // Doit être un hash, donc potentiellement long
+  passwordResetToken      String?   @unique
+  passwordResetExpires    DateTime?
   
   accounts      Account[]
   createdGroups Group[]   @relation("GroupCreator")
   memberships   GroupMember[]
   userBooks     UserBook[]
   userBadges    UserBadge[]
+  joinRequests  GroupJoinRequest[]
 }
-
-
-
 
 // --- TABLES DE L'APPLICATION ---
 
@@ -65,19 +76,34 @@ model Group {
   created_by_id   String      @db.Uuid
   creator         User        @relation("GroupCreator", fields: [created_by_id], references: [id])
   members         GroupMember[]
+  joinRequests    GroupJoinRequest[]
 }
 
 model GroupMember {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   group_id  String   @db.Uuid
   user_id   String   @db.Uuid
-  role      String   @default("member") @db.VarChar(50)
+  role      RoleInGroup @default(MEMBER)
   joined_at DateTime @default(now())
 
   group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([group_id, user_id])
+}
+
+model GroupJoinRequest {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId   String   @db.Uuid
+  userId    String   @db.Uuid
+  status    InvitationStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
 }
 
 model Book {

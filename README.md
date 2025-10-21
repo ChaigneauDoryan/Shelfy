@@ -1,35 +1,105 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Codex - Social Book Tracking App
 
-## Getting Started
+Codex is a full-stack web application designed for book lovers to track their reading progress, discover new books, and connect with others in reading groups.
 
-First, run the development server:
+## ✨ Key Features
 
+- **Personal Library:** Add books to your collection, track your reading status (e.g., Currently Reading, Finished), and view your reading history.
+- **Social Groups:** Create or join reading groups with friends. Share progress and discuss books together.
+- **Reading Activity:** Visualize your reading habits with charts and stats.
+- **User Profiles:** Customize your profile, upload an avatar, and see your reading statistics.
+- **Book Discovery:** Search for new books to add to your library.
+- **Interactive Discussions:** Leave comments and notes on books you are reading.
+
+## 🛠️ Tech Stack
+
+- **Framework:** [Next.js](https://nextjs.org/) (App Router)
+- **Language:** [TypeScript](https://www.typescriptlang.org/)
+- **Database:** [PostgreSQL](https://www.postgresql.org/) with [Prisma ORM](https://www.prisma.io/)
+- **Authentication:** [NextAuth.js](https://next-auth.js.org/)
+- **Styling:** [Tailwind CSS](https://tailwindcss.com/) & [shadcn/ui](https://ui.shadcn.com/)
+- **Deployment:** [Vercel](https://vercel.com/)
+
+## 🚀 Getting Started
+
+Follow these instructions to set up the project locally.
+
+### 1. Prerequisites
+
+- [Node.js](https://nodejs.org/en/) (v18 or later)
+- [npm](https://www.npmjs.com/)
+- [PostgreSQL](https://www.postgresql.org/download/) running locally or on a server.
+
+### 2. Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository-url>
+    cd Codex
+    ```
+
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+
+### 3. Environment Setup
+
+1.  Create a `.env.local` file in the root of the project by copying the example file:
+    ```bash
+    cp .env .env.local
+    ```
+
+2.  Update the variables in `.env.local` with your local configuration. At a minimum, you will need to set:
+    ```env
+    # Prisma
+    DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public"
+
+    # NextAuth
+    NEXTAUTH_URL="http://localhost:3000"
+    NEXTAUTH_SECRET="your-super-secret-key"
+
+    # Google Provider (NextAuth)
+    GOOGLE_CLIENT_ID="your-google-client-id"
+    GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+    # Google Books API
+    GOOGLE_BOOKS_API_KEY="your-google-books-api-key"
+
+    # Resend API for emails
+    RESEND_API_KEY="your_resend_api_key"
+    ```
+
+### 4. Database Setup
+
+1.  **Apply database migrations:** This will create the necessary tables in your database based on the schema.
+    ```bash
+    npx prisma migrate dev
+    ```
+
+2.  **(Optional) Seed the database:** This will populate the database with initial data.
+    ```bash
+    npx prisma db seed
+    ```
+
+### 5. Run the Development Server
+
+Start the Next.js development server:
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📂 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/app/(dashboard)`: Contains all the protected routes and pages for the main user dashboard.
+- `src/app/api`: Houses all the API routes for backend functionality.
+- `src/components`: Contains reusable React components used throughout the application.
+- `src/lib`: Includes utility functions, database helpers (Prisma client), and authentication configuration.
+- `prisma`: Holds the database schema (`schema.prisma`), migrations, and seed script.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
+## 🚢 Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 

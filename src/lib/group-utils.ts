@@ -1,5 +1,6 @@
 
 import { prisma } from '@/lib/prisma';
+import { RoleInGroup } from '@prisma/client';
 
 function generateCode(length: number) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -31,7 +32,7 @@ export async function createGroup(createGroupDto: { name: string; description?: 
       data: {
         group_id: newGroup.id,
         user_id: userId,
-        role: 'admin',
+        role: RoleInGroup.ADMIN,
       },
     });
 
@@ -54,7 +55,7 @@ export async function deleteGroup(groupId: string, userId: string): Promise<void
     },
   });
 
-  if (!member || member.role !== 'admin') {
+  if (!member || member.role !== RoleInGroup.ADMIN) {
     throw new Error('User is not an admin of this group.');
   }
 
@@ -101,7 +102,7 @@ export async function joinGroup(invitationCode: string, userId: string) {
     data: {
       group_id: group.id,
       user_id: userId,
-      role: 'member',
+      role: RoleInGroup.MEMBER,
     },
   });
 
@@ -142,8 +143,8 @@ export async function regenerateInvitationCode(groupId: string, userId: string) 
     select: { role: true },
   });
 
-  if (!member || (member.role !== 'admin' && member.role !== 'owner')) {
-    throw new Error('Unauthorized: User is not an admin or owner of this group.');
+  if (!member || member.role !== RoleInGroup.ADMIN) {
+    throw new Error('Unauthorized: User is not an admin of this group.');
   }
 
   const newCode = generateCode(10);

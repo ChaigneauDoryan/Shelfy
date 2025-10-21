@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FcGoogle } from 'react-icons/fc';
+import Link from 'next/link';
 
 const formSchema = z.object({
   email: z.string().email({ message: "Veuillez saisir une adresse e-mail valide." }),
@@ -113,6 +114,11 @@ function LoginFormContent() {
                 </FormItem>
               )}
             />
+            <div className="text-sm text-right">
+              <Link href="/auth/forgot-password" className="font-medium text-primary hover:underline">
+                Mot de passe oublié ?
+              </Link>
+            </div>
             <Button type="submit" className="w-full">Se connecter</Button>
           </form>
         </Form>
