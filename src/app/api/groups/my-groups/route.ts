@@ -17,6 +17,7 @@ export async function GET(_request: Request) {
       include: {
         group: {
           include: {
+            members: true,
             _count: {
               select: { members: true },
             },
@@ -25,11 +26,18 @@ export async function GET(_request: Request) {
       },
     });
 
-    const formattedGroups = myGroups.map(member => ({
-      ...member.group,
-      members_count: member.group._count.members,
-      user_role: member.role,
-    }));
+    const formattedGroups = myGroups.map(member => {
+      const adminCount = member.group.members.filter(m => m.role === 'ADMIN').length;
+      const memberCount = member.group.members.length;
+
+      return {
+        ...member.group,
+        members_count: member.group._count.members,
+        user_role: member.role,
+        adminCount,
+        memberCount,
+      };
+    });
 
     return NextResponse.json(formattedGroups);
   } catch (error) {

@@ -1,4 +1,3 @@
-
 import { prisma } from './prisma';
 
 // This function will be called when a user's book status is updated to 'finished'
@@ -98,4 +97,129 @@ async function awardBadge(userId: string, badgeId: number) {
   }
 
   return null;
+}
+
+export async function checkAndAwardGroupCreationBadges(userId: string) {
+  const awardedBadges = [];
+
+  const count = await prisma.group.count({
+    where: {
+      created_by_id: userId,
+    },
+  });
+
+  if (count === null) {
+    console.error('Error fetching created group count.');
+    return [];
+  }
+
+  if (count >= 1) {
+    const badge = await awardBadge(userId, 6); // Initiateur
+    if (badge) awardedBadges.push(badge);
+  }
+  if (count >= 3) {
+    const badge = await awardBadge(userId, 7); // Bâtisseur
+    if (badge) awardedBadges.push(badge);
+  }
+  if (count >= 5) {
+    const badge = await awardBadge(userId, 8); // Architecte
+    if (badge) awardedBadges.push(badge);
+  }
+
+  return awardedBadges;
+}
+
+export async function checkAndAwardGroupMembershipBadges(userId: string) {
+  const awardedBadges = [];
+
+  const count = await prisma.groupMember.count({
+    where: {
+      user_id: userId,
+    },
+  });
+
+  if (count === null) {
+    console.error('Error fetching group membership count.');
+    return [];
+  }
+
+  if (count >= 1) {
+    const badge = await awardBadge(userId, 9); // Social
+    if (badge) awardedBadges.push(badge);
+  }
+  if (count >= 3) {
+    const badge = await awardBadge(userId, 10); // Explorateur
+    if (badge) awardedBadges.push(badge);
+  }
+  if (count >= 5) {
+    const badge = await awardBadge(userId, 11); // Collectionneur
+    if (badge) awardedBadges.push(badge);
+  }
+
+  return awardedBadges;
+}
+
+export async function checkAndAwardGroupActivityBadges(userId: string) {
+  const awardedBadges = [];
+
+  const memberships = await prisma.groupMember.findMany({
+    where: {
+      user_id: userId,
+    },
+    orderBy: {
+      joined_at: 'asc',
+    },
+  });
+
+  if (memberships.length > 0) {
+    const now = new Date();
+    const oneMonth = 30 * 24 * 60 * 60 * 1000;
+    const threeMonths = 3 * oneMonth;
+    const oneYear = 12 * oneMonth;
+
+    for (const membership of memberships) {
+      const duration = now.getTime() - new Date(membership.joined_at).getTime();
+
+      if (duration >= oneMonth) {
+        const badge = await awardBadge(userId, 12); // Actif
+        if (badge) awardedBadges.push(badge);
+      }
+      if (duration >= threeMonths) {
+        const badge = await awardBadge(userId, 13); // Engagé
+        if (badge) awardedBadges.push(badge);
+      }
+      if (duration >= oneYear) {
+        const badge = await awardBadge(userId, 14); // Pilier de la communauté
+        if (badge) awardedBadges.push(badge);
+      }
+    }
+  }
+
+  return awardedBadges;
+}
+
+export async function checkAndAwardInvitationBadges(userId: string) {
+  const awardedBadges = [];
+
+  const count = await prisma.groupMember.count({
+    where: {
+      invited_by_id: userId,
+    },
+  });
+
+  if (count === null) {
+    console.error('Error fetching invitation count.');
+    return [];
+  }
+
+  if (count >= 5) {
+    const badge = await awardBadge(userId, 15); // Recruteur
+    if (badge) awardedBadges.push(badge);
+  }
+  if (count >= 10) {
+    const badge = await awardBadge(userId, 16); // Ambassadeur
+    if (badge) awardedBadges.push(badge);
+  }
+
+  return awardedBadges;
 }

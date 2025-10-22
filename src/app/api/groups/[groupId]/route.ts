@@ -41,7 +41,10 @@ export async function GET(request: Request, { params }: { params: { groupId: str
       return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
     }
 
-    return NextResponse.json(group);
+    const adminCount = group.members.filter(member => member.role === 'ADMIN').length;
+    const memberCount = group.members.length;
+
+    return NextResponse.json({ ...group, adminCount, memberCount });
   } catch (error) {
     console.error('Error fetching group:', error);
     return NextResponse.json({ message: 'Failed to fetch group' }, { status: 500 });
@@ -75,12 +78,13 @@ export async function PATCH(request: Request, { params }: { params: { groupId: s
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
+  const userId = session.user.id;
   const { groupId } = params;
   const updateGroupDto = await request.json();
 
   try {
     
-    const group = await updateGroup(groupId, updateGroupDto);
+    const group = await updateGroup(groupId, updateGroupDto, userId);
     return NextResponse.json(group);
   } catch (error: any) {
     console.error('Error updating group:', error.message);

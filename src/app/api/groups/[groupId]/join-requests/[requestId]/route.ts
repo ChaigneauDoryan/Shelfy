@@ -60,6 +60,7 @@ export async function PUT(request: Request, { params }: { params: { groupId: str
             group_id: groupId,
             user_id: joinRequest.userId,
             role: RoleInGroup.MEMBER, // New members are always MEMBER
+            invited_by_id: userId,
           },
         });
 
@@ -69,6 +70,9 @@ export async function PUT(request: Request, { params }: { params: { groupId: str
           data: { status: InvitationStatus.ACCEPTED },
         });
       });
+
+      await checkAndAwardGroupMembershipBadges(joinRequest.userId);
+      await checkAndAwardInvitationBadges(userId);
 
       // Send email notification to the user that their request was accepted
       if (joinRequest.user.email) {

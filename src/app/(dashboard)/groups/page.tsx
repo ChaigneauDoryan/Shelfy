@@ -27,6 +27,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 type GroupWithMembership = Group & {
   members_count: number;
   user_role: RoleInGroup;
+  adminCount: number;
+  memberCount: number;
 };
 
 export default function GroupsPage() {

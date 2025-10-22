@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth'; // Helper à créer
 import { joinGroup } from '@/lib/group-utils';
+import { checkAndAwardGroupMembershipBadges, checkAndAwardInvitationBadges } from '@/lib/badge-utils';
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -17,6 +18,10 @@ export async function POST(request: Request) {
 
   try {
     const result = await joinGroup(invitationCode, userId);
+    await checkAndAwardGroupMembershipBadges(userId);
+    if (result.inviterId) {
+      await checkAndAwardInvitationBadges(result.inviterId);
+    }
     return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error joining group:', error.message);

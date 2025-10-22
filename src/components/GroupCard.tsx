@@ -143,12 +143,12 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
     }
   };
 
-  const isAdmin = group.user_role === 'admin';
+  const isAdmin = group.user_role === 'ADMIN';
 
   const avatarSrc = group.avatar_url || (group.name ? generateAvatarFromText(group.name, 64) : undefined);
 
   return (
-    <Card key={group.id} className="min-w-[400px] overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out flex flex-col">
+    <Card key={group.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out flex flex-col">
       <CardHeader className="flex flex-row items-center space-x-4 p-4">
         <Image 
           src={avatarSrc || 'https://via.placeholder.com/64'} 
@@ -186,9 +186,9 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
         {isAdmin && currentInvitationCode && (
           <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
             <p className="text-sm text-gray-600 mb-1">Code d'invitation :</p>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 w-full">
+            <div className="flex flex-col gap-2 w-full">
               <span className="font-mono text-lg tracking-widest text-gray-800 block">{currentInvitationCode}</span>
-              <div className="flex items-center space-x-2 flex-shrink-0">
+              <div className="flex items-center space-x-2">
                 <Button size="sm" variant="ghost" onClick={handleCopyCode}>Copier</Button>
                 <Button size="sm" variant="outline" onClick={handleRegenerateCode}>Régénérer</Button>
               </div>
@@ -199,7 +199,7 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
       </CardContent>
       <div className="p-4 pt-0 flex space-x-2">
         <Button className="flex-1 bg-green-500 hover:bg-green-600 text-sm px-3 py-2">Voir le groupe</Button>
-        {!isAdmin && (
+        {!(isAdmin && group.adminCount === 1 && group.memberCount === 1) && (
           <Button
             variant="outline"
             className="flex-1 text-sm px-3 py-2"

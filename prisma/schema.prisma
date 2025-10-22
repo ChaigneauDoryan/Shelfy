@@ -61,6 +61,7 @@ model User {
   userBooks     UserBook[]
   userBadges    UserBadge[]
   joinRequests  GroupJoinRequest[]
+  invited_users GroupMember[] @relation("InvitedBy")
 }
 
 // --- TABLES DE L'APPLICATION ---
@@ -88,6 +89,9 @@ model GroupMember {
 
   group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
   user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  invited_by_id String? @db.Uuid
+  invited_by    User?   @relation("InvitedBy", fields: [invited_by_id], references: [id])
 
   @@unique([group_id, user_id])
 }

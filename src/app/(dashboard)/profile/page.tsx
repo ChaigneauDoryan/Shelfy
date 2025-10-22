@@ -62,6 +62,27 @@ export default function ProfilePage() {
     }
   }, [session, data, form]);
 
+  useEffect(() => {
+    const checkBadges = async () => {
+      if (userId) {
+        const response = await fetch('/api/profile/check-badges', { method: 'POST' });
+        const data = await response.json();
+        console.log('Check badges response:', data);
+        if (data.awardedBadges && Array.isArray(data.awardedBadges)) {
+          data.awardedBadges.forEach((badge: any) => {
+            console.log('Awarding badge:', badge);
+            toast({
+              title: 'Nouveau badge débloqué !',
+              description: `Vous avez obtenu le badge : ${badge.name}`,
+            });
+          });
+        }
+        mutate(); // Revalidate the data to show new badges
+      }
+    };
+    checkBadges();
+  }, [userId, mutate, toast]);
+
   async function onSubmit(values: ProfileFormValues) {
     if (!userId) return;
 

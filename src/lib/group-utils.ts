@@ -33,6 +33,7 @@ export async function createGroup(createGroupDto: { name: string; description?: 
         group_id: newGroup.id,
         user_id: userId,
         role: RoleInGroup.ADMIN,
+        invited_by_id: userId,
       },
     });
 
@@ -66,7 +67,23 @@ export async function deleteGroup(groupId: string, userId: string): Promise<void
   });
 }
 
-export async function updateGroup(groupId: string, updateGroupDto: { name?: string; description?: string; avatar_url?: string }) {
+export async function updateGroup(groupId: string, updateGroupDto: { name?: string; description?: string; avatar_url?: string }, userId: string) {
+  const member = await prisma.groupMember.findUnique({
+    where: {
+      group_id_user_id: {
+        group_id: groupId,
+        user_id: userId,
+      },
+    },
+    select: {
+      role: true,
+    },
+  });
+
+  if (!member || member.role !== RoleInGroup.ADMIN) {
+    throw new Error('User is not an admin of this group.');
+  }
+
   const updatedGroup = await prisma.group.update({
     where: { id: groupId },
     data: updateGroupDto,
@@ -103,10 +120,11 @@ export async function joinGroup(invitationCode: string, userId: string) {
       group_id: group.id,
       user_id: userId,
       role: RoleInGroup.MEMBER,
+      invited_by_id: inviterId || group.created_by_id,
     },
   });
 
-  return { message: 'Groupe rejoint avec succès !' };
+  return { message: 'Groupe rejoint avec succès !', inviterId: inviterId || group.created_by_id };
 }
 
 export async function leaveGroup(groupId: string, userId: string) {
@@ -121,6 +139,27 @@ export async function leaveGroup(groupId: string, userId: string) {
 
   if (!existingMember) {
     throw new Error("Vous n'êtes pas membre de ce groupe ou le groupe n'existe pas.");
+  }
+
+  if (existingMember.role === RoleInGroup.ADMIN) {
+    const adminCount = await prisma.groupMember.count({
+      where: {
+        group_id: groupId,
+        role: RoleInGroup.ADMIN,
+      },
+    });
+
+    if (adminCount === 1) {
+      const memberCount = await prisma.groupMember.count({
+        where: {
+          group_id: groupId,
+        },
+      });
+
+      if (memberCount === 1) {
+        throw new Error("Vous êtes le dernier membre et l'administrateur de ce groupe. Vous ne pouvez pas le quitter.");
+      }
+    }
   }
 
   await prisma.groupMember.delete({

@@ -24,6 +24,17 @@ async function main() {
     { id: 2, name: 'Apprenti Lecteur', description: 'Terminer 5 livres.', icon_url: null },
     { id: 3, name: 'Rat de Bibliothèque', description: 'Terminer 20 livres.', icon_url: null },
     { id: 5, name: 'Curieux', description: 'Terminer des livres de 3 genres différents.', icon_url: null },
+    { id: 6, name: 'Initiateur', description: 'Créer votre premier groupe.', icon_url: null },
+    { id: 7, name: 'Bâtisseur', description: 'Créer 3 groupes.', icon_url: null },
+    { id: 8, name: 'Architecte', description: 'Créer 5 groupes.', icon_url: null },
+    { id: 9, name: 'Social', description: 'Rejoindre votre premier groupe.', icon_url: null },
+    { id: 10, name: 'Explorateur', description: 'Rejoindre 3 groupes différents.', icon_url: null },
+    { id: 11, name: 'Collectionneur', description: 'Rejoindre 5 groupes différents.', icon_url: null },
+    { id: 12, name: 'Actif', description: 'Être membre d\'un groupe pendant plus d\'un mois.', icon_url: null },
+    { id: 13, name: 'Engagé', description: 'Être membre d\'un groupe pendant plus de 3 mois.', icon_url: null },
+    { id: 14, name: 'Pilier de la communauté', description: 'Être membre d\'un groupe pendant plus d\'un an.', icon_url: null },
+    { id: 15, name: 'Recruteur', description: 'Inviter 5 membres dans un groupe.', icon_url: null },
+    { id: 16, name: 'Ambassadeur', description: 'Inviter 10 membres dans un groupe.', icon_url: null }
   ];
 
   for (const badge of defaultBadges) {
