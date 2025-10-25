@@ -148,6 +148,10 @@ export default function LibraryPage() {
   const { toast } = useToast();
   const router = useRouter();
 
+  useEffect(() => {
+    document.title = 'Shelfy - Mes Livres';
+  }, []);
+
   const fetchBooks = async (statusFilter?: string, archivedFilter?: boolean | undefined) => {
     if (!user?.id) return;
     setLoading(true);

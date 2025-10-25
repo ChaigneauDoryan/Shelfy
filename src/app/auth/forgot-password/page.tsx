@@ -8,7 +8,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -19,6 +19,10 @@ type ForgotPasswordFormValues = z.infer<typeof formSchema>;
 export default function ForgotPasswordPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState<boolean>(false);
+
+  useEffect(() => {
+    document.title = 'Shelfy - Forgot Password';
+  }, []);
 
   const form = useForm<ForgotPasswordFormValues>({
     resolver: zodResolver(formSchema),

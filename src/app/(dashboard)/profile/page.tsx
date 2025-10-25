@@ -38,9 +38,13 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 export default function ProfilePage() {
   const { data: session, status } = useSession();
   const userId = session?.user?.id;
+  const { toast } = useToast();
+
+  useEffect(() => {
+    document.title = 'Shelfy - Mon Profil';
+  }, []);
 
   const { data, error, isLoading, mutate } = useSWR(userId ? '/api/profile/stats' : null, fetcher);
-  const { toast } = useToast();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),

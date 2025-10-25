@@ -7,6 +7,11 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { CurrentlyReading, CurrentlyReadingSkeleton } from "@/components/dashboard/CurrentlyReading";
 import { RecentlyFinished, RecentlyFinishedSkeleton } from "@/components/dashboard/RecentlyFinished";
 import { redirect } from "next/navigation";
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Shelfy - Dashboard',
+};
 
 async function CurrentlyReadingData() {
   try {

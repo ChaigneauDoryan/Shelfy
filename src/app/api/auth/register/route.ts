@@ -2,6 +2,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { Resend } from 'resend';
+import EmailVerificationEmail from '@/emails/EmailVerificationEmail';
+import crypto from 'crypto';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: Request) {
   try {
@@ -11,31 +16,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Missing fields' }, { status: 400 });
     }
 
-    // Vérifier si l'utilisateur existe déjà
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
-    if (existingUser) {
-      return NextResponse.json({ message: 'User already exists' }, { status: 409 }); // 409 Conflict
+    if (existingUser && existingUser.emailVerified) {
+      return NextResponse.json({ message: 'User already exists' }, { status: 409 });
     }
 
-    // Hacher le mot de passe
-    const hashedPassword = await bcrypt.hash(password, 10); // 10 est le "salt round"
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
+    const emailVerificationTokenExpires = new Date(Date.now() + 24 * 3600 * 1000); // 24 hours
 
-    // Créer l'utilisateur
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-      },
+    if (existingUser) {
+      await prisma.user.update({
+        where: { email },
+        data: {
+          password: hashedPassword,
+          emailVerificationToken,
+          emailVerificationTokenExpires,
+        },
+      });
+    } else {
+      await prisma.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          emailVerificationToken,
+          emailVerificationTokenExpires,
+        },
+      });
+    }
+
+    const verificationLink = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${emailVerificationToken}`;
+
+    await resend.emails.send({
+      from: `Shelfy <${process.env.RESEND_FROM_EMAIL}>`,
+      to: email,
+      subject: 'Vérifiez votre adresse e-mail',
+      react: EmailVerificationEmail({ validationLink: verificationLink }),
     });
 
-    // Ne pas retourner le mot de passe haché
-    const { password: _, ...userWithoutPassword } = user;
-
-    return NextResponse.json(userWithoutPassword, { status: 201 }); // 201 Created
+    return NextResponse.json({ message: 'Un e-mail de vérification a été envoyé.' }, { status: 201 });
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json({ message: 'An unexpected error occurred.' }, { status: 500 });

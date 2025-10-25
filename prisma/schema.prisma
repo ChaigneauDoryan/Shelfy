@@ -54,6 +54,8 @@ model User {
   password      String?   @db.Text // Doit être un hash, donc potentiellement long
   passwordResetToken      String?   @unique
   passwordResetExpires    DateTime?
+  emailVerificationToken      String?   @unique
+  emailVerificationTokenExpires DateTime?
   
   accounts      Account[]
   createdGroups Group[]   @relation("GroupCreator")

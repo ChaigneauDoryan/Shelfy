@@ -29,6 +29,10 @@ function ResetPasswordPageContent() {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = 'Shelfy - Reset Password';
+  }, []);
+
+  useEffect(() => {
     setToken(searchParams.get('token'));
   }, [searchParams]);
 

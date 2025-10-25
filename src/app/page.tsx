@@ -3,6 +3,11 @@ import Link from "next/link";
 import { FaBookReader, FaUsers, FaSearch, FaQuoteLeft } from 'react-icons/fa';
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Shelfy - Home',
+};
 
 export default async function HomePage() {
   const session = await getSession();

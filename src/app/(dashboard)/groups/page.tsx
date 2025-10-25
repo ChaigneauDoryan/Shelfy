@@ -46,6 +46,11 @@ export default function GroupsPage() {
     queryClient.invalidateQueries({ queryKey: ['discoverGroups'] });
   }, [queryClient, user?.id]);
 
+  useEffect(() => {
+    document.title = 'Shelfy - Groups';
+    fetchAndSetGroups();
+  }, [fetchAndSetGroups]);
+
   const { data: myGroups, isLoading: isLoadingMyGroups } = useQuery<GroupWithMembership[]>({
     queryKey: ['myGroups', user?.id],
     queryFn: async () => {

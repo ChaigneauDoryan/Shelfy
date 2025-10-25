@@ -32,6 +32,10 @@ function LoginFormContent() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = 'Shelfy - Login';
+  }, []);
+
+  useEffect(() => {
     const message = searchParams.get('message');
     if (message === 'SignupSuccessful') {
       setSuccessMessage('Inscription réussie ! Vous pouvez maintenant vous connecter.');
@@ -61,7 +65,11 @@ function LoginFormContent() {
     });
 
     if (result?.error) {
-      setError("Email ou mot de passe invalide.");
+      if (result.error === 'Email not verified') {
+        setError('Votre e-mail n\'a pas été vérifié. Veuillez vérifier votre boîte de réception.');
+      } else {
+        setError("Email ou mot de passe invalide.");
+      }
     } else if (result?.ok) {
       // Redirection manuelle après une connexion réussie
       router.push('/dashboard');

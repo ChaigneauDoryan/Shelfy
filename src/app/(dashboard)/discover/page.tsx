@@ -1,5 +1,10 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Shelfy - Découvrir',
+};
 
 export default function DiscoverPage() {
   return (

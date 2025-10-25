@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import { generateAvatarFromText } from '@/lib/avatar-utils';
+import Link from 'next/link';
 
 interface GroupCardProps {
   group: {
@@ -198,7 +199,9 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
         <p className="text-sm text-gray-600 flex items-center mt-4"><FaBookOpen className="mr-1" /> Lecture actuelle: <span className="font-medium ml-1">Non défini</span></p>
       </CardContent>
       <div className="p-4 pt-0 flex space-x-2">
-        <Button className="flex-1 bg-green-500 hover:bg-green-600 text-sm px-3 py-2">Voir le groupe</Button>
+        <Link href={`/groups/${group.id}`} className="flex-1">
+          <Button className="w-full bg-green-500 hover:bg-green-600 text-sm px-3 py-2">Voir le groupe</Button>
+        </Link>
         {!(isAdmin && group.adminCount === 1 && group.memberCount === 1) && (
           <Button
             variant="outline"

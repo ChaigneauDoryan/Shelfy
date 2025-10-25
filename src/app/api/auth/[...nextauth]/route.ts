@@ -38,6 +38,10 @@ export const authOptions: AuthOptions = {
           throw new Error('Invalid credentials');
         }
 
+        if (!user.emailVerified) {
+          throw new Error('Email not verified');
+        }
+
         // Retourne l'objet utilisateur complet pour la session
         return user;
       },

@@ -1,4 +1,3 @@
-
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
 
@@ -197,4 +196,16 @@ export async function regenerateInvitationCode(groupId: string, userId: string) 
   });
 
   return updatedGroup;
+}
+
+export async function getGroup(groupId: string) {
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+  });
+
+  if (!group) {
+    throw new Error('Group not found.');
+  }
+
+  return group;
 }
