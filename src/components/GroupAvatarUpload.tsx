@@ -1,93 +1,204 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
-import { FaUpload, FaSpinner } from 'react-icons/fa'
+import { useState, useRef } from 'react';
+import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { generateAvatarFromText } from '@/lib/avatar-utils';
 
 interface GroupAvatarUploadProps {
+  groupId: string;
+  groupName: string;
+  initialAvatarUrl: string | null;
   onUpload: (url: string) => void;
-  existingAvatarUrl?: string | null;
-  groupName?: string; // Add groupName prop
 }
 
-export default function GroupAvatarUpload({ onUpload, existingAvatarUrl, groupName }: GroupAvatarUploadProps) {
+function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
+  return centerCrop(
+    makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight),
+    mediaWidth,
+    mediaHeight,
+  );
+}
+
+function getCroppedImg(image: HTMLImageElement, crop: Crop, scale = 1): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d')!;
+
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+
+  const pixelRatio = window.devicePixelRatio;
+
+  const cropPixelWidth = crop.width * scaleX;
+  const cropPixelHeight = crop.height * scaleY;
+  const size = Math.min(cropPixelWidth, cropPixelHeight);
+
+  canvas.width = Math.floor(size * pixelRatio);
+  canvas.height = Math.floor(size * pixelRatio);
+
+  ctx.scale(pixelRatio, pixelRatio);
+  ctx.imageSmoothingQuality = 'high';
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const sourceX = crop.x * scaleX + (cropPixelWidth - size) / 2;
+  const sourceY = crop.y * scaleY + (cropPixelHeight - size) / 2;
+
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2, false);
+  ctx.clip();
+
+  ctx.drawImage(
+    image,
+    sourceX,
+    sourceY,
+    size,
+    size,
+    0,
+    0,
+    size,
+    size
+  );
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) {
+        reject(new Error('Canvas is empty'));
+        return;
+      }
+      resolve(blob);
+    }, 'image/png');
+  });
+}
+
+export default function GroupAvatarUpload({ groupId, groupName, initialAvatarUrl, onUpload }: GroupAvatarUploadProps) {
   const [uploading, setUploading] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(existingAvatarUrl || null);
-  const [generatedAvatarUrl, setGeneratedAvatarUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
+  const [src, setSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [scale, setScale] = useState(1);
+  const imgRef = useRef<HTMLImageElement | null>(null);
 
-  useEffect(() => {
-    if (existingAvatarUrl) {
-      setAvatarUrl(existingAvatarUrl);
-    } else if (groupName && groupName.length > 0) {
-      setGeneratedAvatarUrl(generateAvatarFromText(groupName));
-    } else {
-      setGeneratedAvatarUrl(null); // Clear generated avatar if groupName is empty
+  const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setCrop(undefined);
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setSrc(reader.result as string));
+      reader.readAsDataURL(e.target.files[0]);
+      setIsModalOpen(true);
     }
-  }, [existingAvatarUrl, groupName]);
+  };
 
-  async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
-    try {
-      setUploading(true);
-
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('Vous devez sélectionner une image à télécharger.');
-      }
-
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const uniqueId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      const fileName = `group-${Date.now()}-${uniqueId}.${fileExt}`;
-
-      // Appel à notre API d'upload Vercel Blob
-      const response = await fetch(`/api/avatar/upload?filename=${fileName}`,
-        {
-          method: 'POST',
-          body: file,
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to upload image to Vercel Blob');
-      }
-
-      const { url: publicUrl } = await response.json();
-
-      setAvatarUrl(publicUrl);
-      onUpload(publicUrl);
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
-      alert(errorMessage);
-    } finally {
-      setUploading(false);
-    }
+  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const { width, height } = e.currentTarget;
+    setCrop(centerAspectCrop(width, height, 1));
   }
 
-  const displayAvatar = avatarUrl || generatedAvatarUrl;
+  const handleCrop = async () => {
+    if (imgRef.current && crop?.width && crop?.height) {
+      setUploading(true);
+      setIsModalOpen(false);
+
+      try {
+        const croppedImageBlob = await getCroppedImg(imgRef.current, crop, scale);
+        const uniqueId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const fileName = `group-${groupId}-${Date.now()}-${uniqueId}.png`;
+
+        const response = await fetch(`/api/groups/${groupId}/avatar/upload?filename=${fileName}`,
+          {
+            method: 'POST',
+            body: croppedImageBlob,
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to upload image to Vercel Blob');
+        }
+
+        const { url: publicUrl } = await response.json();
+        
+        setAvatarUrl(publicUrl);
+        onUpload(publicUrl);
+
+      } catch (error: any) {
+        alert('Erreur: ' + error.message);
+      } finally {
+        setUploading(false);
+        setSrc(null);
+        setScale(1);
+      }
+    }
+  };
+
+  const groupAvatar = avatarUrl || generateAvatarFromText(groupName, 200);
 
   return (
     <div className="flex flex-col items-center space-y-4">
-      <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-        {displayAvatar ? (
-          <Image src={displayAvatar} alt="Avatar du groupe" width={128} height={128} className="w-full h-full object-cover" />
-        ) : (
-          <span className="text-gray-500">Avatar</span>
-        )}
-      </div>
+      <img 
+        src={groupAvatar}
+        alt="Avatar"
+        className="w-32 h-32 rounded-full object-cover bg-gray-200"
+      />
       <div>
-        <label htmlFor="group-avatar-upload" className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg inline-flex items-center">
-          {uploading ? <FaSpinner className="animate-spin mr-2" /> : <FaUpload className="mr-2" />}
-          <span>{uploading ? 'Chargement...' : 'Choisir une image'}</span>
+        <label htmlFor="avatar-upload" className="cursor-pointer bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">
+          {uploading ? 'Chargement...' : 'Changer l\'avatar'}
         </label>
         <input
-          id="group-avatar-upload"
+          id="avatar-upload"
           type="file"
           accept="image/*"
-          onChange={uploadAvatar}
+          onChange={onSelectFile}
           disabled={uploading}
           className="hidden"
         />
       </div>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Recadrer votre avatar</DialogTitle>
+          </DialogHeader>
+          {src && (
+            <div className="flex flex-col items-center space-y-4">
+              <ReactCrop
+                crop={crop}
+                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                circularCrop
+                aspect={1}
+              >
+                <img 
+                  ref={imgRef} 
+                  src={src} 
+                  alt="Source"
+                  style={{ transform: `scale(${scale})` }}
+                  onLoad={onImageLoad}
+                />
+              </ReactCrop>
+              <div className="w-full space-y-2">
+                  <label htmlFor="zoom-slider" className="text-sm">Zoom</label>
+                  <Input 
+                    id="zoom-slider"
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    value={scale}
+                    onChange={(e) => setScale(Number(e.target.value))}
+                    className="w-full"
+                  />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsModalOpen(false); setSrc(null); }}>Annuler</Button>
+            <Button onClick={handleCrop}>Appliquer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

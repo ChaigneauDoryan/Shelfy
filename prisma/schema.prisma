@@ -54,8 +54,6 @@ model User {
   password      String?   @db.Text // Doit être un hash, donc potentiellement long
   passwordResetToken      String?   @unique
   passwordResetExpires    DateTime?
-  emailVerificationToken      String?   @unique
-  emailVerificationTokenExpires DateTime?
   
   accounts      Account[]
   createdGroups Group[]   @relation("GroupCreator")
@@ -64,6 +62,7 @@ model User {
   userBadges    UserBadge[]
   joinRequests  GroupJoinRequest[]
   invited_users GroupMember[] @relation("InvitedBy")
+  votes         Vote[]
 }
 
 // --- TABLES DE L'APPLICATION ---
@@ -80,6 +79,7 @@ model Group {
   creator         User        @relation("GroupCreator", fields: [created_by_id], references: [id])
   members         GroupMember[]
   joinRequests    GroupJoinRequest[]
+  books           GroupBook[]
 }
 
 model GroupMember {
@@ -128,6 +128,34 @@ model Book {
 
   created_by_id   String      @db.Uuid
   userBooks       UserBook[]
+  groups          GroupBook[]
+}
+
+model GroupBook {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_id  String   @db.Uuid
+  book_id   String   @db.Uuid
+  status    String
+  added_at  DateTime @default(now())
+  finished_at DateTime?
+
+  group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  book  Book  @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  votes Vote[]
+
+  @@unique([group_id, book_id])
+}
+
+model Vote {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_book_id String   @db.Uuid
+  user_id      String   @db.Uuid
+  created_at   DateTime @default(now())
+
+  groupBook GroupBook @relation(fields: [group_book_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([group_book_id, user_id])
 }
 
 model UserBook {

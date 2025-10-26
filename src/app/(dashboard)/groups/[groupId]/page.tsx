@@ -1,21 +1,61 @@
+import { getSession } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { notFound } from 'next/navigation';
+import GroupDetailsPage from './GroupDetailsPage';
 
-import { getGroup } from '@/lib/group-utils';
-import { Metadata } from 'next';
+async function getGroup(groupId: string, userId: string) {
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    include: {
+      members: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+            },
+          },
+        },
+      },
+      books: {
+        where: {
+          status: { in: ['CURRENTLY_READING', 'FINISHED', 'SUGGESTED'] },
+        },
+        include: {
+          book: true,
+          votes: true,
+        },
+      },
+    },
+  });
 
-export async function generateMetadata({ params }: { params: { groupId: string } }): Promise<Metadata> {
-  const group = await getGroup(params.groupId);
-  return {
-    title: `Shelfy - ${group.name}`,
-  };
+  if (!group) {
+    return null;
+  }
+
+  const isMember = group.members.some((member) => member.user_id === userId);
+  if (!isMember) {
+    return null;
+  }
+
+  const adminCount = group.members.filter(member => member.role === 'ADMIN').length;
+  const memberCount = group.members.length;
+
+  return { ...group, adminCount, memberCount };
 }
 
-export default async function GroupDetailsPage({ params }: { params: { groupId: string } }) {
-  const group = await getGroup(params.groupId);
+export default async function GroupPage({ params }: { params: { groupId: string } }) {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    return notFound();
+  }
 
-  return (
-    <div className="space-y-8">
-      <h1 className="text-4xl font-bold">{group.name}</h1>
-      <p className="text-lg text-gray-600">{group.description}</p>
-    </div>
-  );
+  const group = await getGroup(params.groupId, session.user.id);
+
+  if (!group) {
+    return notFound();
+  }
+
+  return <GroupDetailsPage group={group} />;
 }
