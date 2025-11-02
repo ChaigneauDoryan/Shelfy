@@ -43,3 +43,37 @@ export async function DELETE(request: Request, { params }: { params: { groupId: 
     return NextResponse.json({ message: 'Failed to delete suggestion.' }, { status: 500 });
   }
 }
+
+export async function GET(request: Request, { params }: { params: { groupId: string, suggestionId: string } }) {
+  const session = await getSession();
+  if (!session?.user?.id) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { groupId, suggestionId } = params;
+
+  try {
+    const suggestion = await prisma.groupBook.findUnique({
+      where: { id: suggestionId },
+      include: {
+        book: true,
+        pollOptions: {
+          include: {
+            votes: true,
+          },
+        },
+      },
+    });
+
+    if (!suggestion || suggestion.group_id !== groupId || suggestion.status !== 'SUGGESTED') {
+      return NextResponse.json({ message: 'Suggestion not found or not a valid suggestion.' }, { status: 404 });
+    }
+
+    const voteCount = suggestion.pollOptions.reduce((acc, option) => acc + option.votes.length, 0);
+
+    return NextResponse.json({ ...suggestion, voteCount });
+  } catch (error) {
+    console.error('Error fetching suggestion details:', error);
+    return NextResponse.json({ message: 'Failed to fetch suggestion details.' }, { status: 500 });
+  }
+}

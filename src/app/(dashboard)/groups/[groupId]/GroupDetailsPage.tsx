@@ -133,6 +133,25 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
     }
   };
 
+  const handleDeleteSuggestion = async (suggestionId: string) => {
+    const response = await fetch(`/api/groups/${group.id}/suggestions/${suggestionId}`, {
+      method: 'DELETE',
+    });
+
+    if (response.ok) {
+      toast({ title: 'Succès', description: 'Suggestion supprimée avec succès.' });
+      router.refresh();
+    } else {
+      const errorData = await response.json();
+      toast({
+        title: 'Erreur',
+        description: errorData.message || 'Échec de la suppression de la suggestion.',
+        variant: 'destructive',
+      });
+      console.error('Error deleting suggestion:', errorData);
+    }
+  };
+
   
 
   const handlePromote = async (memberId: string) => {
@@ -225,10 +244,15 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
                           <div>
                             <h3 className="font-semibold">{suggestion.book.title}</h3>
                             <p className="text-sm text-gray-500">{suggestion.book.author}</p>
-                            <p className="text-sm text-gray-500">Votes: {suggestion.votes?.length || 0}</p>
+                            <p className="text-sm text-gray-500">Votes: {suggestion.voteCount || 0}</p>
                           </div>
                         </div>
-                        </div>
+                        {session?.user?.id === suggestion.suggested_by_id && (
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteSuggestion(suggestion.id)}>
+                            Supprimer
+                          </Button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </CardContent>
