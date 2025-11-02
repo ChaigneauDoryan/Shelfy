@@ -21,6 +21,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { MoreVertical } from "lucide-react";
 import { generateAvatarFromText } from "@/lib/avatar-utils";
 import JoinRequestsManager from "@/components/JoinRequestsManager";
+import PollManagement from "@/components/PollManagement";
+import PollDisplay from "@/components/PollDisplay";
 
 const groupSettingsSchema = z.object({
   name: z.string().min(2, { message: "Le nom du groupe doit contenir au moins 2 caractères." }),
@@ -203,6 +205,7 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
             <TabsList>
               <TabsTrigger value="currently-reading">Lecture en cours</TabsTrigger>
               <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+              <TabsTrigger value="polls">Sondages</TabsTrigger>
               <TabsTrigger value="history">Historique</TabsTrigger>
               {isAdmin && <TabsTrigger value="settings">Paramètres</TabsTrigger>}
             </TabsList>
@@ -244,7 +247,7 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
                           <div>
                             <h3 className="font-semibold">{suggestion.book.title}</h3>
                             <p className="text-sm text-gray-500">{suggestion.book.author}</p>
-                            <p className="text-sm text-gray-500">Votes: {suggestion.voteCount || 0}</p>
+                            
                           </div>
                         </div>
                         {session?.user?.id === suggestion.suggested_by_id && (
@@ -257,6 +260,18 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+            <TabsContent value="polls">
+              {isAdmin ? (
+                <>
+                  <PollManagement groupId={group.id} />
+                  <div className="mt-8"> {/* Add some spacing */}
+                    <PollDisplay groupId={group.id} />
+                  </div>
+                </>
+              ) : (
+                <PollDisplay groupId={group.id} />
+              )}
             </TabsContent>
             <TabsContent value="history">
               <Card>
