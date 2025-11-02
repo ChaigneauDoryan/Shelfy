@@ -180,60 +180,6 @@ export default function PollManagement({ groupId }: PollManagementProps) {
           <Button onClick={handleCreatePoll} disabled={selectedBookIds.length < 2 || !endDate}>Créer le sondage</Button>
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Sondages actifs</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {activePolls.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucun sondage actif pour le moment.</p>
-          ) : (
-            <div className="space-y-4">
-              {activePolls.map(poll => (
-                <Card key={poll.id} className="p-4">
-                  <CardTitle className="text-lg">Sondage jusqu'au {new Date(poll.end_date).toLocaleString()}</CardTitle>
-                  <div className="mt-2 space-y-2">
-                    {poll.options.map(option => (
-                      <div key={option.id} className="flex items-center space-x-2">
-                        <img src={option.groupBook.book.cover_url || '/file.svg'} alt={option.groupBook.book.title} className="w-8 h-12 object-cover" />
-                        <p>{option.groupBook.book.title} ({option.votes.length} votes)</p>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Sondages passés</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {pastPolls.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Aucun sondage passé.</p>
-          ) : (
-            <div className="space-y-4">
-              {pastPolls.map(poll => (
-                <Card key={poll.id} className="p-4 opacity-70">
-                  <CardTitle className="text-lg">Sondage terminé le {new Date(poll.end_date).toLocaleString()}</CardTitle>
-                  <div className="mt-2 space-y-2">
-                    {poll.options.map(option => (
-                      <div key={option.id} className="flex items-center space-x-2">
-                        <img src={option.groupBook.book.cover_url || '/file.svg'} alt={option.groupBook.book.title} className="w-8 h-12 object-cover" />
-                        <p>{option.groupBook.book.title} ({option.votes.length} votes)</p>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

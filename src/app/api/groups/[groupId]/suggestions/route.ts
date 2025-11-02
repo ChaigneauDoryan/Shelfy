@@ -71,7 +71,7 @@ export async function GET(request: Request, { params }: { params: { groupId: str
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId } = params;
+  const { groupId } = await params;
 
   try {
     const groupSuggestions = await prisma.groupBook.findMany({

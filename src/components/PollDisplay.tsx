@@ -10,13 +10,14 @@ import { useSession } from "next-auth/react";
 
 interface PollDisplayProps {
   groupId: string;
+  isAdmin: boolean; // Nouvelle prop
 }
 
 interface PollWithDetails extends Poll {
   options: (PollOption & { groupBook: { book: Book }, votes: Vote[] })[];
 }
 
-export default function PollDisplay({ groupId }: PollDisplayProps) {
+export default function PollDisplay({ groupId, isAdmin }: PollDisplayProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { data: session } = useSession();
@@ -111,6 +112,45 @@ export default function PollDisplay({ groupId }: PollDisplayProps) {
     }
   };
 
+  const handleSetCurrentReading = async (pollId: string) => {
+    if (!userId) {
+      toast({
+        title: 'Erreur',
+        description: 'Vous devez être connecté pour effectuer cette action.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/groups/${groupId}/polls/${pollId}/set-current-reading`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Échec de la définition de la lecture en cours.');
+      }
+
+      toast({
+        title: 'Succès',
+        description: 'Le livre gagnant a été défini comme lecture en cours.',
+      });
+      router.refresh(); // Re-fetch data for the whole page
+      fetchPolls(); // Refresh local state
+    } catch (error: any) {
+      toast({
+        title: 'Erreur',
+        description: error.message || 'Échec de la définition de la lecture en cours.',
+        variant: 'destructive',
+      });
+      console.error('Error setting current reading book:', error);
+    }
+  };
+
   if (loading) {
     return <p>Chargement des sondages...</p>;
   }
@@ -178,6 +218,15 @@ export default function PollDisplay({ groupId }: PollDisplayProps) {
                         <p className="font-semibold text-green-600">Livre gagnant: {winners[0].groupBook.book.title}</p>
                       ) : (
                         <p className="font-semibold text-yellow-600">Égalité entre: {winners.map(w => w.groupBook.book.title).join(', ')}</p>
+                      )}
+                      {isAdmin && winners.length === 1 && (
+                        <Button
+                          onClick={() => handleSetCurrentReading(poll.id)}
+                          className="mt-2"
+                          size="sm"
+                        >
+                          Définir comme lecture en cours
+                        </Button>
                       )}
                       {poll.options.map(option => (
                         <div key={option.id} className="flex items-center space-x-2">

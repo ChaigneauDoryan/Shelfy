@@ -10,7 +10,7 @@ export async function DELETE(request: Request, { params }: { params: { groupId: 
   }
 
   const userId = session.user.id;
-  const { groupId, suggestionId } = params;
+  const { groupId, suggestionId } = await params;
 
   try {
     const member = await prisma.groupMember.findUnique({
@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: { params: { groupId: str
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId, suggestionId } = params;
+  const { groupId, suggestionId } = await params;
 
   try {
     const suggestion = await prisma.groupBook.findUnique({

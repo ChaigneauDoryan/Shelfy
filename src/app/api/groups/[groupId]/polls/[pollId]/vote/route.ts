@@ -9,7 +9,7 @@ export async function POST(request: Request, { params }: { params: { groupId: st
   }
 
   const userId = session.user.id;
-  const { groupId, pollId } = params;
+  const { groupId, pollId } = await params;
   const { pollOptionId } = await request.json();
 
   if (!pollOptionId) {

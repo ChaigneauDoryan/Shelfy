@@ -10,7 +10,7 @@ export async function POST(request: Request, { params }: { params: { groupId: st
   }
 
   const userId = session.user.id;
-  const { groupId } = params;
+  const { groupId } = await params;
   const { groupBookIds, endDate } = await request.json();
 
   if (!groupBookIds || !Array.isArray(groupBookIds) || groupBookIds.length < 2) {
@@ -75,7 +75,7 @@ export async function GET(request: Request, { params }: { params: { groupId: str
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId } = params;
+  const { groupId } = await params;
 
   try {
     const polls = await prisma.poll.findMany({

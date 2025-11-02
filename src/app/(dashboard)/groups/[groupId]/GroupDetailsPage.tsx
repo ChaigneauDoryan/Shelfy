@@ -224,7 +224,7 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
                   ) : (
                     <div>
                       <p>Aucun livre en cours de lecture.</p>
-                      {isAdmin && <BookSearchDialog onSelectBook={handleSelectBook} />}
+                      
                     </div>
                   )}
                 </CardContent>
@@ -266,7 +266,7 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
                 <>
                   <PollManagement groupId={group.id} />
                   <div className="mt-8"> {/* Add some spacing */}
-                    <PollDisplay groupId={group.id} />
+                    <PollDisplay groupId={group.id} isAdmin={isAdmin} />
                   </div>
                 </>
               ) : (

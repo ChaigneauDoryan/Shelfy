@@ -88,30 +88,73 @@ export const authOptions: AuthOptions = {
     async signIn({ user, account, profile }) {
       console.log('signIn callback', { user, account, profile });
       if (account.provider === 'google') {
-        // Check if user exists
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email },
+          include: { accounts: true }, // Include accounts to check for existing OAuth links
         });
 
         if (existingUser) {
-          return true; // User exists, sign in is allowed
-        }
+          // If user exists, check if the Google account is already linked
+          const googleAccount = existingUser.accounts.find(
+            (acc) => acc.provider === 'google' && acc.providerAccountId === account.providerAccountId
+          );
 
-        // If user does not exist, create a new user
-        try {
-          await prisma.user.create({
-            data: {
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              image: user.image,
-              emailVerified: new Date(),
-            },
-          });
-          return true;
-        } catch (error) {
-          console.error('Error creating user:', error);
-          return false; // Prevent sign in
+          if (googleAccount) {
+            return true; // Google account already linked, allow sign in
+          } else {
+            // User exists but Google account is not linked. Link it.
+            try {
+              await prisma.account.create({
+                data: {
+                  userId: existingUser.id,
+                  type: account.type,
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                  refresh_token: account.refresh_token,
+                  access_token: account.access_token,
+                  expires_at: account.expires_at,
+                  token_type: account.token_type,
+                  scope: account.scope,
+                  id_token: account.id_token,
+                  session_state: account.session_state,
+                },
+              });
+              return true; // Account linked, allow sign in
+            } catch (error) {
+              console.error('Error linking account:', error);
+              return false; // Prevent sign in
+            }
+          }
+        } else {
+          // If user does not exist, create a new user and link the account
+          try {
+            await prisma.user.create({
+              data: {
+                name: user.name,
+                email: user.email,
+                image: user.image,
+                emailVerified: new Date(),
+                accounts: {
+                  create: {
+                    type: account.type,
+                    provider: account.provider,
+                    providerAccountId: account.providerAccountId,
+                    refresh_token: account.refresh_token, // Ensure all fields are included
+                    access_token: account.access_token,
+                    expires_at: account.expires_at,
+                    token_type: account.token_type,
+                    scope: account.scope,
+                    id_token: account.id_token,
+                    session_state: account.session_state,
+                  },
+                },
+              },
+            });
+            return true;
+          } catch (error) {
+            console.error('Error creating user and linking account:', error);
+            return false; // Prevent sign in
+          }
         }
       }
       return true; // For other providers, allow sign in
