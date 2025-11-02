@@ -63,6 +63,19 @@ export async function findOrCreateBook(bookData: any, userId: string) {
   }
 
   // Si non trouvé, créer le livre
+  console.log('Attempting to create new book with data:', {
+    google_books_id: isManual ? null : googleBooksId,
+    isbn: isbn,
+    title: title,
+    author: author,
+    description: description,
+    cover_url: coverUrl,
+    page_count: pageCount,
+    genre: genre,
+    published_date: publishedDate,
+    publisher: publisher,
+    created_by_id: userId,
+  });
   const newBook = await prisma.book.create({
     data: {
       google_books_id: isManual ? null : googleBooksId,
@@ -193,4 +206,14 @@ export async function updateUserBookArchiveStatus(userBookId: string, userId: st
     },
   });
   return updatedUserBook;
+}
+
+export async function fetchBookDetailsFromGoogleBooks(googleBooksId: string) {
+  const response = await fetch(`https://www.googleapis.com/books/v1/volumes/${googleBooksId}`);
+  if (!response.ok) {
+    console.error(`Failed to fetch book details for Google Books ID: ${googleBooksId}`, response.statusText);
+    return null;
+  }
+  const data = await response.json();
+  return data.volumeInfo;
 }

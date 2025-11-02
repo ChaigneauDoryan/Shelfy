@@ -27,7 +27,27 @@ export default function BookSearchDialog({ onSelectBook }: BookSearchDialogProps
   }, [debouncedSearchQuery]);
 
   const handleSelectBook = (book: any) => {
-    onSelectBook(book);
+    console.log('Full book object on select:', book); // Ajout du console.log
+
+    if (!book.id || !book.volumeInfo?.title || !book.volumeInfo?.authors?.length) {
+      // Afficher un message d'erreur à l'utilisateur
+      // Utiliser un toast ou une alerte
+      alert('Impossible de sélectionner ce livre: informations manquantes (ID, titre ou auteur).');
+      return;
+    }
+
+    const bookData = {
+      googleBooksId: String(book.id), // S'assurer que c'est une chaîne
+      title: book.volumeInfo.title,
+      author: book.volumeInfo.authors.join(', '), // authors est garanti d'être un tableau non vide ici
+      coverUrl: book.volumeInfo.imageLinks?.thumbnail,
+      description: book.volumeInfo.description,
+      pageCount: book.volumeInfo.pageCount,
+      publishedDate: book.volumeInfo.publishedDate,
+      publisher: book.volumeInfo.publisher,
+      genre: book.volumeInfo.categories?.[0],
+    };
+    onSelectBook(bookData);
     setIsOpen(false);
   };
 
