@@ -54,6 +54,8 @@ model User {
   password      String?   @db.Text // Doit être un hash, donc potentiellement long
   passwordResetToken      String?   @unique
   passwordResetExpires    DateTime?
+  emailVerificationToken  String?   @unique
+  emailVerificationTokenExpires DateTime?
   
   accounts      Account[]
   createdGroups Group[]   @relation("GroupCreator")
@@ -80,6 +82,7 @@ model Group {
   members         GroupMember[]
   joinRequests    GroupJoinRequest[]
   books           GroupBook[]
+  polls           Poll[]
 }
 
 model GroupMember {
@@ -138,24 +141,45 @@ model GroupBook {
   status    String
   added_at  DateTime @default(now())
   finished_at DateTime?
+  suggested_by_id String? @db.Uuid
 
   group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
   book  Book  @relation(fields: [book_id], references: [id], onDelete: Cascade)
-  votes Vote[]
+  pollOptions PollOption[]
 
   @@unique([group_id, book_id])
 }
 
-model Vote {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+model Poll {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_id    String   @db.Uuid
+  created_at  DateTime @default(now())
+  end_date    DateTime
+
+  group   Group        @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  options PollOption[]
+}
+
+model PollOption {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poll_id       String   @db.Uuid
   group_book_id String   @db.Uuid
-  user_id      String   @db.Uuid
-  created_at   DateTime @default(now())
 
+  poll      Poll      @relation(fields: [poll_id], references: [id], onDelete: Cascade)
   groupBook GroupBook @relation(fields: [group_book_id], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  votes     Vote[]
+}
 
-  @@unique([group_book_id, user_id])
+model Vote {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poll_option_id String   @db.Uuid
+  user_id        String   @db.Uuid
+  created_at     DateTime @default(now())
+
+  pollOption PollOption @relation(fields: [poll_option_id], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([poll_option_id, user_id])
 }
 
 model UserBook {

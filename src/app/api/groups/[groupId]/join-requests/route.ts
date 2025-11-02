@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: { groupId: str
   }
 
   const userId = session.user.id;
-  const groupId = params.groupId;
+  const { groupId } = await params;
 
   try {
     // Check if the user is an admin of the group

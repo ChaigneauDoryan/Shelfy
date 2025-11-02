@@ -10,6 +10,9 @@
     "postinstall": "npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --target es2015",
     "seed": "node dist/prisma/seed.js"
   },
+  "prisma": {
+    "seed": "node dist/prisma/seed.js"
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
     "@next-auth/prisma-adapter": "^1.0.7",

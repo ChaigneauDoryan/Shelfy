@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Resend } from 'resend';
-import GroupJoinRequestEmail from '@/emails/GroupJoinRequestEmail';
+import GroupJoinRequestAdminNotificationEmail from '@/emails/GroupJoinRequestAdminNotificationEmail';
+
 import { render } from '@react-email/render';
 import { RoleInGroup } from '@prisma/client';
 
@@ -74,20 +75,23 @@ export async function POST(request: Request, { params }: { params: { groupId: st
     for (const admin of admins) {
       if (admin.user.email) {
         try {
-          const emailHtml = await render(GroupJoinRequestEmail({
-            adminName: admin.user.name || 'Admin',
+          const emailHtml = await render(GroupJoinRequestAdminNotificationEmail({
             requesterName: requester.name || 'Un utilisateur',
             groupName: group.name,
-            managementUrl: `${process.env.NEXTAUTH_URL}/groups/${groupId}/edit`,
-            status: 'pending',
+            managementUrl: `${process.env.NEXTAUTH_URL}/groups/${groupId}?tab=settings`,
           }));
 
-          await resend.emails.send({
+          console.log(`Attempting to send email to ${admin.user.email}`);
+          const { data, error } = await resend.emails.send({
             from: `Shelfy <${process.env.RESEND_FROM_EMAIL}>` || 'noreply@shelfy.fr',
             to: admin.user.email,
             subject: `Nouvelle demande pour rejoindre ${group.name}`,
             html: emailHtml,
           });
+
+          if (error) {
+            throw error;
+          }
         } catch (emailError) {
           console.error(`Failed to send email to ${admin.user.email}:`, emailError);
           // Continue even if one email fails

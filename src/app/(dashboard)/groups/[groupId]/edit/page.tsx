@@ -177,9 +177,7 @@ export default function EditGroupPage() {
         </CardContent>
       </Card>
 
-      <div className="mt-8">
-        <JoinRequestsManager groupId={groupId} />
-      </div>
+      
     </div>
   );
 }

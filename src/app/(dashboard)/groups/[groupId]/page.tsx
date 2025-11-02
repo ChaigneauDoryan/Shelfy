@@ -2,6 +2,7 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
 import GroupDetailsPage from './GroupDetailsPage';
+import { Suspense } from 'react';
 
 async function getGroup(groupId: string, userId: string) {
   const group = await prisma.group.findUnique({
@@ -19,12 +20,25 @@ async function getGroup(groupId: string, userId: string) {
         },
       },
       books: {
-        where: {
-          status: { in: ['CURRENTLY_READING', 'FINISHED', 'SUGGESTED'] },
-        },
         include: {
           book: true,
-          votes: true,
+        },
+      },
+      polls: {
+        include: {
+          options: {
+            include: {
+              groupBook: {
+                include: {
+                  book: true,
+                },
+              },
+              votes: true,
+            },
+          },
+        },
+        orderBy: {
+          created_at: 'desc',
         },
       },
     },
@@ -46,16 +60,21 @@ async function getGroup(groupId: string, userId: string) {
 }
 
 export default async function GroupPage({ params }: { params: { groupId: string } }) {
+  const awaitedParams = await params;
   const session = await getSession();
   if (!session?.user?.id) {
     return notFound();
   }
 
-  const group = await getGroup(params.groupId, session.user.id);
+  const group = await getGroup(awaitedParams.groupId, session.user.id);
 
   if (!group) {
     return notFound();
   }
 
-  return <GroupDetailsPage group={group} />;
+  return (
+    <Suspense fallback={<div>Chargement...</div>}>
+      <GroupDetailsPage group={group} />
+    </Suspense>
+  );
 }

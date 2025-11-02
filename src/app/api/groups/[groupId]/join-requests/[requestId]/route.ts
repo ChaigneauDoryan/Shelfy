@@ -6,6 +6,7 @@ import { RoleInGroup, InvitationStatus } from '@prisma/client';
 import { Resend } from 'resend';
 import GroupJoinRequestEmail from '@/emails/GroupJoinRequestEmail';
 import { render } from '@react-email/render';
+import { checkAndAwardGroupMembershipBadges, checkAndAwardInvitationBadges } from '@/lib/badge-utils';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

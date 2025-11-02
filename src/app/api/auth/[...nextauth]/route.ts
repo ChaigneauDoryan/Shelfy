@@ -85,6 +85,37 @@ export const authOptions: AuthOptions = {
       }
       return session;
     },
+    async signIn({ user, account, profile }) {
+      console.log('signIn callback', { user, account, profile });
+      if (account.provider === 'google') {
+        // Check if user exists
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email },
+        });
+
+        if (existingUser) {
+          return true; // User exists, sign in is allowed
+        }
+
+        // If user does not exist, create a new user
+        try {
+          await prisma.user.create({
+            data: {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              image: user.image,
+              emailVerified: new Date(),
+            },
+          });
+          return true;
+        } catch (error) {
+          console.error('Error creating user:', error);
+          return false; // Prevent sign in
+        }
+      }
+      return true; // For other providers, allow sign in
+    },
   },
 };
 

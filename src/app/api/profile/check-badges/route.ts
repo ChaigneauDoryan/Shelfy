@@ -24,8 +24,6 @@ export async function POST() {
 
     awardedBadges.push(...groupCreationBadges, ...groupMembershipBadges, ...groupActivityBadges, ...invitationBadges);
 
-    console.log('Awarded Badges:', awardedBadges);
-
     return NextResponse.json({ awardedBadges });
   } catch (error) {
     console.error('Error checking badges:', error);

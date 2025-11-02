@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Group, User, Book } from "@prisma/client";
 import { useSession } from "next-auth/react";
 import BookSearchDialog from "@/components/BookSearchDialog";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -15,11 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical } from "lucide-react";
 import { generateAvatarFromText } from "@/lib/avatar-utils";
+import JoinRequestsManager from "@/components/JoinRequestsManager";
 
 const groupSettingsSchema = z.object({
   name: z.string().min(2, { message: "Le nom du groupe doit contenir au moins 2 caractères." }),
@@ -32,13 +33,45 @@ interface GroupDetailsPageProps {
   group: Group & { members: { id: string, user: User, role: string }[], books: { id: string, book: Book, votes: any[] }[], adminCount: number, memberCount: number };
 }
 
+function MemberAvatar({ member }: { member: { user: User } }) {
+  const [avatar, setAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (member.user.image) {
+      setAvatar(member.user.image);
+    } else {
+      setAvatar(generateAvatarFromText(member.user.name || ' '));
+    }
+  }, [member.user.image, member.user.name]);
+
+  return (
+    <Avatar>
+      <AvatarImage src={avatar || undefined} />
+      <AvatarFallback>{member.user.name?.charAt(0)}</AvatarFallback>
+    </Avatar>
+  );
+}
+
 export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab = searchParams.get('tab');
   const { toast } = useToast();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(group.avatar_url);
+  const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (avatarUrl) {
+      setGroupAvatar(avatarUrl);
+    } else {
+      setGroupAvatar(generateAvatarFromText(group.name, 200));
+    }
+  }, [avatarUrl, group.name]);
 
   const isAdmin = group.members.some(member => member.user.id === session?.user?.id && member.role === 'ADMIN');
+
+  
 
   const currentlyReadingBook = group.books.find(book => book.status === 'CURRENTLY_READING');
   const finishedBooks = group.books.filter(book => book.status === 'FINISHED');
@@ -67,28 +100,40 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
   };
 
   const handleSuggestBook = async (book: any) => {
+    const bookData = {
+      googleBooksId: book.googleBooksId,
+      title: book.title,
+      author: book.author,
+      cover_url: book.cover_url,
+      description: book.description,
+      page_count: book.page_count,
+      published_date: book.published_date,
+      publisher: book.publisher,
+      genre: book.genre,
+    };
+
     const response = await fetch(`/api/groups/${group.id}/suggestions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ bookId: book.id }),
+      body: JSON.stringify({ bookData }),
     });
 
     if (response.ok) {
       router.refresh();
+    } else {
+      const errorData = await response.json();
+      toast({
+        title: 'Erreur',
+        description: errorData.message || 'Échec de la suggestion du livre.',
+        variant: 'destructive',
+      });
+      console.error('Error suggesting book:', errorData);
     }
   };
 
-  const handleVote = async (suggestionId: string) => {
-    const response = await fetch(`/api/groups/${group.id}/suggestions/${suggestionId}/vote`, {
-      method: 'POST',
-    });
-
-    if (response.ok) {
-      router.refresh();
-    }
-  };
+  
 
   const handlePromote = async (memberId: string) => {
     const response = await fetch(`/api/groups/${group.id}/members/${memberId}/promote`, {
@@ -131,13 +176,11 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
     }
   };
 
-  const groupAvatar = avatarUrl || generateAvatarFromText(group.name, 200);
-
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          <Tabs defaultValue="currently-reading">
+          <Tabs defaultValue={tab || 'currently-reading'}>
             <TabsList>
               <TabsTrigger value="currently-reading">Lecture en cours</TabsTrigger>
               <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
@@ -169,25 +212,24 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle>Suggestions de livres</CardTitle>
+                  <div className="mt-4">
+                    <BookSearchDialog onSelectBook={handleSuggestBook} />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     {suggestedBooks.map(suggestion => (
                       <div key={suggestion.id} className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                          <img src={suggestion.book.cover_url || ''} alt={suggestion.book.title} className="w-16 h-24 object-cover" />
+                          <img src={suggestion.book.cover_url || '/file.svg'} alt={suggestion.book.title} className="w-16 h-24 object-cover" />
                           <div>
                             <h3 className="font-semibold">{suggestion.book.title}</h3>
                             <p className="text-sm text-gray-500">{suggestion.book.author}</p>
-                            <p className="text-sm text-gray-500">Votes: {suggestion.votes.length}</p>
+                            <p className="text-sm text-gray-500">Votes: {suggestion.votes?.length || 0}</p>
                           </div>
                         </div>
-                        <Button onClick={() => handleVote(suggestion.id)}>Voter</Button>
-                      </div>
+                        </div>
                     ))}
-                  </div>
-                  <div className="mt-4">
-                    <BookSearchDialog onSelectBook={handleSuggestBook} />
                   </div>
                 </CardContent>
               </Card>
@@ -265,6 +307,14 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
                   </Card>
                   <Card>
                     <CardHeader>
+                      <CardTitle>Gérer les demandes d'adhésion</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <JoinRequestsManager groupId={group.id} />
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
                       <CardTitle>Gérer les membres</CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -272,10 +322,7 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
                         {group.members.map(member => (
                           <li key={member.user.id} className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
-                              <Avatar>
-                                <AvatarImage src={member.user.image || undefined} />
-                                <AvatarFallback>{member.user.name?.charAt(0)}</AvatarFallback>
-                              </Avatar>
+                              <MemberAvatar member={member} />
                               <span>{member.user.name}</span>
                             </div>
                             <DropdownMenu>
@@ -312,7 +359,7 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
         <div>
           <div className="flex flex-col items-center space-y-4 mb-8">
             <Avatar className="w-32 h-32">
-              <AvatarImage src={groupAvatar} />
+              <AvatarImage src={groupAvatar || undefined} />
               <AvatarFallback>{group.name.charAt(0)}</AvatarFallback>
             </Avatar>
             <h2 className="text-2xl font-bold">{group.name}</h2>
@@ -333,10 +380,7 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
               <ul className="space-y-2">
                 {group.members.map(member => (
                   <li key={member.user.id} className="flex items-center space-x-2">
-                    <Avatar>
-                      <AvatarImage src={member.user.image || undefined} />
-                      <AvatarFallback>{member.user.name?.charAt(0)}</AvatarFallback>
-                    </Avatar>
+                    <MemberAvatar member={member} />
                     <span>{member.user.name}</span>
                   </li>
                 ))}
