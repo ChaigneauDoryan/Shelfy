@@ -65,6 +65,7 @@ model User {
   joinRequests  GroupJoinRequest[]
   invited_users GroupMember[] @relation("InvitedBy")
   votes         Vote[]
+  comments      BookComment[] // Nouvelle ligne
 }
 
 // --- TABLES DE L'APPLICATION ---
@@ -97,6 +98,8 @@ model GroupMember {
 
   invited_by_id String? @db.Uuid
   invited_by    User?   @relation("InvitedBy", fields: [invited_by_id], references: [id])
+
+  readingProgress GroupMemberReadingProgress[] // Nouvelle ligne
 
   @@unique([group_id, user_id])
 }
@@ -142,12 +145,40 @@ model GroupBook {
   added_at  DateTime @default(now())
   finished_at DateTime?
   suggested_by_id String? @db.Uuid
+  reading_end_date DateTime? // Nouvelle ligne
 
   group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
   book  Book  @relation(fields: [book_id], references: [id], onDelete: Cascade)
   pollOptions PollOption[]
+  readingProgress GroupMemberReadingProgress[] // Nouvelle ligne
+  comments BookComment[] // Nouvelle ligne
 
   @@unique([group_id, book_id])
+}
+
+model GroupMemberReadingProgress {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupMemberId String   @db.Uuid
+  groupBookId   String   @db.Uuid
+  currentPage   Int      @default(0)
+  lastUpdated   DateTime @default(now())
+
+  groupMember GroupMember @relation(fields: [groupMemberId], references: [id], onDelete: Cascade)
+  groupBook   GroupBook   @relation(fields: [groupBookId], references: [id], onDelete: Cascade)
+
+  @@unique([groupMemberId, groupBookId]) // Un membre ne peut avoir qu'une seule progression par livre de groupe
+}
+
+model BookComment {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupBookId   String   @db.Uuid // Le livre du groupe commenté
+  userId        String   @db.Uuid // L'utilisateur qui a commenté
+  pageNumber    Int      // La page à laquelle le commentaire a été fait
+  content       String   @db.Text
+  createdAt     DateTime @default(now())
+
+  groupBook GroupBook @relation(fields: [groupBookId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Poll {

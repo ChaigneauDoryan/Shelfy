@@ -23,6 +23,7 @@ import { generateAvatarFromText } from "@/lib/avatar-utils";
 import JoinRequestsManager from "@/components/JoinRequestsManager";
 import PollManagement from "@/components/PollManagement";
 import PollDisplay from "@/components/PollDisplay";
+import GroupCurrentReadingBook from "@/components/GroupCurrentReadingBook"; // Nouvelle ligne
 
 const groupSettingsSchema = z.object({
   name: z.string().min(2, { message: "Le nom du groupe doit contenir au moins 2 caractères." }),
@@ -32,7 +33,7 @@ const groupSettingsSchema = z.object({
 type GroupSettingsFormValues = z.infer<typeof groupSettingsSchema>;
 
 interface GroupDetailsPageProps {
-  group: Group & { members: { id: string, user: User, role: string }[], books: { id: string, book: Book, votes: any[] }[], adminCount: number, memberCount: number };
+  group: Group & { members: { id: string, user: User, role: string }[], books: (GroupBook & { book: Book, reading_end_date?: Date | null })[], adminCount: number, memberCount: number };
 }
 
 function MemberAvatar({ member }: { member: { user: User } }) {
@@ -210,25 +211,18 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
               {isAdmin && <TabsTrigger value="settings">Paramètres</TabsTrigger>}
             </TabsList>
             <TabsContent value="currently-reading">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Lecture en cours</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {currentlyReadingBook ? (
-                    <div>
-                      <img src={currentlyReadingBook.book.cover_url || ''} alt={currentlyReadingBook.book.title} />
-                      <h3>{currentlyReadingBook.book.title}</h3>
-                      <p>{currentlyReadingBook.book.author}</p>
-                    </div>
-                  ) : (
-                    <div>
-                      <p>Aucun livre en cours de lecture.</p>
-                      
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              {currentlyReadingBook ? (
+                <GroupCurrentReadingBook groupId={group.id} groupBook={currentlyReadingBook} />
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Lecture en cours</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>Aucun livre en cours de lecture.</p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
             <TabsContent value="suggestions">
               <Card>
@@ -266,7 +260,7 @@ export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
                 <>
                   <PollManagement groupId={group.id} />
                   <div className="mt-8"> {/* Add some spacing */}
-                    <PollDisplay groupId={group.id} isAdmin={isAdmin} />
+                    <PollDisplay groupId={group.id} isAdmin={isAdmin} currentlyReadingGroupBookId={currentlyReadingBook?.id || null} />
                   </div>
                 </>
               ) : (

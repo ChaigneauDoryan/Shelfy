@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input"; // Ajouté précédemment
+import { Label } from "@/components/ui/label"; // Nouvelle ligne
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { GroupBook, Book, Poll, PollOption, Vote } from "@prisma/client";
@@ -10,14 +12,15 @@ import { useSession } from "next-auth/react";
 
 interface PollDisplayProps {
   groupId: string;
-  isAdmin: boolean; // Nouvelle prop
+  isAdmin: boolean;
+  currentlyReadingGroupBookId: string | null; // Nouvelle prop
 }
 
 interface PollWithDetails extends Poll {
   options: (PollOption & { groupBook: { book: Book }, votes: Vote[] })[];
 }
 
-export default function PollDisplay({ groupId, isAdmin }: PollDisplayProps) {
+export default function PollDisplay({ groupId, isAdmin, currentlyReadingGroupBookId }: PollDisplayProps) {
   const { toast } = useToast();
   const router = useRouter();
   const { data: session } = useSession();
@@ -27,6 +30,7 @@ export default function PollDisplay({ groupId, isAdmin }: PollDisplayProps) {
   const [pastPolls, setPastPolls] = useState<PollWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [userVotes, setUserVotes] = useState<Record<string, boolean>>({}); // pollId -> hasVoted
+  const [selectedReadingEndDate, setSelectedReadingEndDate] = useState<string>(''); // Nouvelle ligne
 
   useEffect(() => {
     fetchPolls();
@@ -122,12 +126,22 @@ export default function PollDisplay({ groupId, isAdmin }: PollDisplayProps) {
       return;
     }
 
+    if (!selectedReadingEndDate) { // Nouvelle vérification
+      toast({
+        title: 'Erreur',
+        description: 'Veuillez définir une date de fin de lecture.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       const response = await fetch(`/api/groups/${groupId}/polls/${pollId}/set-current-reading`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ readingEndDate: selectedReadingEndDate }), // Nouvelle ligne
       });
 
       if (!response.ok) {
@@ -220,13 +234,26 @@ export default function PollDisplay({ groupId, isAdmin }: PollDisplayProps) {
                         <p className="font-semibold text-yellow-600">Égalité entre: {winners.map(w => w.groupBook.book.title).join(', ')}</p>
                       )}
                       {isAdmin && winners.length === 1 && (
-                        <Button
-                          onClick={() => handleSetCurrentReading(poll.id)}
-                          className="mt-2"
-                          size="sm"
-                        >
-                          Définir comme lecture en cours
-                        </Button>
+                        <>
+                          <div className="mt-4">
+                            <Label htmlFor={`readingEndDate-${poll.id}`}>Date de fin de lecture (optionnel)</Label>
+                            <Input
+                              id={`readingEndDate-${poll.id}`}
+                              type="datetime-local"
+                              value={selectedReadingEndDate}
+                              onChange={e => setSelectedReadingEndDate(e.target.value)}
+                              className="mt-1"
+                            />
+                          </div>
+                          <Button
+                            onClick={() => handleSetCurrentReading(poll.id)}
+                            className="mt-2"
+                            size="sm"
+                            disabled={winners[0].groupBook.id === currentlyReadingGroupBookId} // Nouvelle prop utilisée ici
+                          >
+                            Définir comme lecture en cours
+                          </Button>
+                        </>
                       )}
                       {poll.options.map(option => (
                         <div key={option.id} className="flex items-center space-x-2">

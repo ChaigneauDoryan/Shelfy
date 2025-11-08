@@ -11,6 +11,7 @@ export async function POST(request: Request, { params }: { params: { groupId: st
 
   const userId = session.user.id;
   const { groupId, pollId } = await params;
+  const { readingEndDate } = await request.json();
 
   try {
     // 1. Vérifier si l'utilisateur est administrateur du groupe
@@ -70,7 +71,10 @@ export async function POST(request: Request, { params }: { params: { groupId: st
       // 4. Mettre à jour le statut du livre gagnant à "CURRENTLY_READING"
       await tx.groupBook.update({
         where: { id: winningGroupBookId },
-        data: { status: 'CURRENTLY_READING' },
+        data: {
+          status: 'CURRENTLY_READING',
+          reading_end_date: readingEndDate ? new Date(readingEndDate) : null, // Nouvelle ligne
+        },
       });
 
       // 5. Archiver les autres suggestions qui étaient dans ce sondage (les perdants)
