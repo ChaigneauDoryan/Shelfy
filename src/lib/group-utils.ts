@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
+import { canCreateMoreGroups } from './subscription-utils'; // Nouvelle importation
 
 function generateCode(length: number) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -11,6 +12,12 @@ function generateCode(length: number) {
 }
 
 export async function createGroup(createGroupDto: { name: string; description?: string; avatar_url?: string }, userId: string) {
+  // Vérifier la limite d'abonnement
+  const canCreate = await canCreateMoreGroups(userId);
+  if (!canCreate) {
+    throw new Error('Vous avez atteint la limite de création de groupes pour votre plan d\'abonnement.');
+  }
+
   const { name, description, avatar_url } = createGroupDto;
 
   const invitation_code = generateCode(10);
@@ -41,6 +48,7 @@ export async function createGroup(createGroupDto: { name: string; description?: 
 
   return group;
 }
+
 
 export async function deleteGroup(groupId: string, userId: string): Promise<void> {
   const member = await prisma.groupMember.findUnique({

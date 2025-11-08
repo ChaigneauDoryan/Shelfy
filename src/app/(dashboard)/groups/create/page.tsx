@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // Ajout de useEffect
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,6 +20,8 @@ import {
 
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
 import { useSession } from 'next-auth/react';
+import { useUserSubscription } from '@/hooks/useUserSubscription'; // Nouvelle importation
+import { canCreateMoreGroups } from '@/lib/subscription-utils'; // Nouvelle importation
 
 const createGroupSchema = z.object({
   name: z.string().min(3, { message: "Le nom du groupe doit contenir au moins 3 caractères." }).max(50, { message: "Le nom du groupe ne peut pas dépasser 50 caractères." }),
@@ -32,8 +34,23 @@ type CreateGroupFormValues = z.infer<typeof createGroupSchema>;
 export default function CreateGroupPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
+  const userId = session?.user?.id;
+  const { data: subscription, isLoading: isSubscriptionLoading } = useUserSubscription(userId); // Utilisation du hook
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [canCreateGroup, setCanCreateGroup] = useState(true); // Nouvel état pour la limite
+
+  // Vérifier la limite de création de groupes
+  useEffect(() => {
+    if (userId && subscription && !isSubscriptionLoading) {
+      const checkLimit = async () => {
+        const result = await canCreateMoreGroups(userId); // Appeler la fonction utilitaire
+        setCanCreateGroup(result);
+      };
+      checkLimit();
+    }
+  }, [userId, subscription, isSubscriptionLoading]);
 
   const form = useForm<CreateGroupFormValues>({
     resolver: zodResolver(createGroupSchema),
@@ -135,7 +152,10 @@ export default function CreateGroupPage() {
                 )}
               />
               {error && <p className="text-red-600 text-sm">{error}</p>}
-              <Button type="submit" className="w-full" disabled={loading}>
+              {!canCreateGroup && (
+                <p className="text-red-600 text-sm">Vous avez atteint la limite de création de groupes pour votre plan d'abonnement. Passez au plan Premium pour créer plus de groupes.</p>
+              )}
+              <Button type="submit" className="w-full" disabled={loading || !canCreateGroup}>
                 {loading ? 'Création en cours...' : 'Créer le groupe'}
               </Button>
             </form>

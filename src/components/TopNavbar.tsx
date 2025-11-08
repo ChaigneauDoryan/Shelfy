@@ -18,11 +18,43 @@ import { User } from '@prisma/client';
 import { useTheme } from 'next-themes';
 import { FaSun, FaMoon, FaDesktop, FaUser } from 'react-icons/fa';
 import { useSession, signOut } from 'next-auth/react';
+import { useUserSubscription } from '@/hooks/useUserSubscription'; // Nouvelle importation
+import { useMutation, useQueryClient } from '@tanstack/react-query'; // Pour le switch d'abonnement
+import { FREE_PLAN_ID, PREMIUM_PLAN_ID } from '@/lib/subscription-utils'; // Pour les IDs de plan
+import { useToast } from '@/hooks/use-toast'; // Pour les notifications
 
 export default function TopNavbar() {
   const { data: session } = useSession();
   const user = session?.user as User | null;
   const profile = user ? { username: user.name || '', avatar_url: user.image || '' } : null;
+
+  const { data: subscription, isLoading: isSubscriptionLoading } = useUserSubscription(user?.id); // Utilisation du hook
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const switchSubscriptionMutation = useMutation({
+    mutationFn: async (newPlanId: string) => {
+      const response = await fetch('/api/user/subscription/switch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPlanId }),
+      });
+      if (!response.ok) throw new Error('Failed to switch subscription');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['userSubscription', user?.id] });
+      toast({ title: 'Succès', description: 'Votre abonnement a été mis à jour.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const handleSwitchSubscription = (newPlanId: string) => {
+    if (user?.id && subscription?.planId !== newPlanId) {
+      switchSubscriptionMutation.mutate(newPlanId);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/' });
@@ -174,6 +206,17 @@ export default function TopNavbar() {
                   <Link href="/profile" className="flex items-center">
                       <FaUser className="mr-2 h-4 w-4" />
                       Mon Profil
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">Plan actuel : {isSubscriptionLoading ? 'Chargement...' : (subscription?.planId === FREE_PLAN_ID ? 'Gratuit' : 'Premium')}</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuItem asChild>
+                  <Link href="/subscription" className="flex items-center">
+                    Gérer mon abonnement
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

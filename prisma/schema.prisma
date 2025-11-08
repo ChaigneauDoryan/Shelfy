@@ -65,7 +65,8 @@ model User {
   joinRequests  GroupJoinRequest[]
   invited_users GroupMember[] @relation("InvitedBy")
   votes         Vote[]
-  comments      BookComment[] // Nouvelle ligne
+  comments      BookComment[]
+  subscriptions Subscription[] // Nouvelle ligne
 }
 
 // --- TABLES DE L'APPLICATION ---
@@ -211,6 +212,21 @@ model Vote {
   user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([poll_option_id, user_id])
+}
+
+model Subscription {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String    @db.Uuid
+  planId             String    @db.VarChar(255) // 'free', 'premium'
+  status             String    @db.VarChar(255) // 'active', 'canceled', 'past_due'
+  startDate          DateTime  @default(now())
+  endDate            DateTime?
+  stripeCustomerId   String?   @unique @db.VarChar(255)
+  stripeSubscriptionId String? @unique @db.VarChar(255)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, planId]) // Un utilisateur ne peut avoir qu'un seul abonnement actif par plan
 }
 
 model UserBook {
