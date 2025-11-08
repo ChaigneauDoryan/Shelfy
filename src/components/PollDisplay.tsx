@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { usePolls } from '@/hooks/usePolls';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; // Ajouté précédemment
@@ -26,147 +28,91 @@ export default function PollDisplay({ groupId, isAdmin, currentlyReadingGroupBoo
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
-  const [activePolls, setActivePolls] = useState<PollWithDetails[]>([]);
-  const [pastPolls, setPastPolls] = useState<PollWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userVotes, setUserVotes] = useState<Record<string, boolean>>({}); // pollId -> hasVoted
-  const [selectedReadingEndDate, setSelectedReadingEndDate] = useState<string>(''); // Nouvelle ligne
+  const { data: pollsData, isLoading, error } = usePolls(groupId, !!userId);
 
-  useEffect(() => {
-    fetchPolls();
-    console.log('Current userId:', userId);
-    console.log('Current userVotes state:', userVotes);
-  }, [groupId, userId]);
+  const { activePolls, pastPolls, userVotes } = useMemo(() => {
+    if (!pollsData) return { activePolls: [], pastPolls: [], userVotes: {} };
 
-  const fetchPolls = async () => {
-    setLoading(true);
-    try {
-      const pollsResponse = await fetch(`/api/groups/${groupId}/polls`);
-      if (!pollsResponse.ok) {
-        throw new Error('Failed to fetch polls');
-      }
-      const pollsData: PollWithDetails[] = await pollsResponse.json();
+    const now = new Date();
+    const active = pollsData.filter(poll => new Date(poll.end_date) > now);
+    const past = pollsData.filter(poll => new Date(poll.end_date) <= now);
 
-      const now = new Date();
-      const active = pollsData.filter(poll => new Date(poll.end_date) > now);
-      const past = pollsData.filter(poll => new Date(poll.end_date) <= now);
+    const votes: Record<string, boolean> = {};
+    active.forEach(poll => {
+      const hasVoted = poll.options.some(option =>
+        option.votes.some(vote => vote.user_id === userId)
+      );
+      votes[poll.id] = hasVoted;
+    });
 
-      setActivePolls(active);
-      setPastPolls(past);
+    return { activePolls: active, pastPolls: past, userVotes: votes };
+  }, [pollsData, userId]);
 
-      // Check user's votes for active polls
-      const votes: Record<string, boolean> = {};
-      active.forEach(poll => {
-        const hasVoted = poll.options.some(option =>
-          option.votes.some(vote => vote.user_id === userId)
-        );
-        votes[poll.id] = hasVoted;
-      });
-      setUserVotes(votes);
+  const queryClient = useQueryClient();
 
-    } catch (error: any) {
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Échec du chargement des sondages.',
-        variant: 'destructive',
-      });
-      console.error('Error fetching polls for display:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVote = async (pollId: string, pollOptionId: string) => {
-    if (!userId) {
-      toast({
-        title: 'Erreur',
-        description: 'Vous devez être connecté pour voter.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
+  const voteMutation = useMutation({
+    mutationFn: async ({ pollId, pollOptionId }: { pollId: string, pollOptionId: string }) => {
       const response = await fetch(`/api/groups/${groupId}/polls/${pollId}/vote`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pollOptionId }),
       });
+      if (!response.ok) throw new Error('Failed to vote');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['polls', groupId] });
+      toast({ title: 'Succès', description: 'Votre vote a été enregistré.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Échec du vote.');
-      }
-
-      toast({
-        title: 'Succès',
-        description: 'Votre vote a été enregistré.',
-      });
-      router.refresh(); // Re-fetch data
-      fetchPolls(); // Refresh local state
-    } catch (error: any) {
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Échec du vote.',
-        variant: 'destructive',
-      });
-      console.error('Error voting:', error);
+  const handleVote = (pollId: string, pollOptionId: string) => {
+    if (!userId) {
+      toast({ title: 'Erreur', description: 'Vous devez être connecté pour voter.', variant: 'destructive' });
+      return;
     }
+    voteMutation.mutate({ pollId, pollOptionId });
   };
 
-  const handleSetCurrentReading = async (pollId: string) => {
-    if (!userId) {
-      toast({
-        title: 'Erreur',
-        description: 'Vous devez être connecté pour effectuer cette action.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!selectedReadingEndDate) { // Nouvelle vérification
-      toast({
-        title: 'Erreur',
-        description: 'Veuillez définir une date de fin de lecture.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
+  const setCurrentReadingMutation = useMutation({
+    mutationFn: async ({ pollId, readingEndDate }: { pollId: string, readingEndDate: string }) => {
       const response = await fetch(`/api/groups/${groupId}/polls/${pollId}/set-current-reading`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ readingEndDate: selectedReadingEndDate }), // Nouvelle ligne
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ readingEndDate }),
       });
+      if (!response.ok) throw new Error('Failed to set current reading book');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['polls', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['groupBookData'] }); // Invalidate group book data as well
+      toast({ title: 'Succès', description: 'Le livre gagnant a été défini comme lecture en cours.' });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Échec de la définition de la lecture en cours.');
-      }
-
-      toast({
-        title: 'Succès',
-        description: 'Le livre gagnant a été défini comme lecture en cours.',
-      });
-      router.refresh(); // Re-fetch data for the whole page
-      fetchPolls(); // Refresh local state
-    } catch (error: any) {
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Échec de la définition de la lecture en cours.',
-        variant: 'destructive',
-      });
-      console.error('Error setting current reading book:', error);
+  const handleSetCurrentReading = (pollId: string) => {
+    if (!userId) {
+      toast({ title: 'Erreur', description: 'Vous devez être connecté pour effectuer cette action.', variant: 'destructive' });
+      return;
     }
+    if (!selectedReadingEndDate) {
+      toast({ title: 'Erreur', description: 'Veuillez définir une date de fin de lecture.', variant: 'destructive' });
+      return;
+    }
+    setCurrentReadingMutation.mutate({ pollId, readingEndDate: selectedReadingEndDate });
   };
 
-  if (loading) {
+  if (isLoading) {
     return <p>Chargement des sondages...</p>;
+  }
+
+  if (error) {
+    return <p>Erreur lors du chargement des sondages: {error.message}</p>;
   }
 
   return (

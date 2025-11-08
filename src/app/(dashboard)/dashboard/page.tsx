@@ -1,73 +1,77 @@
+'use client';
 
-import { Suspense } from "react";
-import { getSession } from "@/lib/auth"; // Notre nouveau helper
-import { getUserBooks, getReadingStatusId } from "@/lib/book-utils"; // Nos fonctions Prisma
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useReadingActivity } from '@/hooks/useReadingActivity';
+import { useSession } from 'next-auth/react';
 
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
-import { CurrentlyReading, CurrentlyReadingSkeleton } from "@/components/dashboard/CurrentlyReading";
-import { RecentlyFinished, RecentlyFinishedSkeleton } from "@/components/dashboard/RecentlyFinished";
-import { redirect } from "next/navigation";
-import { Metadata } from 'next';
+export default function DashboardPage() {
+  const { data: session } = useSession();
+  const { data, isLoading, error } = useReadingActivity(!!session?.user?.id);
 
-export const metadata: Metadata = {
-  title: 'Shelfy - Dashboard',
-};
+  const groupReadingActivity = data?.groupBooks || [];
+  const personalReadingActivity = data?.personalBooks || [];
 
-async function CurrentlyReadingData() {
-  try {
-    const session = await getSession();
-    if (!session?.user?.id) return <CurrentlyReading books={[]} />;
-
-    const readingStatusId = await getReadingStatusId('reading');
-    const currentlyReadingBooks = await getUserBooks(session.user.id, readingStatusId, false);
-    return <CurrentlyReading books={currentlyReadingBooks || []} />;
-  } catch (error) {
-    console.error("Error in CurrentlyReadingData:", error);
-    return <div>Error loading currently reading books.</div>;
+  if (isLoading) {
+    return <p>Chargement de l'activité de lecture...</p>;
   }
-}
 
-// Ce composant récupère et affiche les livres récemment terminés
-async function RecentlyFinishedData() {
-  try {
-    const session = await getSession();
-    if (!session?.user?.id) return <RecentlyFinished books={[]} />;
-
-    const finishedStatusId = await getReadingStatusId('finished');
-    const recentlyFinishedBooks = await getUserBooks(session.user.id, finishedStatusId, false);
-    
-    const sortedBooks = (recentlyFinishedBooks || []).sort((a: any, b: any) => {
-      const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
-      const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;
-      return dateB - dateA;
-    }).slice(0, 4);
-
-    return <RecentlyFinished books={sortedBooks} />;
-  } catch (error) {
-    console.error("Error in RecentlyFinishedData:", error);
-    return <div>Error loading recently finished books.</div>;
-  }
-}
-
-export default async function DashboardPage() {
-  const session = await getSession();
-
-  if (!session?.user) {
-    // Normalement géré par le middleware, mais c'est une sécurité supplémentaire
-    redirect('/auth/login');
+  if (error) {
+    return <p>Erreur lors du chargement de l'activité de lecture: {error.message}</p>;
   }
 
   return (
-    <div className="space-y-8">
-      <DashboardHeader username={session.user.name || 'lecteur'} />
+    <div className="w-full max-w-4xl space-y-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Activité de lecture dans vos groupes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {groupReadingActivity.length === 0 ? (
+            <p>Aucune activité de lecture dans vos groupes pour le moment.</p>
+          ) : (
+            <div className="space-y-4">
+              {groupReadingActivity.map(groupBook => (
+                <div key={groupBook.id} className="flex items-center space-x-4 p-3 border rounded-md">
+                  <img src={groupBook.book.cover_url || '/file.svg'} alt={groupBook.book.title} className="w-16 h-24 object-cover" />
+                  <div>
+                    <h3 className="font-semibold">{groupBook.book.title}</h3>
+                    <p className="text-sm text-muted-foreground">{groupBook.book.author}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {groupBook.status === 'CURRENTLY_READING' ? 'En cours de lecture' : 'Lu'} dans le groupe : {groupBook.group.name}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <Suspense fallback={<CurrentlyReadingSkeleton />}>
-        <CurrentlyReadingData />
-      </Suspense>
-
-      <Suspense fallback={<RecentlyFinishedSkeleton />}>
-        <RecentlyFinishedData />
-      </Suspense>
+      <Card>
+        <CardHeader>
+          <CardTitle>Activité de lecture personnelle</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {personalReadingActivity.length === 0 ? (
+            <p>Aucune activité de lecture personnelle pour le moment.</p>
+          ) : (
+            <div className="space-y-4">
+              {personalReadingActivity.map(userBook => (
+                <div key={userBook.id} className="flex items-center space-x-4 p-3 border rounded-md">
+                  <img src={userBook.book.cover_url || '/file.svg'} alt={userBook.book.title} className="w-16 h-24 object-cover" />
+                  <div>
+                    <h3 className="font-semibold">{userBook.book.title}</h3>
+                    <p className="text-sm text-muted-foreground">{userBook.book.author}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {userBook.status_id === 2 ? 'En cours de lecture' : 'Lu'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

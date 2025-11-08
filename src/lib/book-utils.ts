@@ -158,6 +158,16 @@ export async function updateUserBookStatus(userBookId: string, statusName: strin
 
   if (statusName === 'finished') {
     updateData.finished_at = new Date();
+
+    // Get the book's page count to update the current page
+    const userBook = await prisma.userBook.findUnique({
+      where: { id: userBookId, user_id: userId },
+      include: { book: true },
+    });
+
+    if (userBook && userBook.book.page_count) {
+      updateData.current_page = userBook.book.page_count;
+    }
   }
 
   const updatedBook = await prisma.userBook.update({

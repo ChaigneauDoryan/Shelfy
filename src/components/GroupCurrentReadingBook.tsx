@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useGroupBookData } from '@/hooks/useGroupBookData';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,117 +39,60 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
-  const [currentPage, setCurrentPage] = useState<number>(0);
-  const [commentPageNumber, setCommentPageNumber] = useState<number>(0);
-  const [commentContent, setCommentContent] = useState<string>('');
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [groupedComments, setGroupedComments] = useState<Record<number, Comment[]>>({});
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, error } = useGroupBookData(groupId, groupBook.id, !!userId);
 
-  useEffect(() => {
-    if (userId) {
-      fetchUserProgress();
-      fetchComments();
-    }
-  }, [groupId, groupBook.id, userId]);
+  const currentPage = data?.progress?.currentPage || 0;
+  const groupedComments = useMemo(() => {
+    if (!data?.comments) return {};
+    return data.comments.reduce((acc, comment) => {
+      const page = comment.pageNumber;
+      if (!acc[page]) acc[page] = [];
+      acc[page].push(comment);
+      return acc;
+    }, {} as Record<number, Comment[]>);
+  }, [data?.comments]);
 
-  const fetchUserProgress = async () => {
-    try {
-      const response = await fetch(`/api/groups/${groupId}/books/${groupBook.id}/progress`);
-      if (response.ok) {
-        const data = await response.json();
-        const userCurrentPage = data.progress?.currentPage || 0;
-        setCurrentPage(userCurrentPage);
-        setCommentPageNumber(userCurrentPage);
-      } else {
-        console.error('Failed to fetch user progress');
-      }
-    } catch (error) {
-      console.error('Error fetching user progress:', error);
-    }
-  };
+  const queryClient = useQueryClient();
 
-  const fetchComments = async () => {
-    try {
-      const response = await fetch(`/api/groups/${groupId}/books/${groupBook.id}/comments`);
-      if (response.ok) {
-        const data = await response.json();
-        const comments: Comment[] = data.comments;
-
-        const grouped = comments.reduce((acc, comment) => {
-          const page = comment.pageNumber;
-          if (!acc[page]) acc[page] = [];
-          acc[page].push(comment);
-          return acc;
-        }, {} as Record<number, Comment[]>);
-
-        setGroupedComments(grouped);
-      } else {
-        console.error('Failed to fetch comments');
-      }
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-    }
-  };
-
-  const handleAddComment = async () => {
-    if (commentPageNumber <= 0 || commentPageNumber > (groupBook.book.page_count || 9999)) {
-      toast({
-        title: 'Erreur',
-        description: 'Veuillez entrer un numéro de page valide pour votre commentaire.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    if (commentContent.trim() === '') {
-      toast({
-        title: 'Erreur',
-        description: 'Le commentaire ne peut pas être vide.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
+  const mutation = useMutation({
+    mutationFn: async ({ pageNumber, content }: { pageNumber: number, content: string }) => {
+      // 1. Mettre à jour la progression
       const progressResponse = await fetch(`/api/groups/${groupId}/books/${groupBook.id}/progress`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPage: commentPageNumber }),
+        body: JSON.stringify({ currentPage: pageNumber }),
       });
+      if (!progressResponse.ok) throw new Error('Failed to update progress');
 
-      if (!progressResponse.ok) {
-        const errorData = await progressResponse.json();
-        throw new Error(errorData.message || 'Échec de la mise à jour de la progression.');
-      }
-
-      setCurrentPage(commentPageNumber);
-
+      // 2. Poster le commentaire
       const commentResponse = await fetch(`/api/groups/${groupId}/books/${groupBook.id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageNumber: commentPageNumber, content: commentContent }),
+        body: JSON.stringify({ pageNumber, content }),
       });
-
-      if (!commentResponse.ok) {
-        const errorData = await commentResponse.json();
-        throw new Error(errorData.message || 'Échec de l\'ajout du commentaire.');
-      }
-
-      toast({
-        title: 'Succès',
-        description: 'Commentaire et progression mis à jour avec succès.',
-      });
-
+      if (!commentResponse.ok) throw new Error('Failed to add comment');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groupBookData', groupId, groupBook.id] });
+      toast({ title: 'Succès', description: 'Commentaire et progression mis à jour avec succès.' });
       setCommentContent('');
       setCommentPageNumber(0);
-      fetchComments();
-    } catch (error: any) {
-      toast({
-        title: 'Erreur',
-        description: error.message || 'Échec de l\'ajout du commentaire ou de la mise à jour.',
-        variant: 'destructive',
-      });
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const handleAddComment = () => {
+    if (commentPageNumber <= 0 || commentPageNumber > (groupBook.book.page_count || 9999)) {
+      toast({ title: 'Erreur', description: 'Veuillez entrer un numéro de page valide.', variant: 'destructive' });
+      return;
     }
+    if (commentContent.trim() === '') {
+      toast({ title: 'Erreur', description: 'Le commentaire ne peut pas être vide.', variant: 'destructive' });
+      return;
+    }
+    mutation.mutate({ pageNumber: commentPageNumber, content: commentContent });
   };
 
   const timelineItems = (() => {
@@ -181,6 +126,14 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
         };
       });
   })();
+
+  if (isLoading) {
+    return <div>Chargement des données du livre...</div>;
+  }
+
+  if (error) {
+    return <div>Erreur lors du chargement des données: {error.message}</div>;
+  }
 
   return (
     <Card className="mt-8">

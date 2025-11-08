@@ -18,21 +18,72 @@ export async function GET(request: Request) {
     });
 
     // 2. Get user stats
+    // Get personal books
     const userBooks = await prisma.userBook.findMany({
       where: { user_id: userId, is_archived: false },
       include: { book: true },
     });
 
-    const finishedBooks = userBooks.filter(ub => ub.status_id === 3); // Assuming status_id 3 is 'finished'
+    // Get group books
+    const userGroups = await prisma.groupMember.findMany({
+      where: { user_id: userId },
+      select: { group_id: true },
+    });
+    const groupIds = userGroups.map(ug => ug.group_id);
+    const groupBooks = await prisma.groupBook.findMany({
+      where: {
+        group_id: { in: groupIds },
+        status: 'FINISHED',
+      },
+      include: { book: true },
+    });
+
+    // Combine personal and group books
+    const allFinishedBooks = [
+      ...userBooks.filter(ub => ub.status_id === 3), // Assuming status_id 3 is 'finished'
+      ...groupBooks,
+    ];
+
+    // Remove duplicates (if a book is both in personal library and a group)
+    const finishedBooks = allFinishedBooks.filter((v, i, a) => a.findIndex(t => (t.book.id === v.book.id)) === i);
 
     const totalBooksRead = finishedBooks.length;
     const totalPagesRead = finishedBooks.reduce((sum, ub) => sum + (ub.book.page_count || 0), 0);
-    const ratings = finishedBooks.map(ub => ub.rating).filter(r => r !== null) as number[];
+
+    // Add current pages from personal books in progress
+    const personalInProgressPages = userBooks
+      .filter(ub => ub.status_id === 2) // Assuming status_id 2 is 'in progress'
+      .reduce((sum, ub) => sum + ub.current_page, 0);
+
+    // Add current pages from group books in progress
+    const groupBooksInProgress = await prisma.groupBook.findMany({
+      where: {
+        group_id: { in: groupIds },
+        status: 'CURRENTLY_READING',
+      },
+      include: {
+        readingProgress: {
+          where: {
+            groupMember: {
+              user_id: userId,
+            },
+          },
+        },
+      },
+    });
+
+    const groupInProgressPages = groupBooksInProgress.reduce((sum, gb) => {
+      const progress = gb.readingProgress[0];
+      return sum + (progress ? progress.currentPage : 0);
+    }, 0);
+
+    const totalPagesReadWithProgress = totalPagesRead + personalInProgressPages + groupInProgressPages;
+    const ratings = userBooks.filter(ub => ub.status_id === 3).map(ub => ub.rating).filter(r => r !== null) as number[]; // Ratings only from personal books
     const averageRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
 
     const stats = {
       total_books_read: totalBooksRead,
-      total_pages_read: totalPagesRead,
+      total_pages_read: totalPagesReadWithProgress,
       average_rating: averageRating,
     };
 
@@ -56,7 +107,7 @@ export async function GET(request: Request) {
     const genreCounts: { [key: string]: number } = {};
     const authorCounts: { [key: string]: number } = {};
 
-    userBooks.forEach(ub => {
+    finishedBooks.forEach(ub => {
       if (ub.book.genre) {
         const genres = ub.book.genre.split(',').map(g => g.trim());
         genres.forEach(genre => { genreCounts[genre] = (genreCounts[genre] || 0) + 1; });

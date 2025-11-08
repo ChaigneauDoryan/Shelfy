@@ -32,9 +32,9 @@ const groupSettingsSchema = z.object({
 
 type GroupSettingsFormValues = z.infer<typeof groupSettingsSchema>;
 
-interface GroupDetailsPageProps {
-  group: Group & { members: { id: string, user: User, role: string }[], books: (GroupBook & { book: Book, reading_end_date?: Date | null })[], adminCount: number, memberCount: number };
-}
+import { useGroupDetails } from '@/hooks/useGroupDetails'; // Nouvelle importation
+
+// Supprimer l'interface GroupDetailsPageProps car les données viennent du hook
 
 function MemberAvatar({ member }: { member: { user: User } }) {
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -55,22 +55,28 @@ function MemberAvatar({ member }: { member: { user: User } }) {
   );
 }
 
-export default function GroupDetailsPage({ group }: GroupDetailsPageProps) {
+export default function GroupDetailsPage({ params }: { params: { groupId: string } }) { // Modification des props
+  const { groupId } = params;
+  const { data: group, isLoading, error, refetch } = useGroupDetails(groupId); // Utilisation du hook
+
   const { data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab');
   const { toast } = useToast();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(group.avatar_url);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null); // Initialisation à null
   const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
 
   useEffect(() => {
-    if (avatarUrl) {
-      setGroupAvatar(avatarUrl);
-    } else {
-      setGroupAvatar(generateAvatarFromText(group.name, 200));
+    if (group) { // Mettre à jour les états locaux une fois les données chargées
+      setAvatarUrl(group.avatar_url);
+      if (group.avatar_url) {
+        setGroupAvatar(group.avatar_url);
+      } else {
+        setGroupAvatar(generateAvatarFromText(group.name, 200));
+      }
     }
-  }, [avatarUrl, group.name]);
+  }, [group]); // Dépendance au groupe
 
   const isAdmin = group.members.some(member => member.user.id === session?.user?.id && member.role === 'ADMIN');
 
