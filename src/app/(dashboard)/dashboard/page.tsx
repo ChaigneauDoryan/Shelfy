@@ -29,18 +29,16 @@ export default function DashboardPage() {
           {groupReadingActivity.length === 0 ? (
             <p>Aucune activité de lecture dans vos groupes pour le moment.</p>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {groupReadingActivity.map(groupBook => (
-                <div key={groupBook.id} className="flex items-center space-x-4 p-3 border rounded-md">
-                  <img src={groupBook.book.cover_url || '/file.svg'} alt={groupBook.book.title} className="w-16 h-24 object-cover" />
-                  <div>
-                    <h3 className="font-semibold">{groupBook.book.title}</h3>
-                    <p className="text-sm text-muted-foreground">{groupBook.book.author}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {groupBook.status === 'CURRENTLY_READING' ? 'En cours de lecture' : 'Lu'} dans le groupe : {groupBook.group.name}
-                    </p>
-                  </div>
-                </div>
+                <Card key={groupBook.id} className="flex flex-col items-center text-center p-4">
+                  <img src={groupBook.book.cover_url || '/file.svg'} alt={groupBook.book.title} className="w-24 h-36 object-cover mb-2" />
+                  <h3 className="font-semibold text-md">{groupBook.book.title}</h3>
+                  <p className="text-sm text-muted-foreground">{groupBook.book.author}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {groupBook.status === 'CURRENTLY_READING' ? 'En cours de lecture' : 'Lu'} dans le groupe : {groupBook.group.name}
+                  </p>
+                </Card>
               ))}
             </div>
           )}
@@ -55,18 +53,16 @@ export default function DashboardPage() {
           {personalReadingActivity.length === 0 ? (
             <p>Aucune activité de lecture personnelle pour le moment.</p>
           ) : (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {personalReadingActivity.map(userBook => (
-                <div key={userBook.id} className="flex items-center space-x-4 p-3 border rounded-md">
-                  <img src={userBook.book.cover_url || '/file.svg'} alt={userBook.book.title} className="w-16 h-24 object-cover" />
-                  <div>
-                    <h3 className="font-semibold">{userBook.book.title}</h3>
-                    <p className="text-sm text-muted-foreground">{userBook.book.author}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {userBook.status_id === 2 ? 'En cours de lecture' : 'Lu'}
-                    </p>
-                  </div>
-                </div>
+                <Card key={userBook.id} className="flex flex-col items-center text-center p-4">
+                  <img src={userBook.book.cover_url || '/file.svg'} alt={userBook.book.title} className="w-24 h-36 object-cover mb-2" />
+                  <h3 className="font-semibold text-md">{userBook.book.title}</h3>
+                  <p className="text-sm text-muted-foreground">{userBook.book.author}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {userBook.status_id === 2 ? 'En cours de lecture' : 'Lu'}
+                  </p>
+                </Card>
               ))}
             </div>
           )}
