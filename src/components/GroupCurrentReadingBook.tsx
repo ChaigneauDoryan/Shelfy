@@ -59,11 +59,12 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
         const timeUntilEnd = endDate.getTime() - now.getTime();
         const timer = setTimeout(() => {
           queryClient.invalidateQueries({ queryKey: ['groupDetails', groupId] });
+          finishBookMutation.mutate(); // Call the new mutation
         }, timeUntilEnd);
         return () => clearTimeout(timer);
       }
     }
-  }, [groupBook.reading_end_date, groupId, queryClient]);
+  }, [groupBook.reading_end_date, groupId, queryClient, finishBookMutation]); // Add finishBookMutation to dependencies
 
   useEffect(() => {
     if (data?.progress?.rating !== undefined) {
@@ -142,6 +143,26 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
       queryClient.invalidateQueries({ queryKey: ['groupBookData', groupId, groupBook.id] });
       toast({ title: 'Succès', description: 'Note mise à jour avec succès.' });
       setUserRating(data.progress.rating);
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const finishBookMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/groups/${groupId}/books/${groupBook.id}/finish`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Échec de la mise à jour du statut du livre.');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Succès', description: 'Le livre a été marqué comme terminé.' });
     },
     onError: (error: any) => {
       toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
