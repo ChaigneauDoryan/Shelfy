@@ -28,6 +28,8 @@ export default function PollDisplay({ groupId, isAdmin, currentlyReadingGroupBoo
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
+  const [selectedReadingEndDate, setSelectedReadingEndDate] = useState('');
+
   const { data: pollsData, isLoading, error } = usePolls(groupId, !!userId);
 
   const { activePolls, pastPolls, userVotes } = useMemo(() => {

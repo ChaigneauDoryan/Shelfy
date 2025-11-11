@@ -39,6 +39,9 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
   const { data: session } = useSession();
   const userId = session?.user?.id;
 
+  const [commentPageNumber, setCommentPageNumber] = useState(0);
+  const [commentContent, setCommentContent] = useState('');
+
   const { data, isLoading, error } = useGroupBookData(groupId, groupBook.id, !!userId);
 
   const currentPage = data?.progress?.currentPage || 0;

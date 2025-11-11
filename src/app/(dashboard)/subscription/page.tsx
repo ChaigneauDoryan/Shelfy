@@ -49,7 +49,7 @@ export default function SubscriptionPage() {
             <ul className="space-y-2 text-gray-700">
               <li className="flex items-center"><CheckCircle2 className="text-orange-500 mr-2" /> Gestion de groupes : Jusqu'à 2</li>
               <li className="flex items-center"><CheckCircle2 className="text-orange-500 mr-2" /> Membres par groupe : Jusqu'à 5</li>
-              <li className="flex items-center"><CheckCircle2 className="text-orange-500 mr-2" /> Livres personnels : Jusqu'à 10</li>
+              <li className="flex items-center"><CheckCircle2 className="text-orange-500 mr-2" /> Livres personnels : Jusqu'à 20</li>
               <li className="flex items-center"><CheckCircle2 className="text-green-500 mr-2" /> Sondages : De base</li>
               <li className="flex items-center"><CheckCircle2 className="text-green-500 mr-2" /> Suivi de lecture et commentaires</li>
               <li className="flex items-center"><CheckCircle2 className="text-green-500 mr-2" /> Statistiques : Personnelles de base</li>
