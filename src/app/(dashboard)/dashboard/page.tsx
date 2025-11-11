@@ -36,7 +36,7 @@ export default function DashboardPage() {
                   <h3 className="font-semibold text-md">{groupBook.book.title}</h3>
                   <p className="text-sm text-muted-foreground">{groupBook.book.author}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {groupBook.status === 'CURRENTLY_READING' ? 'En cours de lecture' : 'Lu'} dans le groupe : {groupBook.group.name}
+                    {groupBook.status === 'CURRENT' ? 'En cours de lecture' : 'Lu'} dans le groupe : {groupBook.group.name}
                   </p>
                 </Card>
               ))}

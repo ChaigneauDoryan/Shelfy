@@ -54,11 +54,11 @@ export async function POST(request: Request, { params }: { params: { groupId: st
 
     // Utiliser une transaction pour s'assurer que toutes les opérations réussissent ou échouent ensemble
     await prisma.$transaction(async (tx) => {
-      // 3. Mettre à jour le statut de tous les autres livres "CURRENTLY_READING" du groupe à "FINISHED"
+      // 3. Mettre à jour le statut de tous les autres livres "CURRENT" du groupe à "FINISHED"
       await tx.groupBook.updateMany({
         where: {
           group_id: groupId,
-          status: 'CURRENTLY_READING',
+          status: 'CURRENT',
           NOT: {
             id: winningGroupBookId, // Ne pas modifier le livre gagnant s'il était déjà en lecture
           },
@@ -68,11 +68,11 @@ export async function POST(request: Request, { params }: { params: { groupId: st
         },
       });
 
-      // 4. Mettre à jour le statut du livre gagnant à "CURRENTLY_READING"
+      // 4. Mettre à jour le statut du livre gagnant à "CURRENT"
       await tx.groupBook.update({
         where: { id: winningGroupBookId },
         data: {
-          status: 'CURRENTLY_READING',
+          status: 'CURRENT',
           reading_end_date: readingEndDate ? new Date(readingEndDate) : null, // Nouvelle ligne
         },
       });

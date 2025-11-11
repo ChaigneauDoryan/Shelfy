@@ -76,7 +76,7 @@ export default function TopNavbar() {
           <Link className="mr-6 flex items-center space-x-2" href="/dashboard">
             <BookText className="h-6 w-6" />
             <span className="hidden font-bold sm:inline-block">
-              Codex
+              Shelfy
             </span>
           </Link>
           <nav className="flex items-center space-x-6 text-sm font-medium">
@@ -86,12 +86,14 @@ export default function TopNavbar() {
             >
               Dashboard
             </Link>
-            <Link
-              className="transition-colors hover:text-foreground/80 text-foreground/60"
-              href="/discover"
-            >
-              Découvrir
-            </Link>
+            {(subscription?.planId === PREMIUM_PLAN_ID || isSubscriptionLoading) && ( // Afficher si Premium ou en chargement
+              <Link
+                className="transition-colors hover:text-foreground/80 text-foreground/60"
+                href="/discover"
+              >
+                Découvrir
+              </Link>
+            )}
             <Link
               className="transition-colors hover:text-foreground/80 text-foreground/60"
               href="/library"
@@ -123,7 +125,7 @@ export default function TopNavbar() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <BookText className="h-6 w-6" />
-                    <span className="font-bold">Codex</span>
+                    <span className="font-bold">Shelfy</span>
                   </Link>
                   <Link
                     className="flex w-full items-center py-2 text-lg font-semibold"
@@ -132,13 +134,15 @@ export default function TopNavbar() {
                   >
                     Dashboard
                   </Link>
-                  <Link
-                    className="flex w-full items-center py-2 text-lg font-semibold"
-                    href="/discover"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Découvrir
-                  </Link>
+                  {(subscription?.planId === PREMIUM_PLAN_ID || isSubscriptionLoading) && ( // Afficher si Premium ou en chargement
+                    <Link
+                      className="flex w-full items-center py-2 text-lg font-semibold"
+                      href="/discover"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Découvrir
+                    </Link>
+                  )}
                   <Link
                     className="flex w-full items-center py-2 text-lg font-semibold"
                     href="/library"

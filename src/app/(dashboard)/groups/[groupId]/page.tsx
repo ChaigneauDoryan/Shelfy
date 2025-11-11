@@ -18,12 +18,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical } from "lucide-react";
+import { MoreVertical, Star } from "lucide-react";
 import { generateAvatarFromText } from "@/lib/avatar-utils";
 import JoinRequestsManager from "@/components/JoinRequestsManager";
 import PollManagement from "@/components/PollManagement";
 import PollDisplay from "@/components/PollDisplay";
-import GroupCurrentReadingBook from "@/components/GroupCurrentReadingBook"; // Nouvelle ligne
+import GroupCurrentReadingBook from "@/components/GroupCurrentReadingBook";
+import GroupFinishedBookDetails from "@/components/GroupFinishedBookDetails"; // Import du nouveau composant
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"; // Import des composants Sheet
 
 const groupSettingsSchema = z.object({
   name: z.string().min(2, { message: "Le nom du groupe doit contenir au moins 2 caractères." }),
@@ -32,9 +34,7 @@ const groupSettingsSchema = z.object({
 
 type GroupSettingsFormValues = z.infer<typeof groupSettingsSchema>;
 
-import { useGroupDetails } from '@/hooks/useGroupDetails'; // Nouvelle importation
-
-// Supprimer l'interface GroupDetailsPageProps car les données viennent du hook
+import { useGroupDetails } from '@/hooks/useGroupDetails';
 
 function MemberAvatar({ member }: { member: { user: User } }) {
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -55,25 +55,28 @@ function MemberAvatar({ member }: { member: { user: User } }) {
   );
 }
 
-export default function GroupDetailsPage() { // Modification des props
+export default function GroupDetailsPage() {
   const params = useParams<{ groupId: string }>();
   const { groupId } = params;
 
-  const { data: group, isLoading, error, refetch } = useGroupDetails(groupId); // Utilisation du hook
+  const { data: group, isLoading, error, refetch } = useGroupDetails(groupId);
   const { data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = searchParams.get('tab');
   const { toast } = useToast();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null); // Initialisation à null
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
 
-  let currentlyReadingBook: Book | undefined;
-  let finishedBooks: Book[] = [];
-  let suggestedBooks: Book[] = [];
+  const [showFinishedBookDetails, setShowFinishedBookDetails] = useState(false);
+  const [selectedFinishedBook, setSelectedFinishedBook] = useState<any | null>(null);
+
+  let currentlyReadingBook: any | undefined;
+  let finishedBooks: any[] = [];
+  let suggestedBooks: any[] = [];
 
   useEffect(() => {
-    if (group) { // Mettre à jour les états locaux une fois les données chargées
+    if (group) {
       setAvatarUrl(group.avatar_url);
       if (group.avatar_url) {
         setGroupAvatar(group.avatar_url);
@@ -81,13 +84,13 @@ export default function GroupDetailsPage() { // Modification des props
         setGroupAvatar(generateAvatarFromText(group.name, 200));
       }
     }
-  }, [group]); // Dépendance au groupe
+  }, [group]);
 
   const form = useForm<GroupSettingsFormValues>({
     resolver: zodResolver(groupSettingsSchema),
     defaultValues: {
-      name: group?.name || "", // Provide default empty string if group.name is undefined
-      description: group?.description || "", // Provide default empty string if group.description is undefined
+      name: group?.name || "",
+      description: group?.description || "",
     },
   });
 
@@ -105,10 +108,11 @@ export default function GroupDetailsPage() { // Modification des props
 
   const isAdmin = group.members.some(member => member.user.id === session?.user?.id && member.role === 'ADMIN');
 
-  // Assign values after group is confirmed to be available
-  currentlyReadingBook = group.books.find(book => String(book.status).trim() === 'CURRENTLY_READING');
-  finishedBooks = group.books.filter(book => book.status === 'FINISHED');
-  suggestedBooks = group.books.filter(book => book.status === 'SUGGESTED');
+  currentlyReadingBook = group.books.find((book: any) => book.status === 'CURRENT');
+  finishedBooks = group.books
+    .filter((book: any) => book.status === 'FINISHED')
+    .sort((a: any, b: any) => new Date(b.finished_at).getTime() - new Date(a.finished_at).getTime());
+  suggestedBooks = group.books.filter((book: any) => book.status === 'SUGGESTED');
 
   const handleSelectBook = async (book: any) => {
     const response = await fetch(`/api/groups/${group.id}/currently-reading`, {
@@ -220,6 +224,11 @@ export default function GroupDetailsPage() { // Modification des props
     }
   };
 
+  const handleViewFinishedBookDetails = (book: any) => {
+    setSelectedFinishedBook(book);
+    setShowFinishedBookDetails(true);
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -296,17 +305,26 @@ export default function GroupDetailsPage() { // Modification des props
                 </CardHeader>
                 <CardContent>
                   {finishedBooks.length > 0 ? (
-                    <ul className="space-y-4">
+                    <div className="space-y-4"> {/* Use space-y for vertical spacing */}
                       {finishedBooks.map(book => (
-                        <li key={book.book.id} className="flex items-center space-x-4">
-                          <img src={book.book.cover_url || ''} alt={book.book.title} className="w-16 h-24 object-cover" />
-                          <div>
-                            <h3 className="font-semibold">{book.book.title}</h3>
-                            <p className="text-sm text-gray-500">{book.book.author}</p>
+                        <div key={book.id} className="flex items-center space-x-4 p-4 border rounded-md hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => handleViewFinishedBookDetails(book)}>
+                          <img src={book.book.cover_url || '/file.svg'} alt={book.book.title} className="w-16 h-24 object-cover rounded-sm shadow-sm flex-shrink-0" />
+                          <div className="flex-grow">
+                            <h3 className="font-semibold text-lg line-clamp-1">{book.book.title}</h3>
+                            <p className="text-sm text-gray-600 line-clamp-1">{book.book.author}</p>
+                            {book.averageRating && (
+                              <div className="flex items-center space-x-1 mt-1">
+                                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                                <span className="text-sm font-bold">{book.averageRating}</span>
+                                {book.voterCount !== undefined && (
+                                  <span className="text-xs text-gray-500">({book.voterCount} votes)</span>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        </li>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   ) : (
                     <p>Aucun livre terminé pour le moment.</p>
                   )}
@@ -444,6 +462,27 @@ export default function GroupDetailsPage() { // Modification des props
           </Card>
         </div>
       </div>
+
+      {selectedFinishedBook && (
+        <Sheet open={showFinishedBookDetails} onOpenChange={setShowFinishedBookDetails}>
+          <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col">
+            <SheetHeader className="flex-shrink-0">
+              <SheetTitle>Commentaires du livre</SheetTitle>
+              <SheetDescription>
+                Commentaires de tous les membres pour "{selectedFinishedBook.book.title}"
+              </SheetDescription>
+            </SheetHeader>
+            <div className="py-4 flex-grow overflow-y-auto">
+              <GroupFinishedBookDetails
+                groupId={groupId}
+                groupBookId={selectedFinishedBook.id}
+                bookTitle={selectedFinishedBook.book.title}
+                bookAuthor={selectedFinishedBook.book.author}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 }

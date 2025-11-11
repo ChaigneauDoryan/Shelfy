@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     const groupBooks = await prisma.groupBook.findMany({
       where: {
         group_id: { in: groupIds },
-        status: { in: ['CURRENTLY_READING', 'FINISHED'] },
+        status: { in: ['CURRENT', 'FINISHED'] },
       },
       include: {
         book: true,

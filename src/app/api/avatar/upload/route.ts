@@ -13,9 +13,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Request body is empty' }, { status: 400 });
   }
 
+  const fileBlob = await request.blob();
+
   try {
-    const blob = await put(filename, request.body, {
+    const blob = await put(filename, fileBlob, {
       access: 'public',
+      contentType: 'image/png',
       // You might want to add more options here, e.g., contentType
     });
 

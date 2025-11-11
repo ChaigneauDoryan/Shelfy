@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     const groupBooksInProgress = await prisma.groupBook.findMany({
       where: {
         group_id: { in: groupIds },
-        status: 'CURRENTLY_READING',
+        status: 'CURRENT',
       },
       include: {
         readingProgress: {

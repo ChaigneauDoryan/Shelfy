@@ -55,7 +55,7 @@ export default function RootLayout({
         </CookieConsent>
         <footer className="bg-background border-t py-6 w-full">
           <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} Codex. Tous droits réservés.</p>
+            <p>&copy; {new Date().getFullYear()} Shelfy. Tous droits réservés.</p>
             <div className="flex space-x-4 mt-3 md:mt-0">
               <a href="/mentions-legales" className="hover:underline">Mentions Légales</a>
               <a href="/politique-confidentialite" className="hover:underline">Politique de Confidentialité</a>

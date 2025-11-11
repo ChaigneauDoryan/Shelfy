@@ -3,20 +3,21 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSession } from 'next-auth/react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface Comment {
   id: string;
   page_number: number;
   comment_text: string;
   created_at: string;
-  updated_at?: string; // updated_at n'est pas dans le schéma actuel
-  comment_title?: string; // comment_title n'est pas dans le schéma actuel
 }
 
 interface BookCommentTimelineProps {
   userBookId: string;
   totalBookPages: number;
-  refreshKey: number; // New prop
+  refreshKey: number;
 }
 
 export default function BookCommentTimeline({ userBookId, totalBookPages, refreshKey }: BookCommentTimelineProps) {
@@ -25,14 +26,23 @@ export default function BookCommentTimeline({ userBookId, totalBookPages, refres
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
+  const { toast } = useToast(); // Initialize useToast
 
   useEffect(() => {
     const fetchComments = async () => {
       setLoading(true);
       setError(null);
       try {
+        if (status === 'loading') {
+          setLoading(true); // Garder le loading state actif pendant le chargement de la session
+          return;
+        }
         if (status !== 'authenticated') {
-          setError("Utilisateur non authentifié ou session expirée.");
+          toast({
+            title: 'Erreur d\'authentification',
+            description: "Utilisateur non authentifié ou session expirée.",
+            variant: 'destructive',
+          });
           setLoading(false);
           return;
         }
@@ -47,59 +57,70 @@ export default function BookCommentTimeline({ userBookId, totalBookPages, refres
         const data = await response.json();
         setComments(data);
       } catch (e: any) {
-        setError(e.message);
+        toast({
+          title: 'Erreur de chargement des commentaires',
+          description: e.message,
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchComments();
-  }, [userBookId, refreshKey, status]);
+  }, [userBookId, refreshKey, status, toast]); // Ajouter 'toast' aux dépendances
 
   if (loading) {
     return <p>Chargement des commentaires...</p>;
   }
 
-  if (error) {
-    return <p className="text-red-500">Erreur lors du chargement des commentaires : {error}</p>;
-  }
+  // L'erreur est maintenant gérée par le toast, donc pas besoin de l'afficher ici
+  // if (error) {
+  //   return <p className="text-red-500">Erreur lors du chargement des commentaires : {error}</p>;
+  // }
 
   return (
     <div className="mt-8">
       <h2 className="text-xl font-semibold mb-4">Timeline des commentaires</h2>
-      <div className="relative w-full h-2 bg-gray-200 rounded-full mb-8 flex items-center"> {/* Reduced height */}
-        {/* Timeline bar */}
-        {comments.map((comment) => {
-          const position = (comment.page_number / totalBookPages) * 100;
-          return (
-            <div
-              key={comment.id}
-              className="absolute flex flex-col items-center cursor-pointer"
-              style={{ left: `${position}%`, transform: 'translateX(-50%)' }}
-              onClick={() => setSelectedComment(comment)}
-            >
-              {/* Line connecting to the title */}
-              <div className="w-4 h-4 bg-blue-500 rounded-full relative z-10"></div> {/* The point */}
-              {/* Line connecting to the title */}
-              <div className="absolute w-px bg-gray-400" style={{ height: '20px', top: '100%', marginTop: '4px' }}></div> {/* Line below the point */}
-              <span className="absolute text-xs text-gray-700 whitespace-nowrap" style={{ top: 'calc(100% + 24px)' }}>{comment.comment_title || 'Commentaire'}</span> {/* Title below the line */}
-            </div>
-          );
-        })}
-      </div>
+      {comments.length === 0 ? (
+        <p>Aucun commentaire pour ce livre.</p>
+      ) : (
+        <div className="relative">
+          {/* Ligne verticale centrale */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 w-1 bg-gray-200 h-full"></div>
 
-      {selectedComment && (
-        <Card className="mt-4">
-          <CardContent className="pt-4">
-            <h3 className="font-semibold text-lg mb-2">{selectedComment.comment_title || 'Commentaire'} (Page {selectedComment.page_number})</h3>
-            <p className="text-gray-700">{selectedComment.comment_text}</p>
-            <p className="text-xs text-gray-500 mt-2">Créé le : {new Date(selectedComment.created_at).toLocaleDateString()}</p>
-          </CardContent>
-        </Card>
+          {comments.map((comment, index) => {
+            const isEven = index % 2 === 0; // Pour alterner gauche/droite
+            return (
+              <div key={comment.id} className={`mb-8 flex items-center w-full ${isEven ? 'justify-start' : 'justify-end'}`}>
+                {/* Point sur la ligne */}
+                <div className={`absolute z-10 w-4 h-4 bg-blue-500 rounded-full ${isEven ? 'left-1/2 -translate-x-1/2' : 'left-1/2 -translate-x-1/2'}`}></div>
+
+                <div className={`w-5/12 ${isEven ? 'pr-8 text-right' : 'pl-8 text-left'}`}>
+                  <Card className="w-full cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedComment(comment)}>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="font-semibold text-lg">Page {comment.page_number}</h3>
+                        <span className="text-sm text-gray-500">{format(new Date(comment.created_at), 'dd MMMM yyyy', { locale: fr })}</span>
+                      </div>
+                      <p className="text-gray-700 line-clamp-2">{comment.comment_text}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      {comments.length === 0 && (
-        <p>Aucun commentaire pour ce livre.</p>
+      {selectedComment && (
+        <Card className="mt-8 p-4">
+          <CardContent className="pt-4">
+            <h3 className="font-semibold text-xl mb-2">Commentaire (Page {selectedComment.page_number})</h3>
+            <p className="text-gray-700">{selectedComment.comment_text}</p>
+            <p className="text-xs text-gray-500 mt-4">Créé le : {format(new Date(selectedComment.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}</p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

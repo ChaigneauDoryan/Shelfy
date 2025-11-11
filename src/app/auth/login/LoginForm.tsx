@@ -81,7 +81,7 @@ function LoginFormContent() {
     <Card className="w-full max-w-md">
       <CardHeader>
         <CardTitle>Connexion</CardTitle>
-        <CardDescription>Accédez à votre compte Codex.</CardDescription>
+        <CardDescription>Accédez à votre compte Shelfy.</CardDescription>
       </CardHeader>
       <CardContent className="p-4 sm:p-6">
         <Form {...form}>

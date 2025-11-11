@@ -146,7 +146,9 @@ model GroupBook {
   added_at  DateTime @default(now())
   finished_at DateTime?
   suggested_by_id String? @db.Uuid
-  reading_end_date DateTime? // Nouvelle ligne
+  reading_end_date DateTime?
+  reminder_sent    Boolean   @default(false)
+  two_hour_reminder_sent Boolean @default(false) // Nouvelle ligne // Nouvelle ligne
 
   group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
   book  Book  @relation(fields: [book_id], references: [id], onDelete: Cascade)
@@ -162,6 +164,7 @@ model GroupMemberReadingProgress {
   groupMemberId String   @db.Uuid
   groupBookId   String   @db.Uuid
   currentPage   Int      @default(0)
+  rating        Float?   // Permet les demi-étoiles
   lastUpdated   DateTime @default(now())
 
   groupMember GroupMember @relation(fields: [groupMemberId], references: [id], onDelete: Cascade)
@@ -234,7 +237,7 @@ model UserBook {
   user_id      String    @db.Uuid
   book_id      String    @db.Uuid
   status_id    Int
-  rating       Int?
+  rating       Float?
   started_at   DateTime?
   finished_at  DateTime?
   current_page Int       @default(0)

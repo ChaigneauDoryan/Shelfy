@@ -15,7 +15,7 @@ interface Comment {
 }
 
 interface GroupBookData {
-  progress: { currentPage: number } | null;
+  progress: { currentPage: number; rating?: number | null } | null;
   comments: Comment[];
 }
 
@@ -28,8 +28,15 @@ export function useGroupBookData(groupId: string, groupBookId: string, enabled =
         fetch(`/api/groups/${groupId}/books/${groupBookId}/comments`),
       ]);
 
-      if (!progressRes.ok || !commentsRes.ok) {
-        throw new Error('Failed to fetch group book data');
+      if (!progressRes.ok) {
+        const errorText = await progressRes.text();
+        console.error('Failed to fetch progress data:', progressRes.status, errorText);
+        throw new Error('Failed to fetch progress data');
+      }
+      if (!commentsRes.ok) {
+        const errorText = await commentsRes.text();
+        console.error('Failed to fetch comments data:', commentsRes.status, errorText);
+        throw new Error('Failed to fetch comments data');
       }
 
       const progressData = await progressRes.json();

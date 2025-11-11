@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 const formSchema = z.object({
   password: z.string().min(8, { message: 'Le mot de passe doit contenir au moins 8 caractères.' }),
@@ -27,9 +28,10 @@ function ResetPasswordPageContent() {
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState<boolean>(false);
   const [token, setToken] = useState<string | null>(null);
+  const { toast } = useToast(); // Initialize useToast
 
   useEffect(() => {
-    document.title = 'Shelfy - Reset Password';
+    document.title = 'Shelfy - Réinitialiser le mot de passe';
   }, []);
 
   useEffect(() => {
@@ -51,6 +53,11 @@ function ResetPasswordPageContent() {
     if (!token) {
       setIsError(true);
       setMessage('Le jeton de réinitialisation du mot de passe est manquant.');
+      toast({
+        title: 'Erreur',
+        description: 'Le jeton de réinitialisation du mot de passe est manquant.',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -68,8 +75,17 @@ function ResetPasswordPageContent() {
       if (!response.ok) {
         setIsError(true);
         setMessage(data.error || 'Une erreur inattendue est survenue.');
+        toast({
+          title: 'Erreur',
+          description: data.error || 'Une erreur inattendue est survenue.',
+          variant: 'destructive',
+        });
       } else {
         setMessage(data.message);
+        toast({
+          title: 'Succès',
+          description: data.message,
+        });
         setTimeout(() => {
           router.push('/auth/login');
         }, 3000);
@@ -77,6 +93,11 @@ function ResetPasswordPageContent() {
     } catch (error) {
       setIsError(true);
       setMessage('Une erreur inattendue est survenue. Veuillez réessayer.');
+      toast({
+        title: 'Erreur',
+        description: 'Une erreur inattendue est survenue. Veuillez réessayer.',
+        variant: 'destructive',
+      });
       console.error(error);
     }
   }
@@ -122,11 +143,12 @@ function ResetPasswordPageContent() {
               </Button>
             </form>
           </Form>
-          {message && (
+          {/* Les messages sont maintenant gérés par les toasts */}
+          {/* {message && (
             <p className={`mt-4 text-center ${isError ? 'text-red-500' : 'text-green-500'}`}>
               {message}
             </p>
-          )}
+          )} */}
           <p className="mt-4 text-center text-sm text-gray-600">
             <Link href="/auth/login" className="underline">
               Retour à la connexion

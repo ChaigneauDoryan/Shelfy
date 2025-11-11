@@ -19,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { signIn } from 'next-auth/react';
 import { FcGoogle } from 'react-icons/fc';
+import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Le nom d'utilisateur doit contenir au moins 2 caractères." }),
@@ -32,6 +34,7 @@ const formSchema = z.object({
 
 export default function SignupPage() {
   const router = useRouter();
+  const { toast } = useToast(); // Initialize useToast
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean>(false);
 
@@ -67,9 +70,17 @@ export default function SignupPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      setError(data.message || 'Une erreur est survenue.');
+      toast({
+        title: 'Erreur d\'inscription',
+        description: data.message || 'Une erreur est survenue lors de l\'inscription.',
+        variant: 'destructive',
+      });
     } else {
       setSuccess(true);
+      toast({
+        title: 'Inscription réussie !',
+        description: 'Un e-mail de vérification a été envoyé à votre adresse. Veuillez cliquer sur le lien dans l\'e-mail pour activer votre compte.',
+      });
     }
   }
 
@@ -78,18 +89,18 @@ export default function SignupPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Créer un compte</CardTitle>
-          <CardDescription>Rejoignez Codex pour commencer votre aventure littéraire.</CardDescription>
+          <CardDescription>Rejoignez Shelfy pour commencer votre aventure littéraire.</CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           {success ? (
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-green-600">Inscription réussie !</h2>
+              <h2 className="text-2xl font-bold text-green-600">Vérifiez votre e-mail</h2>
               <p className="mt-4 text-gray-600">Un e-mail de vérification a été envoyé à votre adresse. Veuillez cliquer sur le lien dans l'e-mail pour activer votre compte.</p>
             </div>
           ) : (
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+                {/* {error && <p className="text-sm text-red-600 text-center">{error}</p>} */}
                 <FormField
                   control={form.control}
                   name="name"
@@ -167,6 +178,12 @@ export default function SignupPage() {
                 <FcGoogle className="mr-2 h-4 w-4" />
                 S'inscrire avec Google
               </Button>
+              <p className="mt-4 text-center text-sm text-gray-600">
+                Déjà un compte ?{' '}
+                <Link href="/auth/login" className="font-semibold leading-6 text-blue-600 hover:text-blue-500">
+                  Connexion
+                </Link>
+              </p>
             </>
           )}
         </CardContent>

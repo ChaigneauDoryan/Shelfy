@@ -31,7 +31,7 @@ export async function POST(request: Request, { params }: { params: { groupId: st
       await tx.groupBook.updateMany({
         where: {
           group_id: groupId,
-          status: 'CURRENTLY_READING',
+          status: 'CURRENT',
         },
         data: {
           status: 'FINISHED',
@@ -43,7 +43,7 @@ export async function POST(request: Request, { params }: { params: { groupId: st
         data: {
           group_id: groupId,
           book_id: bookId,
-          status: 'CURRENTLY_READING',
+          status: 'CURRENT',
         },
       });
     });

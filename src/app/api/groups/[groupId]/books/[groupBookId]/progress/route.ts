@@ -88,6 +88,10 @@ export async function GET(request: Request, { params }: { params: { groupId: str
           groupBookId: groupBookId,
         },
       },
+      select: { // Sélectionner explicitement les champs nécessaires
+        currentPage: true,
+        rating: true, // Inclure la note
+      },
     });
 
     return NextResponse.json({ progress });

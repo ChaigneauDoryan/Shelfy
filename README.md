@@ -1,6 +1,6 @@
-# Codex - Social Book Tracking App
+# Shelfy - Social Book Tracking App
 
-Codex is a full-stack web application designed for book lovers to track their reading progress, discover new books, and connect with others in reading groups.
+Shelfy is a full-stack web application designed for book lovers to track their reading progress, discover new books, and connect with others in reading groups.
 
 ## ✨ Key Features
 
@@ -35,7 +35,7 @@ Follow these instructions to set up the project locally.
 1.  **Clone the repository:**
     ```bash
     git clone <repository-url>
-    cd Codex
+    cd Shelfy
     ```
 
 2.  **Install dependencies:**

@@ -25,7 +25,7 @@ export async function GET(request: Request, { params }: { params: { userBookId: 
 
     const comments = await prisma.userBookComment.findMany({
       where: { user_book_id: userBookId },
-      orderBy: { created_at: 'asc' }, // ou page_number
+      orderBy: { created_at: 'desc' },
     });
 
     return NextResponse.json(comments);

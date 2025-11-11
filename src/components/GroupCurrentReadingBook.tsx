@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGroupBookData } from '@/hooks/useGroupBookData';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,24 +11,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Book, GroupBook } from "@prisma/client";
+import { Book, GroupBook, RoleInGroup } from "@prisma/client";
+import { useGroupDetails } from '@/hooks/useGroupDetails';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { Star, StarHalf } from 'lucide-react';
+import GroupBookCommentTimeline from './GroupBookCommentTimeline'; // Import the new component
 
 interface GroupCurrentReadingBookProps {
   groupId: string;
   groupBook: GroupBook & { book: Book, reading_end_date?: Date | null };
-}
-
-interface Comment {
-  id: string;
-  userId: string;
-  pageNumber: number;
-  content: string;
-  createdAt: string;
-  user: {
-    id: string;
-    name: string | null;
-    image: string | null;
-  };
 }
 
 const MAX_COMMENT_LENGTH = 2000;
@@ -38,28 +30,51 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
   const router = useRouter();
   const { data: session } = useSession();
   const userId = session?.user?.id;
+  const queryClient = useQueryClient();
+
+  const { data: groupDetails } = useGroupDetails(groupId);
+  const isAdmin = groupDetails?.members.some(member => member.user.id === userId && member.role === RoleInGroup.ADMIN) || false;
 
   const [commentPageNumber, setCommentPageNumber] = useState(0);
   const [commentContent, setCommentContent] = useState('');
+  const [readingEndDateInput, setReadingEndDateInput] = useState<string>(
+    groupBook.reading_end_date ? format(new Date(groupBook.reading_end_date), "yyyy-MM-dd'T'HH:mm") : ''
+  );
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const [hoverRating, setHoverRating] = useState<number>(0);
 
-  const { data, isLoading, error } = useGroupBookData(groupId, groupBook.id, !!userId);
+  useEffect(() => {
+    setReadingEndDateInput(
+      groupBook.reading_end_date ? format(new Date(groupBook.reading_end_date), "yyyy-MM-dd'T'HH:mm") : ''
+    );
+  }, [groupBook.reading_end_date]);
+
+  const { data, isLoading, error, refetch } = useGroupBookData(groupId, groupBook.id, !!userId);
+
+  useEffect(() => {
+    if (groupBook.reading_end_date) {
+      const endDate = new Date(groupBook.reading_end_date);
+      const now = new Date();
+      if (endDate > now) {
+        const timeUntilEnd = endDate.getTime() - now.getTime();
+        const timer = setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['groupDetails', groupId] });
+        }, timeUntilEnd);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [groupBook.reading_end_date, groupId, queryClient]);
+
+  useEffect(() => {
+    if (data?.progress?.rating !== undefined) {
+      setUserRating(data.progress.rating);
+    }
+  }, [data?.progress?.rating]);
 
   const currentPage = data?.progress?.currentPage || 0;
-  const groupedComments = useMemo(() => {
-    if (!data?.comments) return {};
-    return data.comments.reduce((acc, comment) => {
-      const page = comment.pageNumber;
-      if (!acc[page]) acc[page] = [];
-      acc[page].push(comment);
-      return acc;
-    }, {} as Record<number, Comment[]>);
-  }, [data?.comments]);
 
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
+  const addCommentMutation = useMutation({
     mutationFn: async ({ pageNumber, content }: { pageNumber: number, content: string }) => {
-      // 1. Mettre à jour la progression
       const progressResponse = await fetch(`/api/groups/${groupId}/books/${groupBook.id}/progress`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -67,7 +82,6 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
       });
       if (!progressResponse.ok) throw new Error('Failed to update progress');
 
-      // 2. Poster le commentaire
       const commentResponse = await fetch(`/api/groups/${groupId}/books/${groupBook.id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -86,6 +100,54 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
     },
   });
 
+  const updateReadingEndDateMutation = useMutation({
+    mutationFn: async (dateString: string) => {
+      const date = dateString ? new Date(dateString) : null;
+      const response = await fetch(`/api/groups/${groupId}/books/${groupBook.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reading_end_date: date ? date.toISOString() : null }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Échec de la mise à jour de la date de fin de lecture.');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['groupBookData', groupId, groupBook.id] });
+      queryClient.invalidateQueries({ queryKey: ['groupDetails', groupId] });
+      toast({ title: 'Succès', description: 'Date de fin de lecture mise à jour.' });
+      setReadingEndDateInput(data.groupBook.reading_end_date ? format(new Date(data.groupBook.reading_end_date), "yyyy-MM-dd'T'HH:mm") : '');
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  const updateRatingMutation = useMutation({
+    mutationFn: async (rating: number | null) => {
+      const response = await fetch(`/api/groups/${groupId}/books/${groupBook.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Échec de la mise à jour de la note.');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['groupBookData', groupId, groupBook.id] });
+      toast({ title: 'Succès', description: 'Note mise à jour avec succès.' });
+      setUserRating(data.progress.rating);
+    },
+    onError: (error: any) => {
+      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    },
+  });
+
   const handleAddComment = () => {
     if (commentPageNumber <= 0 || commentPageNumber > (groupBook.book.page_count || 9999)) {
       toast({ title: 'Erreur', description: 'Veuillez entrer un numéro de page valide.', variant: 'destructive' });
@@ -95,40 +157,17 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
       toast({ title: 'Erreur', description: 'Le commentaire ne peut pas être vide.', variant: 'destructive' });
       return;
     }
-    mutation.mutate({ pageNumber: commentPageNumber, content: commentContent });
+    addCommentMutation.mutate({ pageNumber: commentPageNumber, content: commentContent });
   };
 
-  const timelineItems = (() => {
-    let left = true;
-    return Object.keys(groupedComments)
-      .sort((a, b) => parseInt(b) - parseInt(a))
-      .map(pageNumber => {
-        const commentsForPage = groupedComments[parseInt(pageNumber)];
-        const direction = left ? 'left' : 'right';
-        left = !left;
-        return {
-          id: pageNumber,
-          title: `Page ${pageNumber}`,
-          direction: direction,
-          description: (
-            <div className="space-y-3">
-              {commentsForPage.map(comment => {
-                const isBlurred = comment.pageNumber > currentPage;
-                return (
-                  <div key={comment.id} className={`pl-4 border-l-2 border-gray-200 ${isBlurred ? 'blur-sm' : ''}`}>
-                    <div className="flex items-center space-x-2">
-                      <p className="text-sm font-medium">{comment.user.name}</p>
-                      <p className="text-xs text-gray-400">{new Date(comment.createdAt).toLocaleString()}</p>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{comment.content}</p>
-                  </div>
-                );
-              })}
-            </div>
-          ),
-        };
-      });
-  })();
+  const handleUpdateReadingEndDate = () => {
+    updateReadingEndDateMutation.mutate(readingEndDateInput);
+  };
+
+  const handleRatingChange = (newRating: number) => {
+    setUserRating(newRating);
+    updateRatingMutation.mutate(newRating);
+  };
 
   if (isLoading) {
     return <div>Chargement des données du livre...</div>;
@@ -145,8 +184,23 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
         <CardDescription>{groupBook.book.author}</CardDescription>
         {groupBook.reading_end_date && (
           <p className="text-sm text-muted-foreground">
-            Date de fin de lecture: {new Date(groupBook.reading_end_date).toLocaleDateString()}
+            Date de fin de lecture: {format(new Date(groupBook.reading_end_date), 'dd MMMM yyyy à HH:mm', { locale: fr })}
           </p>
+        )}
+        {isAdmin && (
+          <div className="flex items-center space-x-2 mt-4">
+            <Label htmlFor="readingEndDate" className="whitespace-nowrap">Modifier la date de fin:</Label>
+            <Input
+              id="readingEndDate"
+              type="datetime-local"
+              value={readingEndDateInput}
+              onChange={e => setReadingEndDateInput(e.target.value)}
+              className="w-[240px]"
+            />
+            <Button onClick={handleUpdateReadingEndDate} disabled={updateReadingEndDateMutation.isPending}>
+              {updateReadingEndDateMutation.isPending ? 'Enregistrement...' : 'Enregistrer'}
+            </Button>
+          </div>
         )}
       </CardHeader>
 
@@ -163,80 +217,109 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
           </div>
         </div>
 
+        {/* Section de vote par étoiles */}
+        {groupBook.reading_end_date && new Date() > new Date(groupBook.reading_end_date) && (
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold">Votre note</h3>
+            {userRating ? (
+              <>
+                <div className="flex items-center space-x-1">
+                  {[1, 2, 3, 4, 5].map((starIndex) => {
+                    if (userRating >= starIndex) {
+                      return <Star key={starIndex} className="h-6 w-6 text-yellow-500 fill-yellow-500" />;
+                    }
+                    if (userRating >= starIndex - 0.5) {
+                      return <StarHalf key={starIndex} className="h-6 w-6 text-yellow-500 fill-yellow-500" />;
+                    }
+                    return <Star key={starIndex} className="h-6 w-6 text-gray-300" />;
+                  })}
+                </div>
+                <p className="text-sm text-muted-foreground">Vous avez noté ce livre : {userRating}/5</p>
+              </>
+            ) : (
+              <div className="flex items-center space-x-1" onMouseLeave={() => setHoverRating(0)}>
+                {[1, 2, 3, 4, 5].map((starIndex) => {
+                  const ratingToShow = hoverRating || userRating || 0;
+                  return (
+                    <div
+                      key={starIndex}
+                      className="relative cursor-pointer"
+                      onClick={() => {
+                        if (hoverRating > 0) {
+                          handleRatingChange(hoverRating);
+                        }
+                      }}
+                    >
+                      <div
+                        className="absolute top-0 left-0 h-full w-1/2 z-10"
+                        onMouseEnter={() => setHoverRating(starIndex - 0.5)}
+                      />
+                      <div
+                        className="absolute top-0 right-0 h-full w-1/2 z-10"
+                        onMouseEnter={() => setHoverRating(starIndex)}
+                      />
+                      {ratingToShow >= starIndex ? (
+                        <Star className="h-6 w-6 text-yellow-500 fill-yellow-500" />
+                      ) : ratingToShow >= starIndex - 0.5 ? (
+                        <StarHalf className="h-6 w-6 text-yellow-500 fill-yellow-500" />
+                      ) : (
+                        <Star className="h-6 w-6 text-gray-300" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Section Commentaires */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Commentaires</h3>
 
-          {/* Formulaire d’ajout */}
-          <div className="space-y-4 p-4 border rounded-md bg-gray-50">
-            <h4 className="font-medium text-lg">Ajouter un commentaire</h4>
-            <div className="space-y-2">
-              <Label htmlFor="commentPageNumber">Page du commentaire</Label>
-              <Input
-                id="commentPageNumber"
-                type="number"
-                placeholder="Numéro de page"
-                value={commentPageNumber}
-                onChange={e => setCommentPageNumber(parseInt(e.target.value))}
-                min={1}
-                max={groupBook.book.page_count || 9999}
-                className="w-full md:w-32"
-              />
+          {(!groupBook.reading_end_date || new Date() < new Date(groupBook.reading_end_date)) && (
+            <div className="space-y-4 p-4 border rounded-md bg-gray-50">
+              <h4 className="font-medium text-lg">Ajouter un commentaire</h4>
+              <div className="space-y-2">
+                <Label htmlFor="commentPageNumber">Page du commentaire</Label>
+                <Input
+                  id="commentPageNumber"
+                  type="number"
+                  placeholder="Numéro de page"
+                  value={commentPageNumber}
+                  onChange={e => setCommentPageNumber(parseInt(e.target.value))}
+                  min={1}
+                  max={groupBook.book.page_count || 9999}
+                  className="w-full md:w-32"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="commentContent">Votre commentaire</Label>
+                <Textarea
+                  id="commentContent"
+                  placeholder="Écrivez votre commentaire ici..."
+                  value={commentContent}
+                  onChange={e => {
+                    if (e.target.value.length <= MAX_COMMENT_LENGTH) {
+                      setCommentContent(e.target.value);
+                    }
+                  }}
+                  rows={4}
+                  maxLength={MAX_COMMENT_LENGTH}
+                />
+                <p className="text-sm text-muted-foreground text-right">
+                  {commentContent.length} / {MAX_COMMENT_LENGTH}
+                </p>
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={handleAddComment} disabled={addCommentMutation.isPending}>
+                  {addCommentMutation.isPending ? 'Publication...' : 'Poster le commentaire'}
+                </Button>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="commentContent">Votre commentaire</Label>
-              <Textarea
-                id="commentContent"
-                placeholder="Écrivez votre commentaire ici..."
-                value={commentContent}
-                onChange={e => {
-                  if (e.target.value.length <= MAX_COMMENT_LENGTH) {
-                    setCommentContent(e.target.value);
-                  }
-                }}
-                rows={4}
-                maxLength={MAX_COMMENT_LENGTH}
-              />
-              <p className="text-sm text-muted-foreground text-right">
-                {commentContent.length} / {MAX_COMMENT_LENGTH}
-              </p>
-            </div>
-            <div className="flex justify-end">
-              <Button onClick={handleAddComment}>Poster le commentaire</Button>
-            </div>
-          </div>
+          )}
 
-          <div className="relative">
-            {/* ligne verticale centrale */}
-            <div className="absolute left-1/2 top-0 transform -translate-x-1/2 h-full w-1 bg-slate-200" />
-
-            <div className="flex flex-col space-y-16 mt-6">
-              {timelineItems.map((item, idx) => {
-                const isLeft = item.direction === 'left';
-                return (
-                  <div
-                    key={item.id}
-                    className={`relative flex items-center justify-between md:justify-normal md:gap-8 ${
-                      isLeft ? 'md:flex-row-reverse' : 'md:flex-row'
-                    }`}
-                  >
-                    {/* bloc commentaire */}
-                    <div
-                      className={`bg-white shadow-md hover:shadow-lg transition-shadow duration-200 rounded-2xl p-4 md:w-[45%] ${
-                        isLeft ? 'md:ml-auto' : 'md:mr-auto'
-                      }`}
-                    >
-                      <h4 className="font-semibold text-sm md:text-base mb-2">{item.title}</h4>
-                      {item.description}
-                    </div>
-
-                    {/* point central */}
-                    <div className="absolute left-1/2 transform -translate-x-1/2 w-5 h-5 bg-blue-500 rounded-full border-4 border-white shadow-md" />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <GroupBookCommentTimeline comments={data?.comments || []} currentPage={currentPage} />
         </div>
       </CardContent>
     </Card>

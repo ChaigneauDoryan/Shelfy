@@ -3,12 +3,36 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Book } from "@prisma/client";
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useUserSubscription } from '@/hooks/useUserSubscription';
+import { FREE_PLAN_ID } from '@/lib/subscription-utils';
+import { useToast } from '@/hooks/use-toast';
 
 export default function DiscoverPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { toast } = useToast();
+  const { data: subscription, isLoading: isSubscriptionLoading } = useUserSubscription(session?.user?.id);
+
   const [recommendations, setRecommendations] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (status === 'loading' || isSubscriptionLoading) {
+      return; // Attendre que la session et l'abonnement soient chargés
+    }
+
+    if (!session || subscription?.planId === FREE_PLAN_ID) {
+      toast({
+        title: 'Accès refusé',
+        description: 'La fonctionnalité "Découvrir" est réservée aux abonnements Premium.',
+        variant: 'destructive',
+      });
+      router.push('/dashboard'); // Rediriger vers le dashboard
+      return;
+    }
+
     const fetchRecommendations = async () => {
       try {
         const response = await fetch('/api/books/recommendations');
@@ -26,7 +50,11 @@ export default function DiscoverPage() {
     };
 
     fetchRecommendations();
-  }, []);
+  }, [session, status, subscription, isSubscriptionLoading, router, toast]);
+
+  if (status === 'loading' || isSubscriptionLoading || !session || subscription?.planId === FREE_PLAN_ID) {
+    return null; // Ne rien afficher pendant le chargement ou si l'accès est refusé
+  }
 
   return (
     <div className="space-y-8">

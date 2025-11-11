@@ -9,9 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+// import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 const formSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address.' }),
+  email: z.string().email({ message: 'Veuillez saisir une adresse e-mail valide.' }),
 });
 
 type ForgotPasswordFormValues = z.infer<typeof formSchema>;
@@ -19,9 +20,10 @@ type ForgotPasswordFormValues = z.infer<typeof formSchema>;
 export default function ForgotPasswordPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState<boolean>(false);
+  // const { toast } = useToast(); // Initialize useToast
 
   useEffect(() => {
-    document.title = 'Shelfy - Forgot Password';
+    document.title = 'Shelfy - Mot de passe oublié';
   }, []);
 
   const form = useForm<ForgotPasswordFormValues>({
@@ -47,13 +49,27 @@ export default function ForgotPasswordPage() {
 
       if (!response.ok) {
         setIsError(true);
-        setMessage(data.error || 'An unexpected error occurred.');
+        setMessage(data.error || 'Une erreur inattendue est survenue.');
+        // toast({
+        //   title: 'Erreur',
+        //   description: data.error || 'Une erreur inattendue est survenue.',
+        //   variant: 'destructive',
+        // });
       } else {
         setMessage(data.message);
+        // toast({
+        //   title: 'Succès',
+        //   description: data.message,
+        // });
       }
     } catch (error) {
       setIsError(true);
-      setMessage('An unexpected error occurred. Please try again.');
+      setMessage('Une erreur inattendue est survenue. Veuillez réessayer.');
+      // toast({
+      //   title: 'Erreur',
+      //   description: 'Une erreur inattendue est survenue. Veuillez réessayer.',
+      //   variant: 'destructive',
+      // });
       console.error(error);
     }
   }
@@ -62,8 +78,8 @@ export default function ForgotPasswordPage() {
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center">Forgot Password</CardTitle>
-          <CardDescription className="text-center">Enter your email address to receive a password reset link.</CardDescription>
+          <CardTitle className="text-center">Mot de passe oublié</CardTitle>
+          <CardDescription className="text-center">Saisissez votre adresse e-mail pour recevoir un lien de réinitialisation de mot de passe.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -82,7 +98,7 @@ export default function ForgotPasswordPage() {
                 )}
               />
               <Button type="submit" className="w-full">
-                Send Reset Link
+                Envoyer le lien de réinitialisation
               </Button>
             </form>
           </Form>
