@@ -7,6 +7,7 @@
     "build": "prisma generate && prisma migrate deploy && npm run seed && next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "npx tsc prisma/seed.ts --outDir dist/prisma --module commonjs --target es2015",
     "seed": "node dist/prisma/seed.js"
   },
   "prisma": {
