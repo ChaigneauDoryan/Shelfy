@@ -106,6 +106,12 @@ export default function TopNavbar() {
             >
               Groupes de Lecture
             </Link>
+            <Link
+              className="transition-colors hover:text-foreground/80 text-foreground/60"
+              href="/contact"
+            >
+              Contact
+            </Link>
           </nav>
         </div>
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
@@ -156,6 +162,13 @@ export default function TopNavbar() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Groupes de Lecture
+                  </Link>
+                  <Link
+                    className="flex w-full items-center py-2 text-lg font-semibold"
+                    href="/contact"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Contact
                   </Link>
                 </div>
               </SheetContent>

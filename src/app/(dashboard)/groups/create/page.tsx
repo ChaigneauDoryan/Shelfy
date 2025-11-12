@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react'; // Ajout de useEffect
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,35 +17,35 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-
+import { useToast } from '@/hooks/use-toast';
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
 import { useSession } from 'next-auth/react';
-import { useUserSubscription } from '@/hooks/useUserSubscription'; // Nouvelle importation
-import { canCreateMoreGroups } from '@/lib/subscription-utils'; // Nouvelle importation
+import { useUserSubscription } from '@/hooks/useUserSubscription';
+import { canCreateMoreGroups } from '@/lib/subscription-utils';
 
 const createGroupSchema = z.object({
   name: z.string().min(3, { message: "Le nom du groupe doit contenir au moins 3 caractères." }).max(50, { message: "Le nom du groupe ne peut pas dépasser 50 caractères." }),
   description: z.string().max(280, { message: "La description ne peut pas dépasser 280 caractères." }).optional(),
-  avatar_url: z.string().url({ message: "Veuillez fournir une URL valide." }).optional().or(z.literal('')), // Permettre chaîne vide
+  avatar_url: z.string().url({ message: "Veuillez fournir une URL valide." }).optional().or(z.literal('')),
 });
 
 type CreateGroupFormValues = z.infer<typeof createGroupSchema>;
 
 export default function CreateGroupPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const { data: session, status } = useSession();
   const userId = session?.user?.id;
-  const { data: subscription, isLoading: isSubscriptionLoading } = useUserSubscription(userId); // Utilisation du hook
+  const { data: subscription, isLoading: isSubscriptionLoading } = useUserSubscription(userId);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [canCreateGroup, setCanCreateGroup] = useState(true); // Nouvel état pour la limite
+  const [canCreateGroup, setCanCreateGroup] = useState(true);
 
-  // Vérifier la limite de création de groupes
   useEffect(() => {
     if (userId && subscription && !isSubscriptionLoading) {
       const checkLimit = async () => {
-        const result = await canCreateMoreGroups(userId); // Appeler la fonction utilitaire
+        const result = await canCreateMoreGroups(userId);
         setCanCreateGroup(result);
       };
       checkLimit();
@@ -80,11 +80,19 @@ export default function CreateGroupPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Échec de la création du groupe.');
+        if (response.status === 402) {
+          toast({
+            title: 'Limite du plan gratuit atteinte',
+            description: errorData.message,
+            variant: 'destructive',
+          });
+        } else {
+          throw new Error(errorData.message || 'Échec de la création du groupe.');
+        }
+      } else {
+        router.push('/groups');
+        router.refresh();
       }
-
-      router.push('/groups');
-      router.refresh();
 
     } catch (err: any) {
       setError(err.message);

@@ -205,15 +205,25 @@ export default function AddBookPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Échec de l\'ajout du livre à la bibliothèque.');
+        if (response.status === 402) {
+          toast({
+            title: 'Limite du plan gratuit atteinte',
+            description: errorData.error,
+            variant: 'destructive',
+          });
+        } else {
+          throw new Error(errorData.error || 'Échec de l\'ajout du livre à la bibliothèque.');
+        }
+      } else {
+        toast({ title: 'Succès', description: 'Livre ajouté à votre bibliothèque !' });
+        setSearchParams({ title: '', author: '', isbn: '', genre: '' });
+        setResults([]);
+        setShowManualForm(false);
       }
-
-      toast({ title: 'Succès', description: 'Livre ajouté à votre bibliothèque !' });
-      setSearchParams({ title: '', author: '', isbn: '', genre: '' });
-      setResults([]);
-      setShowManualForm(false);
     } catch (e: any) {
-      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+      if (e.message !== 'Vous avez atteint la limite de livres personnels pour votre plan d\'abonnement.') {
+        toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+      }
     } finally {
       setLoading(false);
       setAddingBookId(null);
@@ -280,15 +290,25 @@ export default function AddBookPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Échec de l\'ajout du livre à la bibliothèque.');
+        if (response.status === 402) {
+          toast({
+            title: 'Limite du plan gratuit atteinte',
+            description: errorData.error,
+            variant: 'destructive',
+          });
+        } else {
+          throw new Error(errorData.error || 'Échec de l\'ajout du livre à la bibliothèque.');
+        }
+      } else {
+        toast({ title: 'Succès', description: 'Livre ajouté à votre bibliothèque !' });
+        manualForm.reset();
+        setChaptersInput([]);
+        setShowManualForm(false);
       }
-
-      toast({ title: 'Succès', description: 'Livre ajouté à votre bibliothèque !' });
-      manualForm.reset();
-      setChaptersInput([]);
-      setShowManualForm(false);
     } catch (e: any) {
-      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+      if (e.message !== 'Vous avez atteint la limite de livres personnels pour votre plan d\'abonnement.') {
+        toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+      }
     } finally {
       setLoading(false);
       setAddingBookId(null);

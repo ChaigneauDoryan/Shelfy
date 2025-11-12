@@ -76,14 +76,22 @@ export default function JoinRequestsManager({ groupId }: JoinRequestsManagerProp
         }
       );
 
+      const errorData = await response.json();
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to ${action} request.`);
+        if (response.status === 402) {
+          toast({
+            title: 'Limite du plan gratuit atteinte',
+            description: errorData.message,
+            variant: 'destructive',
+          });
+        } else {
+          throw new Error(errorData.message || `Failed to ${action} request.`);
+        }
+      } else {
+        toast({ title: 'Succès', description: `La demande a été ${action === 'accept' ? 'acceptée' : 'refusée'}.` });
+        // Refresh the list
+        setRequests(prev => prev.filter(req => req.id !== requestId));
       }
-
-      toast({ title: 'Succès', description: `La demande a été ${action === 'accept' ? 'acceptée' : 'refusée'}.` });
-      // Refresh the list
-      setRequests(prev => prev.filter(req => req.id !== requestId));
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';

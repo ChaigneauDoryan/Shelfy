@@ -7,6 +7,8 @@ import { Resend } from 'resend';
 import GroupJoinRequestEmail from '@/emails/GroupJoinRequestEmail';
 import { render } from '@react-email/render';
 import { checkAndAwardGroupMembershipBadges, checkAndAwardInvitationBadges } from '@/lib/badge-utils';
+import { SubscriptionLimitError } from '@/lib/errors';
+import { canAddMoreMembers } from '@/lib/subscription-utils';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -53,6 +55,11 @@ export async function PUT(request: Request, { params }: { params: { groupId: str
     }
 
     if (action === 'accept') {
+      // Check subscription limit before adding member
+      const canAdd = await canAddMoreMembers(groupId, joinRequest.group.created_by_id);
+      if (!canAdd) {
+        throw new SubscriptionLimitError('Vous avez atteint la limite de membres pour ce groupe pour votre plan d\'abonnement.');
+      }
       // Use a transaction to ensure atomicity
       await prisma.$transaction(async (tx) => {
         // Add user to the group
@@ -129,6 +136,9 @@ export async function PUT(request: Request, { params }: { params: { groupId: str
     return NextResponse.json({ message: `Request successfully ${action}ed.` });
 
   } catch (error) {
+    if (error instanceof SubscriptionLimitError) {
+      return NextResponse.json({ message: error.message }, { status: 402 });
+    }
     console.error(`Failed to ${action} join request:`, error);
     // Check for unique constraint violation on member creation
     if (error instanceof Error && 'code' in error && (error as any).code === 'P2002') {
