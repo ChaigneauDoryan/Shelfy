@@ -1,0 +1,8 @@
+-- AlterEnum
+ALTER TYPE "RoleInGroup" ADD VALUE 'MODERATOR';
+
+-- AlterTable
+ALTER TABLE "GroupMemberReadingProgress" ALTER COLUMN "rating" SET DATA TYPE DOUBLE PRECISION;
+
+-- AlterTable
+ALTER TABLE "UserBook" ALTER COLUMN "rating" SET DATA TYPE DOUBLE PRECISION;

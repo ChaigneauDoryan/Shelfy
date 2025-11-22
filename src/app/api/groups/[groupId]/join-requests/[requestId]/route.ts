@@ -32,13 +32,15 @@ export async function PUT(request: Request, { params }: { params: { groupId: str
   }
 
   try {
-    // 1. Verify user is an admin of the group
+    // 1. Verify user is an admin or moderator of the group
     const membership = await prisma.groupMember.findUnique({
       where: { group_id_user_id: { group_id: groupId, user_id: userId } },
     });
 
-    if (!membership || membership.role !== RoleInGroup.ADMIN) {
-      return NextResponse.json({ message: 'Forbidden: You are not an admin of this group.' }, { status: 403 });
+    const hasPermission = membership && (membership.role === RoleInGroup.ADMIN || membership.role === RoleInGroup.MODERATOR);
+
+    if (!hasPermission) {
+      return NextResponse.json({ message: 'Forbidden: You are not an admin or moderator of this group.' }, { status: 403 });
     }
 
     // 2. Find the join request

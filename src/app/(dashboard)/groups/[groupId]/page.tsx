@@ -188,10 +188,11 @@ export default function GroupDetailsPage() {
       method: 'PATCH',
     });
     if (response.ok) {
-      toast({ title: 'Succès', description: "Membre promu administrateur." });
-      router.refresh();
+      toast({ title: 'Succès', description: "Membre promu modérateur." });
+      refetch(); // Use refetch from useGroupDetails to get fresh data
     } else {
-      toast({ title: 'Erreur', description: "La promotion a échoué.", variant: 'destructive' });
+      const errorData = await response.json();
+      toast({ title: 'Erreur', description: errorData.message || "La promotion a échoué.", variant: 'destructive' });
     }
   };
 
@@ -201,7 +202,7 @@ export default function GroupDetailsPage() {
     });
     if (response.ok) {
       toast({ title: 'Succès', description: "Membre supprimé du groupe." });
-      router.refresh();
+      refetch(); // Use refetch
     } else {
       toast({ title: 'Erreur', description: "La suppression a échoué.", variant: 'destructive' });
     }
@@ -218,7 +219,7 @@ export default function GroupDetailsPage() {
 
     if (response.ok) {
       toast({ title: 'Succès', description: "Les informations du groupe ont été mises à jour." });
-      router.refresh();
+      refetch(); // Use refetch
     } else {
       toast({ title: 'Erreur', description: "La mise à jour a échoué.", variant: 'destructive' });
     }
@@ -397,6 +398,8 @@ export default function GroupDetailsPage() {
                             <div className="flex items-center space-x-2">
                               <MemberAvatar member={member} />
                               <span>{member.user.name}</span>
+                              {member.role === 'ADMIN' && <span className="text-xs font-semibold text-white bg-blue-600 px-2 py-1 rounded-full">Admin</span>}
+                              {member.role === 'MODERATOR' && <span className="text-xs font-semibold text-white bg-green-600 px-2 py-1 rounded-full">Modérateur</span>}
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -407,9 +410,9 @@ export default function GroupDetailsPage() {
                               <DropdownMenuContent>
                                 <DropdownMenuItem
                                   onClick={() => handlePromote(member.id)}
-                                  disabled={member.role === 'ADMIN'}
+                                  disabled={member.role === 'ADMIN' || member.role === 'MODERATOR'}
                                 >
-                                  Promouvoir Admin
+                                  Promouvoir Modérateur
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => handleRemove(member.id)}
@@ -455,6 +458,8 @@ export default function GroupDetailsPage() {
                   <li key={member.user.id} className="flex items-center space-x-2">
                     <MemberAvatar member={member} />
                     <span>{member.user.name}</span>
+                    {member.role === 'ADMIN' && <span className="text-xs font-semibold text-white bg-blue-600 px-2 py-1 rounded-full">Admin</span>}
+                    {member.role === 'MODERATOR' && <span className="text-xs font-semibold text-white bg-green-600 px-2 py-1 rounded-full">Modérateur</span>}
                   </li>
                 ))}
               </ul>

@@ -10,16 +10,49 @@ export async function DELETE(request: Request, { params }: { params: { groupId: 
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = session.user.id;
+  const removerUserId = session.user.id;
   const { groupId, memberId } = params;
 
   try {
-    const member = await prisma.groupMember.findUnique({
-      where: { group_id_user_id: { group_id: groupId, user_id: userId } },
+    // Get the role of the user performing the action
+    const remover = await prisma.groupMember.findUnique({
+      where: { group_id_user_id: { group_id: groupId, user_id: removerUserId } },
     });
 
-    if (!member || member.role !== RoleInGroup.ADMIN) {
-      return NextResponse.json({ message: 'Forbidden: You are not an admin of this group.' }, { status: 403 });
+    if (!remover) {
+      return NextResponse.json({ message: 'Forbidden: You are not a member of this group.' }, { status: 403 });
+    }
+
+    // Get the target member to be removed
+    const removee = await prisma.groupMember.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!removee) {
+      return NextResponse.json({ message: 'Member to be removed not found.' }, { status: 404 });
+    }
+    
+    // A user cannot remove themselves using this endpoint
+    if (remover.id === removee.id) {
+        return NextResponse.json({ message: 'You cannot remove yourself from the group.' }, { status: 400 });
+    }
+
+    let hasPermission = false;
+
+    if (remover.role === RoleInGroup.ADMIN) {
+      // Admins can remove anyone (MODERATOR or MEMBER)
+      if (removee.role === RoleInGroup.MODERATOR || removee.role === RoleInGroup.MEMBER) {
+        hasPermission = true;
+      }
+    } else if (remover.role === RoleInGroup.MODERATOR) {
+      // Moderators can only remove members
+      if (removee.role === RoleInGroup.MEMBER) {
+        hasPermission = true;
+      }
+    }
+
+    if (!hasPermission) {
+      return NextResponse.json({ message: 'Forbidden: You do not have permission to remove this member.' }, { status: 403 });
     }
 
     await prisma.groupMember.delete({

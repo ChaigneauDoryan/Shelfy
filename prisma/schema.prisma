@@ -1,5 +1,3 @@
-// prisma/schema.prisma
-
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
@@ -10,111 +8,87 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- ENUMS ---
-
-enum RoleInGroup {
-  ADMIN
-  MEMBER
-}
-
-enum InvitationStatus {
-  PENDING
-  ACCEPTED
-  DECLINED
-}
-
-// --- TABLES POUR NEXTAUTH.JS ---
-
 model Account {
   id                String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId            String  @db.Uuid
   type              String  @db.VarChar(255)
   provider          String  @db.VarChar(255)
   providerAccountId String  @db.VarChar(255)
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String? @db.VarChar(255)
-  scope             String? @db.Text
-  id_token          String? @db.Text
-  session_state     String? @db.Text
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
 
 model User {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name          String?   @db.VarChar(255)
-  email         String?   @unique @db.VarChar(255)
-  emailVerified DateTime?
-  image         String?   @db.Text
-  bio           String?   @db.Text
-  password      String?   @db.Text // Doit être un hash, donc potentiellement long
-  passwordResetToken      String?   @unique
-  passwordResetExpires    DateTime?
-  emailVerificationToken  String?   @unique
+  id                            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                          String?            @db.VarChar(255)
+  email                         String?            @unique @db.VarChar(255)
+  emailVerified                 DateTime?
+  image                         String?
+  bio                           String?
+  password                      String?
+  passwordResetExpires          DateTime?
+  passwordResetToken            String?            @unique
+  emailVerificationToken        String?            @unique
   emailVerificationTokenExpires DateTime?
-  
-  accounts      Account[]
-  createdGroups Group[]   @relation("GroupCreator")
-  memberships   GroupMember[]
-  userBooks     UserBook[]
-  userBadges    UserBadge[]
-  joinRequests  GroupJoinRequest[]
-  invited_users GroupMember[] @relation("InvitedBy")
-  votes         Vote[]
-  comments      BookComment[]
-  subscriptions Subscription[] // Nouvelle ligne
+  accounts                      Account[]
+  comments                      BookComment[]
+  createdGroups                 Group[]            @relation("GroupCreator")
+  joinRequests                  GroupJoinRequest[]
+  invited_users                 GroupMember[]      @relation("InvitedBy")
+  memberships                   GroupMember[]
+  subscriptions                 Subscription[]
+  userBadges                    UserBadge[]
+  userBooks                     UserBook[]
+  votes                         Vote[]
 }
 
-// --- TABLES DE L'APPLICATION ---
-
 model Group {
-  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String      @db.VarChar(255)
-  description     String?     @db.Text
-  avatar_url      String?     @db.Text
-  invitation_code String      @unique @db.VarChar(255)
-  created_at      DateTime    @default(now())
-
-  created_by_id   String      @db.Uuid
-  creator         User        @relation("GroupCreator", fields: [created_by_id], references: [id])
-  members         GroupMember[]
-  joinRequests    GroupJoinRequest[]
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String             @db.VarChar(255)
+  description     String?
+  avatar_url      String?
+  invitation_code String             @unique @db.VarChar(255)
+  created_at      DateTime           @default(now())
+  created_by_id   String             @db.Uuid
+  creator         User               @relation("GroupCreator", fields: [created_by_id], references: [id])
   books           GroupBook[]
+  joinRequests    GroupJoinRequest[]
+  members         GroupMember[]
   polls           Poll[]
 }
 
 model GroupMember {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  group_id  String   @db.Uuid
-  user_id   String   @db.Uuid
-  role      RoleInGroup @default(MEMBER)
-  joined_at DateTime @default(now())
-
-  group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  invited_by_id String? @db.Uuid
-  invited_by    User?   @relation("InvitedBy", fields: [invited_by_id], references: [id])
-
-  readingProgress GroupMemberReadingProgress[] // Nouvelle ligne
+  id              String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_id        String                       @db.Uuid
+  user_id         String                       @db.Uuid
+  joined_at       DateTime                     @default(now())
+  role            RoleInGroup                  @default(MEMBER)
+  invited_by_id   String?                      @db.Uuid
+  group           Group                        @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  invited_by      User?                        @relation("InvitedBy", fields: [invited_by_id], references: [id])
+  user            User                         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  readingProgress GroupMemberReadingProgress[]
 
   @@unique([group_id, user_id])
 }
 
 model GroupJoinRequest {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  groupId   String   @db.Uuid
-  userId    String   @db.Uuid
+  id        String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId   String           @db.Uuid
+  userId    String           @db.Uuid
   status    InvitationStatus @default(PENDING)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([groupId, userId])
 }
@@ -123,133 +97,124 @@ model Book {
   id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   google_books_id String?     @unique @db.VarChar(255)
   isbn            String?     @db.VarChar(20)
-  title           String      @db.Text
-  author          String      @db.Text
-  description     String?     @db.Text
-  cover_url       String?     @db.Text
+  title           String
+  author          String
+  description     String?
+  cover_url       String?
   page_count      Int?
   genre           String?     @db.VarChar(255)
   published_date  DateTime?
   publisher       String?     @db.VarChar(255)
   created_at      DateTime    @default(now())
-
   created_by_id   String      @db.Uuid
-  userBooks       UserBook[]
   groups          GroupBook[]
+  userBooks       UserBook[]
 }
 
 model GroupBook {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  group_id  String   @db.Uuid
-  book_id   String   @db.Uuid
-  status    String
-  added_at  DateTime @default(now())
-  finished_at DateTime?
-  suggested_by_id String? @db.Uuid
-  reading_end_date DateTime?
-  reminder_sent    Boolean   @default(false)
-  two_hour_reminder_sent Boolean @default(false) // Nouvelle ligne // Nouvelle ligne
-
-  group Group @relation(fields: [group_id], references: [id], onDelete: Cascade)
-  book  Book  @relation(fields: [book_id], references: [id], onDelete: Cascade)
-  pollOptions PollOption[]
-  readingProgress GroupMemberReadingProgress[] // Nouvelle ligne
-  comments BookComment[] // Nouvelle ligne
+  id                     String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_id               String                       @db.Uuid
+  book_id                String                       @db.Uuid
+  status                 String
+  added_at               DateTime                     @default(now())
+  finished_at            DateTime?
+  suggested_by_id        String?                      @db.Uuid
+  reading_end_date       DateTime?
+  reminder_sent          Boolean                      @default(false)
+  two_hour_reminder_sent Boolean                      @default(false)
+  comments               BookComment[]
+  book                   Book                         @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  group                  Group                        @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  readingProgress        GroupMemberReadingProgress[]
+  pollOptions            PollOption[]
 
   @@unique([group_id, book_id])
 }
 
 model GroupMemberReadingProgress {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  groupMemberId String   @db.Uuid
-  groupBookId   String   @db.Uuid
-  currentPage   Int      @default(0)
-  rating        Float?   // Permet les demi-étoiles
-  lastUpdated   DateTime @default(now())
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupMemberId String      @db.Uuid
+  groupBookId   String      @db.Uuid
+  currentPage   Int         @default(0)
+  lastUpdated   DateTime    @default(now())
+  rating        Float?
+  groupBook     GroupBook   @relation(fields: [groupBookId], references: [id], onDelete: Cascade)
+  groupMember   GroupMember @relation(fields: [groupMemberId], references: [id], onDelete: Cascade)
 
-  groupMember GroupMember @relation(fields: [groupMemberId], references: [id], onDelete: Cascade)
-  groupBook   GroupBook   @relation(fields: [groupBookId], references: [id], onDelete: Cascade)
-
-  @@unique([groupMemberId, groupBookId]) // Un membre ne peut avoir qu'une seule progression par livre de groupe
+  @@unique([groupMemberId, groupBookId])
 }
 
 model BookComment {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  groupBookId   String   @db.Uuid // Le livre du groupe commenté
-  userId        String   @db.Uuid // L'utilisateur qui a commenté
-  pageNumber    Int      // La page à laquelle le commentaire a été fait
-  content       String   @db.Text
-  createdAt     DateTime @default(now())
-
-  groupBook GroupBook @relation(fields: [groupBookId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupBookId String    @db.Uuid
+  userId      String    @db.Uuid
+  pageNumber  Int
+  content     String
+  createdAt   DateTime  @default(now())
+  groupBook   GroupBook @relation(fields: [groupBookId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Poll {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  group_id    String   @db.Uuid
-  created_at  DateTime @default(now())
-  end_date    DateTime
-
-  group   Group        @relation(fields: [group_id], references: [id], onDelete: Cascade)
-  options PollOption[]
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  group_id   String       @db.Uuid
+  created_at DateTime     @default(now())
+  end_date   DateTime
+  group      Group        @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  options    PollOption[]
 }
 
 model PollOption {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  poll_id       String   @db.Uuid
-  group_book_id String   @db.Uuid
-
-  poll      Poll      @relation(fields: [poll_id], references: [id], onDelete: Cascade)
-  groupBook GroupBook @relation(fields: [group_book_id], references: [id], onDelete: Cascade)
-  votes     Vote[]
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poll_id       String    @db.Uuid
+  group_book_id String    @db.Uuid
+  groupBook     GroupBook @relation(fields: [group_book_id], references: [id], onDelete: Cascade)
+  poll          Poll      @relation(fields: [poll_id], references: [id], onDelete: Cascade)
+  votes         Vote[]
 }
 
 model Vote {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  poll_option_id String   @db.Uuid
-  user_id        String   @db.Uuid
-  created_at     DateTime @default(now())
-
-  pollOption PollOption @relation(fields: [poll_option_id], references: [id], onDelete: Cascade)
-  user       User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String     @db.Uuid
+  created_at     DateTime   @default(now())
+  poll_option_id String     @db.Uuid
+  pollOption     PollOption @relation(fields: [poll_option_id], references: [id], onDelete: Cascade)
+  user           User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([poll_option_id, user_id])
 }
 
 model Subscription {
-  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId             String    @db.Uuid
-  planId             String    @db.VarChar(255) // 'free', 'premium'
-  status             String    @db.VarChar(255) // 'active', 'canceled', 'past_due'
-  startDate          DateTime  @default(now())
-  endDate            DateTime?
-  stripeCustomerId   String?   @unique @db.VarChar(255)
-  stripeSubscriptionId String? @unique @db.VarChar(255)
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId               String    @db.Uuid
+  planId               String    @db.VarChar(255)
+  status               String    @db.VarChar(255)
+  startDate            DateTime  @default(now())
+  endDate              DateTime?
+  stripeCustomerId     String?   @unique @db.VarChar(255)
+  stripeSubscriptionId String?   @unique @db.VarChar(255)
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, planId]) // Un utilisateur ne peut avoir qu'un seul abonnement actif par plan
+  @@unique([userId, planId])
 }
 
 model UserBook {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id      String    @db.Uuid
-  book_id      String    @db.Uuid
+  id           String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String            @db.Uuid
+  book_id      String            @db.Uuid
   status_id    Int
   rating       Float?
   started_at   DateTime?
   finished_at  DateTime?
-  current_page Int       @default(0)
-  is_archived  Boolean   @default(false)
-  reading_pace String?   @db.VarChar(255)
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
-
-  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  book    Book    @relation(fields: [book_id], references: [id], onDelete: Cascade)
-  status  ReadingStatus @relation(fields: [status_id], references: [id])
-  comments UserBookComment[]
+  current_page Int               @default(0)
+  is_archived  Boolean           @default(false)
+  reading_pace String?           @db.VarChar(255)
+  created_at   DateTime          @default(now())
+  updated_at   DateTime          @updatedAt
+  book         Book              @relation(fields: [book_id], references: [id], onDelete: Cascade)
+  status       ReadingStatus     @relation(fields: [status_id], references: [id])
+  user         User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  comments     UserBookComment[]
 
   @@unique([user_id, book_id])
 }
@@ -258,22 +223,21 @@ model UserBookComment {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_book_id String   @db.Uuid
   page_number  Int
-  comment_text String   @db.Text
+  comment_text String
   created_at   DateTime @default(now())
-
-  userBook UserBook @relation(fields: [user_book_id], references: [id], onDelete: Cascade)
+  userBook     UserBook @relation(fields: [user_book_id], references: [id], onDelete: Cascade)
 }
 
 model ReadingStatus {
-  id          Int      @id
-  status_name String   @unique @db.VarChar(255)
+  id          Int        @id
+  status_name String     @unique @db.VarChar(255)
   userBooks   UserBook[]
 }
 
 model Badge {
-  id          Int      @id
-  name        String   @unique @db.VarChar(255)
-  description String   @db.Text
+  id          Int         @id
+  name        String      @unique @db.VarChar(255)
+  description String
   icon_url    String?
   userBadges  UserBadge[]
 }
@@ -283,9 +247,20 @@ model UserBadge {
   user_id     String   @db.Uuid
   badge_id    Int
   unlocked_at DateTime @default(now())
-
-  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  badge Badge @relation(fields: [badge_id], references: [id])
+  badge       Badge    @relation(fields: [badge_id], references: [id])
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, badge_id])
+}
+
+enum RoleInGroup {
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }

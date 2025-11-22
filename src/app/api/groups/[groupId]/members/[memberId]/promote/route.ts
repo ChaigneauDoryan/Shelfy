@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
+import { getUserSubscription, isPremium } from '@/lib/subscription-utils';
 
 export async function PATCH(request: Request, { params }: { params: { groupId: string, memberId: string } }) {
   const session = await getSession();
@@ -14,20 +15,28 @@ export async function PATCH(request: Request, { params }: { params: { groupId: s
   const { groupId, memberId } = params;
 
   try {
-    const member = await prisma.groupMember.findUnique({
+    // Check subscription status
+    const subscription = await getUserSubscription(userId);
+    if (!isPremium(subscription)) {
+      return NextResponse.json({ message: 'Cette fonctionnalité est réservée aux membres Premium.' }, { status: 402 });
+    }
+
+    // Verify the current user is an admin of the group
+    const adminMember = await prisma.groupMember.findUnique({
       where: { group_id_user_id: { group_id: groupId, user_id: userId } },
     });
 
-    if (!member || member.role !== RoleInGroup.ADMIN) {
+    if (!adminMember || adminMember.role !== RoleInGroup.ADMIN) {
       return NextResponse.json({ message: 'Forbidden: You are not an admin of this group.' }, { status: 403 });
     }
 
+    // Promote the target member to MODERATOR
     await prisma.groupMember.update({
       where: { id: memberId },
-      data: { role: 'ADMIN' },
+      data: { role: 'MODERATOR' },
     });
 
-    return NextResponse.json({ message: 'Successfully promoted member to admin.' });
+    return NextResponse.json({ message: 'Membre promu modérateur avec succès.' });
   } catch (error) {
     console.error('Error promoting member:', error);
     return NextResponse.json({ message: 'Failed to promote member.' }, { status: 500 });
