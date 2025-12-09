@@ -6,7 +6,7 @@ import { withAuth } from "next-auth/middleware"
 export default withAuth(
   // `withAuth` étend votre `Request` avec l'objet `user`.
   // Vous pouvez faire des vérifications de rôle ici.
-  function middleware(req) {
+  function proxy(req) {
     // console.log(req.nextauth.token)
   },
   {

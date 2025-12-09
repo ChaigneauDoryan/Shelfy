@@ -11,11 +11,11 @@ declare global {
 // En développement, Next.js recharge les fichiers, ce qui peut créer de multiples instances.
 // Ce code évite cela en stockant le client dans la variable globale.
 export const prisma =
-  global.prisma ||
+  (globalThis as any).prisma ||
   new PrismaClient({
     log: [],
   });
 
 if (process.env.NODE_ENV !== 'production') {
-  global.prisma = prisma;
+  (globalThis as any).prisma = prisma;
 }
