@@ -38,6 +38,8 @@ model User {
   passwordResetToken            String?            @unique
   emailVerificationToken        String?            @unique
   emailVerificationTokenExpires DateTime?
+  stripeCustomerId              String?            @unique
+  stripeSubscriptionId          String?            @unique
   accounts                      Account[]
   comments                      BookComment[]
   createdGroups                 Group[]            @relation("GroupCreator")
@@ -57,6 +59,7 @@ model Group {
   avatar_url      String?
   invitation_code String             @unique @db.VarChar(255)
   created_at      DateTime           @default(now())
+  is_archived     Boolean            @default(false)
   created_by_id   String             @db.Uuid
   creator         User               @relation("GroupCreator", fields: [created_by_id], references: [id])
   books           GroupBook[]
@@ -193,6 +196,7 @@ model Subscription {
   endDate              DateTime?
   stripeCustomerId     String?   @unique @db.VarChar(255)
   stripeSubscriptionId String?   @unique @db.VarChar(255)
+  stripePriceId        String?   @db.VarChar(255)
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, planId])

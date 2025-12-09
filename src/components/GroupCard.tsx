@@ -11,6 +11,7 @@ import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import { generateAvatarFromText } from '@/lib/avatar-utils';
 import Link from 'next/link';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface GroupCardProps {
   group: {
@@ -19,11 +20,12 @@ interface GroupCardProps {
     description?: string;
     avatar_url?: string;
     invitation_code?: string;
-    user_role?: string; // Nouveau: rôle de l'utilisateur dans ce groupe
-    members_count?: number; // Ajouté: nombre de membres du groupe
+    user_role?: string;
+    members_count?: number;
+    is_archived?: boolean; // Ajout du champ
   };
-  currentUserId: string; // L'ID de l'utilisateur actuellement connecté
-  onGroupChange: () => void; // Nouvelle prop pour rafraîchir les groupes
+  currentUserId: string;
+  onGroupChange: () => void;
 }
 
 export default function GroupCard({ group, currentUserId, onGroupChange }: GroupCardProps) {
@@ -89,7 +91,7 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
         title: "Succès",
         description: "Groupe supprimé avec succès !",
       });
-      onGroupChange(); // Appeler la fonction de rafraîchissement
+      onGroupChange();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
       toast({
@@ -130,7 +132,7 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
         title: "Succès",
         description: "Vous avez quitté le groupe avec succès !",
       });
-      onGroupChange(); // Appeler la fonction de rafraîchissement
+      onGroupChange();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Une erreur inconnue est survenue.';
       toast({
@@ -145,8 +147,47 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
   };
 
   const isAdmin = group.user_role === 'ADMIN';
-
   const avatarSrc = group.avatar_url || (group.name ? generateAvatarFromText(group.name, 64) : undefined);
+
+  if (group.is_archived) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="relative">
+              <Card className="overflow-hidden shadow-lg flex flex-col bg-gray-100 opacity-60 cursor-not-allowed">
+                <div className="absolute top-2 right-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
+                  Archivé
+                </div>
+                <CardHeader className="flex flex-row items-center space-x-4 p-4">
+                  <Image 
+                    src={avatarSrc || 'https://via.placeholder.com/64'} 
+                    alt={group.name}
+                    width={64}
+                    height={64}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-300" 
+                  />
+                  <div className="flex-grow">
+                    <CardTitle className="text-xl font-semibold text-gray-500">{group.name}</CardTitle>
+                    <p className="text-sm text-gray-400 flex items-center"><FaUsers className="mr-1" /> {group.members_count || 0} membre{((group.members_count || 0) > 1 || (group.members_count || 0) === 0) ? 's' : ''}</p>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-4 pt-0 flex-grow">
+                  <p className="text-gray-500 mb-3 line-clamp-2">{group.description || 'Aucune description.'}</p>
+                </CardContent>
+                <div className="p-4 pt-0 flex space-x-2">
+                  <Button className="w-full" disabled>Voir le groupe</Button>
+                </div>
+              </Card>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Ce groupe est archivé car vous avez dépassé la limite de votre plan gratuit. <br /> Passez au plan Premium pour le réactiver.</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
 
   return (
     <Card key={group.id} className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 ease-in-out flex flex-col">

@@ -5,37 +5,19 @@ export const FREE_PLAN_ID = 'free';
 export const PREMIUM_PLAN_ID = 'premium';
 
 export async function getUserSubscription(userId: string) {
+  // Récupérer l'abonnement le plus récent de l'utilisateur, quel que soit son statut.
   const subscription = await prisma.subscription.findFirst({
     where: {
       userId: userId,
-      status: 'active', // Ou tout autre statut indiquant un abonnement valide
     },
     orderBy: {
-      startDate: 'desc', // Récupérer l'abonnement le plus récent
+      startDate: 'desc',
     },
   });
 
-  if (!subscription) {
-    // Si aucun abonnement actif n'est trouvé, l'utilisateur est sur le plan gratuit
-    // Créer un abonnement gratuit par défaut si l'utilisateur n'en a pas
-    const freeSubscription = await prisma.subscription.upsert({
-      where: {
-        userId_planId: {
-          userId: userId,
-          planId: FREE_PLAN_ID,
-        },
-      },
-      update: {}, // Ne rien faire si l'abonnement gratuit existe déjà
-      create: {
-        userId: userId,
-        planId: FREE_PLAN_ID,
-        status: 'active',
-        startDate: new Date(),
-      },
-    });
-    return freeSubscription;
-  }
-
+  // Si aucun abonnement n'existe, cela peut être un nouvel utilisateur.
+  // La logique de création d'un abonnement gratuit initial devrait être gérée à l'inscription.
+  // Pour l'instant, on renvoie ce qu'on trouve, ou null.
   return subscription;
 }
 

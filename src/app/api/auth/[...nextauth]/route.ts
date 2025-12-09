@@ -56,7 +56,7 @@ export const authOptions: AuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 
-  pages: {
+pages: {
     signIn: '/auth/login', // Page de connexion personnalisée
     // signOut: '/auth/logout',
     // error: '/auth/error', // Page d'erreur
@@ -157,6 +157,25 @@ export const authOptions: AuthOptions = {
           }
         }
       }
+      
+      // Logique de création d'abonnement déplacée ici pour être plus robuste
+      if (user?.email) {
+        const userInDb = await prisma.user.findUnique({
+          where: { email: user.email },
+          include: { subscriptions: true },
+        });
+
+        if (userInDb && userInDb.subscriptions.length === 0) {
+          await prisma.subscription.create({
+            data: {
+              userId: userInDb.id, // Utilise le VRAI ID de la BDD
+              planId: 'free',
+              status: 'active',
+            },
+          });
+        }
+      }
+
       return true; // For other providers, allow sign in
     },
   },
