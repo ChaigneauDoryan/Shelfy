@@ -7,7 +7,7 @@ import { CheckCircle2, XCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from 'next-auth/react';
 import { useUserSubscription } from '@/hooks/useUserSubscription';
-import { FREE_PLAN_ID, PREMIUM_PLAN_ID } from '@/lib/subscription-utils';
+import { FREE_PLAN_ID, PREMIUM_PLAN_ID } from '@/lib/subscription-constants';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -29,7 +29,7 @@ export default function SubscriptionPage() {
       toast({
         title: 'Abonnement réussi !',
         description: 'Votre abonnement Premium est maintenant actif.',
-        variant: 'success',
+        variant: 'default',
       });
       queryClient.invalidateQueries({ queryKey: ['userSubscription', userId] });
     }
@@ -93,7 +93,7 @@ export default function SubscriptionPage() {
       toast({
         title: 'Annulation programmée',
         description: message,
-        variant: 'success',
+        variant: 'default',
       });
       queryClient.invalidateQueries({ queryKey: ['userSubscription', userId] });
     } catch (error) {

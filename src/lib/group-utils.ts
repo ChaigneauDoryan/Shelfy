@@ -3,7 +3,7 @@ import { RoleInGroup } from '@prisma/client';
 import { canCreateMoreGroups } from './subscription-utils';
 import { SubscriptionLimitError } from './errors';
 
-function generateCode(length: number) {
+function generateCode(length: number): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
   for (let i = 0; i < length; i++) {
@@ -12,7 +12,13 @@ function generateCode(length: number) {
   return result;
 }
 
-export async function createGroup(createGroupDto: { name: string; description?: string; avatar_url?: string }, userId: string) {
+interface CreateGroupDto {
+  name: string;
+  description?: string;
+  avatar_url?: string | null;
+}
+
+export async function createGroup(createGroupDto: CreateGroupDto, userId: string) {
   // Vérifier la limite d'abonnement
   const canCreate = await canCreateMoreGroups(userId);
   if (!canCreate) {
@@ -75,7 +81,13 @@ export async function deleteGroup(groupId: string, userId: string): Promise<void
   });
 }
 
-export async function updateGroup(groupId: string, updateGroupDto: { name?: string; description?: string; avatar_url?: string }, userId: string) {
+interface UpdateGroupDto {
+  name?: string;
+  description?: string | null;
+  avatar_url?: string | null;
+}
+
+export async function updateGroup(groupId: string, updateGroupDto: UpdateGroupDto, userId: string) {
   const member = await prisma.groupMember.findUnique({
     where: {
       group_id_user_id: {
@@ -100,10 +112,10 @@ export async function updateGroup(groupId: string, updateGroupDto: { name?: stri
   return updatedGroup;
 }
 
-export async function joinGroup(invitationCode: string, userId: string) {
+export async function joinGroup(invitationCode: string, userId: string, inviterId?: string) {
   const group = await prisma.group.findUnique({
     where: { invitation_code: invitationCode },
-    select: { id: true },
+    select: { id: true, created_by_id: true },
   });
 
   if (!group) {

@@ -6,7 +6,7 @@ import { Book } from "@prisma/client";
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useUserSubscription } from '@/hooks/useUserSubscription';
-import { FREE_PLAN_ID } from '@/lib/subscription-utils';
+import { FREE_PLAN_ID } from '@/lib/subscription-constants';
 import { useToast } from '@/hooks/use-toast';
 
 export default function DiscoverPage() {

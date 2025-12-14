@@ -1,8 +1,8 @@
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { RoleInGroup, InvitationStatus } from '@prisma/client';
+import { RoleInGroup, InvitationStatus, Prisma } from '@prisma/client';
 import { Resend } from 'resend';
 import GroupJoinRequestEmail from '@/emails/GroupJoinRequestEmail';
 import { render } from '@react-email/render';
@@ -15,17 +15,25 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // This is the new path for the file
 // src/app/api/groups/[groupId]/join-requests/[requestId]/route.ts
 
-export async function PUT(request: Request, { params }: { params: { groupId: string, requestId: string } }) {
+interface RouteParams {
+  groupId: string;
+  requestId: string;
+}
+
+interface PutRequestBody {
+  action: 'accept' | 'decline';
+}
+
+export async function PUT(request: NextRequest, context: { params: Promise<{ groupId: string; requestId: string; }> }) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId, requestId } = await params;
+  const { groupId, requestId } = await context.params;
 
-  const body = await request.json();
-  const { action } = body;
+  const { action }: PutRequestBody = await request.json();
 
   if (action !== 'accept' && action !== 'decline') {
     return NextResponse.json({ message: 'Invalid action.' }, { status: 400 });
@@ -143,7 +151,7 @@ export async function PUT(request: Request, { params }: { params: { groupId: str
     }
     console.error(`Failed to ${action} join request:`, error);
     // Check for unique constraint violation on member creation
-    if (error instanceof Error && 'code' in error && (error as any).code === 'P2002') {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         return NextResponse.json({ message: 'This user is already a member of the group.' }, { status: 409 });
     }
     return NextResponse.json({ message: 'An internal error occurred.' }, { status: 500 });

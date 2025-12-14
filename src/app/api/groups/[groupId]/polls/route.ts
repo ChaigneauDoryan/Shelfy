@@ -1,23 +1,42 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
+import { z } from 'zod';
 
-export async function POST(request: Request, { params }: { params: { groupId: string } }) {
+interface RouteParams {
+  groupId: string;
+}
+
+const createPollSchema = z.object({
+  groupBookIds: z.array(z.string().min(1)).min(2, { message: 'Veuillez sélectionner au moins deux livres pour le sondage.' }),
+  endDate: z.string().min(1, { message: 'Veuillez définir une date butoir pour le sondage.' }),
+});
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId } = await params;
-  const { groupBookIds, endDate } = await request.json();
+  const resolvedParams = await context.params;
+  const { groupId } = resolvedParams;
 
-  if (!groupBookIds || !Array.isArray(groupBookIds) || groupBookIds.length < 2) {
-    return NextResponse.json({ message: 'Veuillez sélectionner au moins deux livres pour le sondage.' }, { status: 400 });
+  const json = await request.json();
+  const parsed = createPollSchema.safeParse(json);
+
+  if (!parsed.success) {
+    return NextResponse.json({ message: 'Invalid payload', issues: parsed.error.issues }, { status: 400 });
   }
-  if (!endDate) {
-    return NextResponse.json({ message: 'Veuillez définir une date butoir pour le sondage.' }, { status: 400 });
+
+  const { groupBookIds, endDate } = parsed.data;
+  const endDateValue = new Date(endDate);
+  if (Number.isNaN(endDateValue.getTime())) {
+    return NextResponse.json({ message: 'Date de fin invalide.' }, { status: 400 });
   }
 
   try {
@@ -47,7 +66,7 @@ export async function POST(request: Request, { params }: { params: { groupId: st
     const newPoll = await prisma.poll.create({
       data: {
         group_id: groupId,
-        end_date: new Date(endDate),
+        end_date: endDateValue,
         options: {
           create: groupBookIds.map((gbId: string) => ({
             group_book_id: gbId,
@@ -69,13 +88,17 @@ export async function POST(request: Request, { params }: { params: { groupId: st
   }
 }
 
-export async function GET(request: Request, { params }: { params: { groupId: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId } = await params;
+  const resolvedParams = await context.params;
+  const { groupId } = resolvedParams;
 
   try {
     const polls = await prisma.poll.findMany({

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth'; // Helper à créer
 import { findOrCreateBook, addUserBook } from '@/lib/book-utils';
 import { SubscriptionLimitError } from '@/lib/errors';
+import { BookData, AddUserBookData } from '@/types/book';
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -12,7 +13,7 @@ export async function POST(request: Request) {
 
   const userId = session.user.id;
 
-  let book: any;
+  let book: BookData & AddUserBookData;
   try {
     book = await request.json();
   } catch (e) {
@@ -33,12 +34,13 @@ export async function POST(request: Request) {
     const userBookId = userBookData.id;
 
     return NextResponse.json({ message: 'Book added successfully', userBookId }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof SubscriptionLimitError) {
       return NextResponse.json({ error: error.message }, { status: 402 });
     }
-    console.error('Unexpected error in add book API:', error);
-    if (error.message === 'Ce livre est déjà dans votre bibliothèque.') {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Unexpected error in add book API:', message);
+    if (error instanceof Error && error.message === 'Ce livre est déjà dans votre bibliothèque.') {
       return NextResponse.json({ error: error.message }, { status: 409 }); // Conflict
     }
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });

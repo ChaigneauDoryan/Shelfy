@@ -58,12 +58,13 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
         );
         setSelectedDeviceId(rearCamera?.deviceId || devices[0].deviceId);
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Erreur d'initialisation:", err);
-        if (err.name === 'NotAllowedError') {
+        if (err instanceof Error && err.name === 'NotAllowedError') {
           setError("Accès à la caméra refusé. Veuillez autoriser l'accès.");
         } else {
-          setError(`Erreur de caméra: ${err.message}`);
+          const message = err instanceof Error ? err.message : 'Erreur caméra inconnue.';
+          setError(`Erreur de caméra: ${message}`);
         }
       }
     };
@@ -111,9 +112,10 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
           }
         );
         controlsRef.current = controls;
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Erreur inconnue.';
         console.error(`Erreur avec la caméra ${selectedDeviceId}:`, err);
-        setError(`Impossible de démarrer le scanner. ${err.message}`);
+        setError(`Impossible de démarrer le scanner. ${message}`);
       }
     };
 

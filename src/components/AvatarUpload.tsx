@@ -10,7 +10,7 @@ import { useSession } from 'next-auth/react'
 
 interface AvatarUploadProps {
   userId: string;
-  initialAvatarUrl: string | null;
+  initialAvatarUrl: string | undefined | null;
   onUpload: (url: string) => void;
 }
 
@@ -84,7 +84,7 @@ function getCroppedImg(image: HTMLImageElement, crop: Crop, scale = 1): Promise<
 export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: AvatarUploadProps) {
   const { data: session } = useSession();
   const [uploading, setUploading] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl || null);
   const [src, setSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -136,8 +136,9 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: Ava
         setAvatarUrl(publicUrl);
         onUpload(publicUrl);
 
-      } catch (error: any) {
-        alert('Erreur: ' + error.message);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Échec du téléversement.';
+        alert('Erreur: ' + message);
       } finally {
         setUploading(false);
         setSrc(null);

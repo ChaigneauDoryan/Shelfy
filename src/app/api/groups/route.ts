@@ -22,11 +22,12 @@ export async function POST(request: Request) {
     const group = await createGroup(createGroupDto, userId);
     await checkAndAwardGroupCreationBadges(userId);
     return NextResponse.json(group);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof SubscriptionLimitError) {
       return NextResponse.json({ message: error.message }, { status: 402 });
     }
-    console.error('Error creating group:', error.message);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error creating group:', message);
     return NextResponse.json({ message: 'Failed to create group.' }, { status: 500 });
   }
 }

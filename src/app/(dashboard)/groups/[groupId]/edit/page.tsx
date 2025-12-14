@@ -22,6 +22,15 @@ import GroupAvatarUpload from "@/components/GroupAvatarUpload";
 import { useSession } from 'next-auth/react';
 import JoinRequestsManager from '@/components/JoinRequestsManager';
 
+interface EditableGroup {
+  id: string;
+  name: string;
+  description?: string | null;
+  avatar_url?: string | null;
+  adminCount: number;
+  memberCount: number;
+}
+
 const editGroupSchema = z.object({
   name: z.string().min(3, { message: "Le nom du groupe doit contenir au moins 3 caractères." }).max(50, { message: "Le nom du groupe ne peut pas dépasser 50 caractères." }),
   description: z.string().max(280, { message: "La description ne peut pas dépasser 280 caractères." }).optional(),
@@ -37,7 +46,7 @@ export default function EditGroupPage() {
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [group, setGroup] = useState<any>(null);
+  const [group, setGroup] = useState<EditableGroup | null>(null);
 
   const form = useForm<EditGroupFormValues>({
     resolver: zodResolver(editGroupSchema),
@@ -92,8 +101,9 @@ export default function EditGroupPage() {
       router.push('/groups');
       router.refresh();
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de mettre à jour le groupe.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -136,7 +146,7 @@ export default function EditGroupPage() {
                   <FormItem className="flex flex-col items-center">
                     <FormLabel>Avatar du groupe (Optionnel)</FormLabel>
                     <FormControl>
-                      <GroupAvatarUpload onUpload={(url) => field.onChange(url)} existingAvatarUrl={group?.avatar_url} />
+                      <GroupAvatarUpload onUpload={(url) => field.onChange(url)} initialAvatarUrl={group?.avatar_url} groupId={groupId} groupName={group?.name} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

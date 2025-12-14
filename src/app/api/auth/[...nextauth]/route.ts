@@ -1,4 +1,3 @@
-
 import NextAuth, { AuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
@@ -56,7 +55,7 @@ export const authOptions: AuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 
-pages: {
+  pages: {
     signIn: '/auth/login', // Page de connexion personnalisée
     // signOut: '/auth/logout',
     // error: '/auth/error', // Page d'erreur
@@ -74,29 +73,41 @@ pages: {
       return token;
     },
     async session({ session, token }) {
-      if (token.id) {
+      if (session.user && token.id) {
         session.user.id = token.id as string;
       }
-      if (token.name) {
+      if (session.user && token.name) {
         session.user.name = token.name as string;
       }
-      if (token.email) {
+      if (session.user && token.email) {
         session.user.email = token.email as string;
       }
       return session;
     },
-    async signIn({ user, account, profile }) {
-      console.log('signIn callback', { user, account, profile });
+    async signIn({ user, account }) {
+      if (!account) {
+        return true;
+      }
+
       if (account.provider === 'google') {
+        const accountType = account.type ?? 'oauth';
+        const providerAccountId = account.providerAccountId ?? null;
+        const userEmail = user.email ?? null;
+
+        if (!providerAccountId || !userEmail) {
+          console.error('Google sign-in missing identifiers or email.');
+          return false;
+        }
+
         const existingUser = await prisma.user.findUnique({
-          where: { email: user.email },
+          where: { email: userEmail },
           include: { accounts: true }, // Include accounts to check for existing OAuth links
         });
 
         if (existingUser) {
           // If user exists, check if the Google account is already linked
           const googleAccount = existingUser.accounts.find(
-            (acc) => acc.provider === 'google' && acc.providerAccountId === account.providerAccountId
+            (acc) => acc.provider === 'google' && acc.providerAccountId === providerAccountId
           );
 
           if (googleAccount) {
@@ -107,16 +118,16 @@ pages: {
               await prisma.account.create({
                 data: {
                   userId: existingUser.id,
-                  type: account.type,
+                  type: accountType,
                   provider: account.provider,
-                  providerAccountId: account.providerAccountId,
-                  refresh_token: account.refresh_token,
-                  access_token: account.access_token,
-                  expires_at: account.expires_at,
-                  token_type: account.token_type,
-                  scope: account.scope,
-                  id_token: account.id_token,
-                  session_state: account.session_state,
+                  providerAccountId,
+                  refresh_token: account.refresh_token ?? null,
+                  access_token: account.access_token ?? null,
+                  expires_at: account.expires_at ?? null,
+                  token_type: account.token_type ?? null,
+                  scope: account.scope ?? null,
+                  id_token: account.id_token ?? null,
+                  session_state: account.session_state ?? null,
                 },
               });
               return true; // Account linked, allow sign in
@@ -130,22 +141,22 @@ pages: {
           try {
             await prisma.user.create({
               data: {
-                name: user.name,
-                email: user.email,
-                image: user.image,
+                name: user.name ?? null,
+                email: userEmail,
+                image: user.image ?? null,
                 emailVerified: new Date(),
                 accounts: {
                   create: {
-                    type: account.type,
+                    type: accountType,
                     provider: account.provider,
-                    providerAccountId: account.providerAccountId,
-                    refresh_token: account.refresh_token, // Ensure all fields are included
-                    access_token: account.access_token,
-                    expires_at: account.expires_at,
-                    token_type: account.token_type,
-                    scope: account.scope,
-                    id_token: account.id_token,
-                    session_state: account.session_state,
+                    providerAccountId,
+                    refresh_token: account.refresh_token ?? null,
+                    access_token: account.access_token ?? null,
+                    expires_at: account.expires_at ?? null,
+                    token_type: account.token_type ?? null,
+                    scope: account.scope ?? null,
+                    id_token: account.id_token ?? null,
+                    session_state: account.session_state ?? null,
                   },
                 },
               },

@@ -1,12 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-// Interface pour le contexte de la route avec params comme Promise
-interface RouteContext {
-  params: Promise<{ bookId: string }>;
-}
-
-export async function GET(request: Request, context: RouteContext) {
-  // Attendre la résolution de params
+export async function GET(request: NextRequest, context: { params: Promise<{ bookId: string; }> }) {
   const { bookId } = await context.params;
 
   if (!bookId) {
@@ -30,8 +24,9 @@ export async function GET(request: Request, context: RouteContext) {
 
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Error fetching book details:', error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error fetching book details:', message);
     return NextResponse.json({ message: 'Failed to fetch book details from Google Books API.' }, { status: 500 });
   }
 }

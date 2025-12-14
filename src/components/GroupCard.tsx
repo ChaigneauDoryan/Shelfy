@@ -13,35 +13,48 @@ import { generateAvatarFromText } from '@/lib/avatar-utils';
 import Link from 'next/link';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
+type GroupRole = 'ADMIN' | 'MODERATOR' | 'MEMBER';
+
+interface GroupSummary {
+  id: string;
+  name: string;
+  description?: string | null;
+  avatar_url?: string | null;
+  invitation_code?: string | null;
+  user_role?: GroupRole | null;
+  members_count?: number | null;
+  memberCount?: number | null;
+  adminCount?: number | null;
+  is_archived?: boolean;
+}
+
 interface GroupCardProps {
-  group: {
-    id: string;
-    name: string;
-    description?: string;
-    avatar_url?: string;
-    invitation_code?: string;
-    user_role?: string;
-    members_count?: number;
-    is_archived?: boolean; // Ajout du champ
-  };
+  group: GroupSummary;
   currentUserId: string;
   onGroupChange: () => void;
 }
 
 export default function GroupCard({ group, currentUserId, onGroupChange }: GroupCardProps) {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [showLeaveConfirmModal, setShowLeaveConfirmModal] = useState(false);
-  const [currentInvitationCode, setCurrentInvitationCode] = useState(group.invitation_code);
+  const [currentInvitationCode, setCurrentInvitationCode] = useState(group.invitation_code ?? null);
   const { toast } = useToast();
 
-  const handleCopyCode = () => {
+  const memberCount = group.members_count ?? group.memberCount ?? 0;
+
+  const handleCopyCode = async () => {
     if (!currentInvitationCode) return;
-    navigator.clipboard.writeText(currentInvitationCode);
-    toast({ title: 'Copié !', description: "Le code d'invitation a été copié dans le presse-papiers." });
+    try {
+      await navigator.clipboard.writeText(currentInvitationCode);
+      toast({ title: 'Copié !', description: "Le code d'invitation a été copié dans le presse-papiers." });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Impossible de copier le code.';
+      toast({ title: 'Erreur', description: errorMessage, variant: 'destructive' });
+    }
   };
 
   const handleRegenerateCode = async () => {
@@ -169,7 +182,9 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
                   />
                   <div className="flex-grow">
                     <CardTitle className="text-xl font-semibold text-gray-500">{group.name}</CardTitle>
-                    <p className="text-sm text-gray-400 flex items-center"><FaUsers className="mr-1" /> {group.members_count || 0} membre{((group.members_count || 0) > 1 || (group.members_count || 0) === 0) ? 's' : ''}</p>
+                    <p className="text-sm text-gray-400 flex items-center">
+                      <FaUsers className="mr-1" /> {memberCount} membre{memberCount > 1 || memberCount === 0 ? 's' : ''}
+                    </p>
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 pt-0 flex-grow">
@@ -201,7 +216,9 @@ export default function GroupCard({ group, currentUserId, onGroupChange }: Group
         />
         <div className="flex-grow">
           <CardTitle className="text-xl font-semibold text-gray-900">{group.name}</CardTitle>
-          <p className="text-sm text-gray-500 flex items-center"><FaUsers className="mr-1" /> {group.members_count || 0} membre{((group.members_count || 0) > 1 || (group.members_count || 0) === 0) ? 's' : ''}</p>
+          <p className="text-sm text-gray-500 flex items-center">
+            <FaUsers className="mr-1" /> {memberCount} membre{memberCount > 1 || memberCount === 0 ? 's' : ''}
+          </p>
         </div>
         {isAdmin && (
           <div className="flex flex-col space-y-2">

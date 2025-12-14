@@ -21,7 +21,6 @@ import { useToast } from '@/hooks/use-toast';
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
 import { useSession } from 'next-auth/react';
 import { useUserSubscription } from '@/hooks/useUserSubscription';
-import { canCreateMoreGroups } from '@/lib/subscription-utils';
 
 const createGroupSchema = z.object({
   name: z.string().min(3, { message: "Le nom du groupe doit contenir au moins 3 caractères." }).max(50, { message: "Le nom du groupe ne peut pas dépasser 50 caractères." }),
@@ -45,8 +44,17 @@ export default function CreateGroupPage() {
   useEffect(() => {
     if (userId && subscription && !isSubscriptionLoading) {
       const checkLimit = async () => {
-        const result = await canCreateMoreGroups(userId);
-        setCanCreateGroup(result);
+        try {
+          const response = await fetch('/api/groups/can-create');
+          if (!response.ok) {
+            throw new Error('Failed to check group limit.');
+          }
+          const data = await response.json();
+          setCanCreateGroup(Boolean(data.canCreate));
+        } catch (error) {
+          console.error('Error checking group limit:', error);
+          setCanCreateGroup(true);
+        }
       };
       checkLimit();
     }
@@ -94,8 +102,9 @@ export default function CreateGroupPage() {
         router.refresh();
       }
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de créer le groupe.';
+      setError(message);
     } finally {
       setLoading(false);
     }

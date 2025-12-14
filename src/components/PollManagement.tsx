@@ -59,10 +59,11 @@ export default function PollManagement({ groupId }: PollManagementProps) {
       setActivePolls(pollsData.filter(poll => new Date(poll.end_date) > now));
       setPastPolls(pollsData.filter(poll => new Date(poll.end_date) <= now));
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const description = error instanceof Error ? error.message : 'Échec du chargement des données.';
       toast({
         title: 'Erreur',
-        description: error.message || 'Échec du chargement des données.',
+        description,
         variant: 'destructive',
       });
       console.error('Error fetching data for poll management:', error);
@@ -120,10 +121,11 @@ export default function PollManagement({ groupId }: PollManagementProps) {
       setEndDate('');
       router.refresh(); // Re-fetch data
       fetchSuggestionsAndPolls(); // Refresh local state
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const description = error instanceof Error ? error.message : 'Échec de la création du sondage.';
       toast({
         title: 'Erreur',
-        description: error.message || 'Échec de la création du sondage.',
+        description,
         variant: 'destructive',
       });
       console.error('Error creating poll:', error);

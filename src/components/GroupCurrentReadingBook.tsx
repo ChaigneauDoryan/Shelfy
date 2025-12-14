@@ -43,36 +43,7 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
   const [userRating, setUserRating] = useState<number | null>(null);
   const [hoverRating, setHoverRating] = useState<number>(0);
 
-  useEffect(() => {
-    setReadingEndDateInput(
-      groupBook.reading_end_date ? format(new Date(groupBook.reading_end_date), "yyyy-MM-dd'T'HH:mm") : ''
-    );
-  }, [groupBook.reading_end_date]);
-
   const { data, isLoading, error, refetch } = useGroupBookData(groupId, groupBook.id, !!userId);
-
-  useEffect(() => {
-    if (groupBook.reading_end_date) {
-      const endDate = new Date(groupBook.reading_end_date);
-      const now = new Date();
-      if (endDate > now) {
-        const timeUntilEnd = endDate.getTime() - now.getTime();
-        const timer = setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ['groupDetails', groupId] });
-          finishBookMutation.mutate(); // Call the new mutation
-        }, timeUntilEnd);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [groupBook.reading_end_date, groupId, queryClient, finishBookMutation]); // Add finishBookMutation to dependencies
-
-  useEffect(() => {
-    if (data?.progress?.rating !== undefined) {
-      setUserRating(data.progress.rating);
-    }
-  }, [data?.progress?.rating]);
-
-  const currentPage = data?.progress?.currentPage || 0;
 
   const addCommentMutation = useMutation({
     mutationFn: async ({ pageNumber, content }: { pageNumber: number, content: string }) => {
@@ -96,8 +67,9 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
       setCommentContent('');
       setCommentPageNumber(0);
     },
-    onError: (error: any) => {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      const description = error instanceof Error ? error.message : 'Impossible d’ajouter le commentaire.';
+      toast({ title: 'Erreur', description, variant: 'destructive' });
     },
   });
 
@@ -121,8 +93,9 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
       toast({ title: 'Succès', description: 'Date de fin de lecture mise à jour.' });
       setReadingEndDateInput(data.groupBook.reading_end_date ? format(new Date(data.groupBook.reading_end_date), "yyyy-MM-dd'T'HH:mm") : '');
     },
-    onError: (error: any) => {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      const description = error instanceof Error ? error.message : 'Impossible de mettre à jour la date de fin de lecture.';
+      toast({ title: 'Erreur', description, variant: 'destructive' });
     },
   });
 
@@ -144,8 +117,9 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
       toast({ title: 'Succès', description: 'Note mise à jour avec succès.' });
       setUserRating(data.progress.rating);
     },
-    onError: (error: any) => {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      const description = error instanceof Error ? error.message : 'Impossible de mettre à jour la note.';
+      toast({ title: 'Erreur', description, variant: 'destructive' });
     },
   });
 
@@ -164,10 +138,34 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
     onSuccess: () => {
       toast({ title: 'Succès', description: 'Le livre a été marqué comme terminé.' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      const description = error instanceof Error ? error.message : 'Impossible de terminer le livre.';
+      toast({ title: 'Erreur', description, variant: 'destructive' });
     },
   });
+
+  useEffect(() => {
+    if (groupBook.reading_end_date) {
+      const endDate = new Date(groupBook.reading_end_date);
+      const now = new Date();
+      if (endDate > now) {
+        const timeUntilEnd = endDate.getTime() - now.getTime();
+        const timer = setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ['groupDetails', groupId] });
+          finishBookMutation.mutate(); // Call the new mutation
+        }, timeUntilEnd);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [groupBook.reading_end_date, groupId, queryClient, finishBookMutation]);
+
+  useEffect(() => {
+    if (data?.progress?.rating !== undefined) {
+      setUserRating(data.progress.rating);
+    }
+  }, [data?.progress?.rating]);
+
+  const currentPage = data?.progress?.currentPage || 0;
 
   const handleAddComment = () => {
     if (commentPageNumber <= 0 || commentPageNumber > (groupBook.book.page_count || 9999)) {
@@ -186,9 +184,8 @@ export default function GroupCurrentReadingBook({ groupId, groupBook }: GroupCur
   };
 
   const handleRatingChange = (newRating: number) => {
-    setUserRating(newRating);
     updateRatingMutation.mutate(newRating);
-  };
+  }; // Add finishBookMutation to dependencies
 
   if (isLoading) {
     return <div>Chargement des données du livre...</div>;

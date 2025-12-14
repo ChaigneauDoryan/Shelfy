@@ -3,8 +3,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth'; // Helper à créer
 import { leaveGroup } from '@/lib/group-utils';
 
-export async function DELETE(request: NextRequest, { params }: { params: { groupId: string } }) {
-  const { groupId } = params;
+interface RouteParams {
+  groupId: string;
+}
+
+export async function DELETE(request: NextRequest, context: { params: Promise<{ groupId: string; }> }) {
+  const { groupId } = await context.params;
   const session = await getSession();
 
   if (!session?.user?.id) {

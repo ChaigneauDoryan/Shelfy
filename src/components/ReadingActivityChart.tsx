@@ -1,14 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useSession } from 'next-auth/react';
+import type { ReadingActivityPoint } from '@/types/domain';
 
 // Fonction pour agréger les données par période
-const aggregateData = (data: any[], period: 'week' | 'month' | 'year') => {
+type SeriesPoint = { date: string; livres: number };
+
+type Period = 'week' | 'month' | 'year';
+
+const aggregateData = (data: ReadingActivityPoint[], period: Period) => {
   if (!data) return [];
 
-  const aggregated = data.reduce((acc, item) => {
+  const aggregated = data.reduce<Record<string, SeriesPoint>>((acc, item) => {
+    if (!item.finished_at) {
+      return acc;
+    }
     const date = new Date(item.finished_at);
     let key = '';
 
@@ -21,44 +29,44 @@ const aggregateData = (data: any[], period: 'week' | 'month' | 'year') => {
       key = date.getFullYear().toString();
     }
 
-    if (!acc[key]) {
-      acc[key] = { date: key, livres: 0 };
-    }
-    acc[key].livres += item.books_count;
+    const existing = acc[key];
+    acc[key] = {
+      date: key,
+      livres: (existing?.livres ?? 0) + item.books_count,
+    };
     return acc;
-  }, {} as { [key: string]: { date: string; livres: number } });
+  }, {});
 
-  return (Object.values(aggregated) as { date: string; livres: number }[]).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  return Object.values(aggregated).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 };
 
 export default function ReadingActivityChart() {
   const { data: session, status } = useSession();
   const userId = session?.user?.id;
-  const [rawData, setRawData] = useState<any[]>([]);
-  const [period, setPeriod] = useState<'month'>('month');
+  const [rawData, setRawData] = useState<ReadingActivityPoint[]>([]);
+  const [period, setPeriod] = useState<Period>('month');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchActivity = async () => {
-      if (!userId) return;
-      setLoading(true);
-      try {
-        const response = await fetch('/api/profile/reading-activity');
-        if (!response.ok) {
-          throw new Error('Failed to fetch reading activity');
-        }
-        const data = await response.json();
-        setRawData(data || []);
-      } catch (error) {
-        console.error('Error fetching reading activity:', error);
-      } finally {
-        setLoading(false);
+  const fetchActivity = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const response = await fetch('/api/profile/reading-activity');
+      if (!response.ok) {
+        throw new Error('Failed to fetch reading activity');
       }
-    };
-    if (userId) {
-      fetchActivity();
+      const data: ReadingActivityPoint[] = await response.json();
+      setRawData(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching reading activity:', error);
+    } finally {
+      setLoading(false);
     }
   }, [userId]);
+
+  useEffect(() => {
+    fetchActivity();
+  }, [fetchActivity]);
 
   const chartData = aggregateData(rawData, period);
 

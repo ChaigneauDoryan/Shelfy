@@ -1,17 +1,31 @@
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth'; // Assumant que vous aurez un helper pour la session
 import { deleteGroup, updateGroup } from '@/lib/group-utils';
 import { prisma } from '@/lib/prisma';
 
+interface RouteParams {
+  groupId: string;
+}
+
+interface PatchRequestBody {
+  name?: string;
+  description?: string;
+  avatar_url?: string;
+}
+
 // GET /api/groups/[groupId] - Récupérer les détails d'un groupe
-export async function GET(request: Request, { params }: { params: { groupId: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId } = params;
+  const resolvedParams = await context.params;
+  const { groupId } = resolvedParams;
 
   try {
     const group = await prisma.group.findUnique({
@@ -52,42 +66,52 @@ export async function GET(request: Request, { params }: { params: { groupId: str
 }
 
 // DELETE /api/groups/[groupId] - Supprimer un groupe
-export async function DELETE(request: Request, { params }: { params: { groupId: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId } = params;
+  const resolvedParams = await context.params;
+  const { groupId } = resolvedParams;
 
   try {
     
     await deleteGroup(groupId, userId);
     return NextResponse.json({ message: 'Groupe supprimé avec succès.' });
-  } catch (error: any) {
-    console.error('Error deleting group:', error.message);
-    return NextResponse.json({ message: error.message }, { status: 403 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error deleting group:', message);
+    return NextResponse.json({ message }, { status: 403 });
   }
 }
 
 // PATCH /api/groups/[groupId] - Mettre à jour un groupe
-export async function PATCH(request: Request, { params }: { params: { groupId: string } }) {
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId } = params;
-  const updateGroupDto = await request.json();
+  const resolvedParams = await context.params;
+  const { groupId } = resolvedParams;
+  const updateGroupDto: PatchRequestBody = await request.json();
 
   try {
     
     const group = await updateGroup(groupId, updateGroupDto, userId);
     return NextResponse.json(group);
-  } catch (error: any) {
-    console.error('Error updating group:', error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error updating group:', message);
     return NextResponse.json({ message: 'Failed to update group.' }, { status: 500 });
   }
 }

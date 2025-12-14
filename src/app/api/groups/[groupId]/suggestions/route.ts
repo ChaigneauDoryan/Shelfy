@@ -1,21 +1,43 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { findOrCreateBook, fetchBookDetailsFromGoogleBooks } from '@/lib/book-utils';
+import { BookData, GoogleBooksVolumeInfo, ManualBookData } from '@/types/book';
+import { z } from 'zod';
 
-export async function POST(request: Request, { params }: { params: { groupId: string } }) {
+interface RouteParams {
+  groupId: string;
+}
+
+const bookSuggestionSchema = z.object({
+  bookData: z.object({
+    googleBooksId: z.string().min(1),
+    title: z.string().min(1),
+    author: z.string().min(1),
+    coverUrl: z.string().url().optional(),
+  }).passthrough(),
+});
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId } = await params;
-  const { bookData } = await request.json();
+  const resolvedParams = await context.params;
+  const { groupId } = resolvedParams;
+  const json = await request.json();
+  const parsed = bookSuggestionSchema.safeParse(json);
 
-  if (!bookData || !bookData.googleBooksId || !bookData.title || !bookData.author) {
-    return NextResponse.json({ message: 'Book data (googleBooksId, title, author) is required.' }, { status: 400 });
+  if (!parsed.success) {
+    return NextResponse.json({ message: 'Invalid payload.', issues: parsed.error.issues }, { status: 400 });
   }
+
+  const bookData = parsed.data.bookData as BookData & { googleBooksId: string; title: string; author: string; coverUrl?: string };
 
   try {
     const member = await prisma.groupMember.findUnique({
@@ -38,17 +60,44 @@ export async function POST(request: Request, { params }: { params: { groupId: st
       return NextResponse.json({ message: 'You can only suggest a maximum of 3 books per group.' }, { status: 400 });
     }
 
-    // If coverUrl is missing, try to fetch full book details from Google Books API
-    if (!bookData.coverUrl && bookData.googleBooksId) {
-      const googleBookDetails = await fetchBookDetailsFromGoogleBooks(bookData.googleBooksId);
-      if (googleBookDetails) {
-        // Merge volumeInfo into bookData for findOrCreateBook to use
-        bookData.volumeInfo = googleBookDetails;
+    let preparedBookData: BookData;
+    let googleBookDetails: GoogleBooksVolumeInfo | null = null;
+
+    const description = 'description' in bookData && typeof bookData.description === 'string' ? bookData.description : undefined;
+    const genre = 'genre' in bookData && typeof bookData.genre === 'string' ? bookData.genre : undefined;
+
+    if (bookData.googleBooksId) {
+      // If coverUrl is missing, try to fetch full book details from Google Books API
+      if (!bookData.coverUrl) {
+        googleBookDetails = await fetchBookDetailsFromGoogleBooks(bookData.googleBooksId);
       }
+
+      const volumeInfo: GoogleBooksVolumeInfo = googleBookDetails ?? {
+        title: bookData.title,
+        authors: [bookData.author],
+        description,
+        categories: genre ? [genre] : undefined,
+        imageLinks: bookData.coverUrl ? { thumbnail: bookData.coverUrl } : undefined,
+      };
+
+      preparedBookData = {
+        id: bookData.googleBooksId,
+        volumeInfo,
+      };
+    } else {
+      const manualBook: ManualBookData = {
+        title: bookData.title,
+        author: bookData.author,
+        coverUrl: bookData.coverUrl,
+        description,
+        genre,
+        isManual: true,
+      };
+      preparedBookData = manualBook;
     }
 
     // Find or create the book in our database using the utility function
-    const book = await findOrCreateBook(bookData, userId);
+    const book = await findOrCreateBook(preparedBookData, userId);
 
     await prisma.groupBook.create({
       data: {
@@ -65,13 +114,17 @@ export async function POST(request: Request, { params }: { params: { groupId: st
   }
 }
 
-export async function GET(request: Request, { params }: { params: { groupId: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId } = await params;
+  const resolvedParams = await context.params;
+  const { groupId } = resolvedParams;
 
   try {
     const groupSuggestions = await prisma.groupBook.findMany({

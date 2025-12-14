@@ -1,17 +1,30 @@
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth'; // Helper à créer
 import { prisma } from '@/lib/prisma';
 import { getReadingStatusId } from '@/lib/book-utils';
 
+interface RouteParams {
+  userBookId: string;
+}
+
+interface PostRequestBody {
+  page_number: number;
+  comment_text: string;
+}
+
 // GET /api/user-books/[userBookId]/comments
-export async function GET(request: Request, { params }: { params: { userBookId: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { userBookId } = params;
+  const resolvedParams = await context.params;
+  const { userBookId } = resolvedParams;
 
   try {
     // Vérifier que l'utilisateur a le droit de voir ce userBook
@@ -36,16 +49,20 @@ export async function GET(request: Request, { params }: { params: { userBookId: 
 }
 
 // POST /api/user-books/[userBookId]/comments
-export async function POST(request: Request, { params }: { params: { userBookId: string } }) {
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { userBookId } = params;
+  const resolvedParams = await context.params;
+  const { userBookId } = resolvedParams;
 
   try {
-    const { page_number, comment_text } = await request.json();
+    const { page_number, comment_text }: PostRequestBody = await request.json();
 
     if (page_number === undefined || !comment_text) {
       return NextResponse.json({ error: 'Missing required fields: page_number, comment_text' }, { status: 400 });
@@ -92,9 +109,9 @@ export async function POST(request: Request, { params }: { params: { userBookId:
     });
 
     return NextResponse.json(newComment, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Unexpected error adding comment:', error);
-    if (error.message === 'Not found or forbidden') {
+    if (error instanceof Error && error.message === 'Not found or forbidden') {
       return NextResponse.json({ error: error.message }, { status: 404 });
     }
     return NextResponse.json({ error: 'An unexpected error occurred' }, { status: 500 });

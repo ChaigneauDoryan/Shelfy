@@ -62,8 +62,9 @@ export default function JoinGroupPage() {
       router.push('/groups');
       router.refresh();
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de rejoindre le groupe.';
+      setError(message);
     } finally {
       setLoading(false);
     }

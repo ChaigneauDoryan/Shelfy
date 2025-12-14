@@ -2,13 +2,16 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { PREMIUM_PLAN_ID } from '@/lib/subscription-utils';
+import { PREMIUM_PLAN_ID } from '@/lib/subscription-constants';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
-});
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const stripeClient = stripeSecret ? new Stripe(stripeSecret) : null;
 
 export async function POST(req: Request) {
+  if (!stripeClient) {
+    return NextResponse.json({ message: 'Stripe is not configured.' }, { status: 500 });
+  }
+
   const session = await getSession();
 
   if (!session?.user?.id) {
@@ -36,7 +39,7 @@ export async function POST(req: Request) {
 
     // Si l'utilisateur n'a pas encore de customer ID Stripe, en créer un
     if (!stripeCustomerId) {
-      const customer = await stripe.customers.create({
+      const customer = await stripeClient.customers.create({
         email: user.email || undefined,
         name: user.name || undefined,
         metadata: {
@@ -53,7 +56,9 @@ export async function POST(req: Request) {
     }
 
     // Créer une session Checkout
-    const stripeSession = await stripe.checkout.sessions.create({
+    const nextAuthUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+
+    const stripeSession = await stripeClient.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',
       line_items: [
@@ -62,8 +67,8 @@ export async function POST(req: Request) {
           quantity: 1,
         },
       ],
-      success_url: `${process.env.NEXTAUTH_URL}/subscription?success=true`,
-      cancel_url: `${process.env.NEXTAUTH_URL}/subscription?canceled=true`,
+      success_url: `${nextAuthUrl}/subscription?success=true`,
+      cancel_url: `${nextAuthUrl}/subscription?canceled=true`,
       metadata: {
         userId: userId,
         planId: PREMIUM_PLAN_ID,

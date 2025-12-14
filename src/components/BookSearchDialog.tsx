@@ -5,15 +5,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from '@/hooks/use-debounce';
+import type { BookSelectionPayload, GoogleBookSearchResult } from '@/types/domain';
 
 interface BookSearchDialogProps {
-  onSelectBook: (book: any) => void;
+  onSelectBook: (book: BookSelectionPayload) => void;
 }
 
 export default function BookSearchDialog({ onSelectBook }: BookSearchDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<GoogleBookSearchResult[]>([]);
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export default function BookSearchDialog({ onSelectBook }: BookSearchDialogProps
     }
   }, [debouncedSearchQuery]);
 
-  const handleSelectBook = (book: any) => {
+  const handleSelectBook = (book: GoogleBookSearchResult) => {
     console.log('Full book object on select:', book); // Ajout du console.log
 
     if (!book.id || !book.volumeInfo?.title || !book.volumeInfo?.authors?.length) {
@@ -36,11 +37,11 @@ export default function BookSearchDialog({ onSelectBook }: BookSearchDialogProps
       return;
     }
 
-    const bookData = {
+    const bookData: BookSelectionPayload = {
       googleBooksId: String(book.id), // S'assurer que c'est une chaîne
       title: book.volumeInfo.title,
       author: book.volumeInfo.authors.join(', '), // authors est garanti d'être un tableau non vide ici
-      coverUrl: book.volumeInfo.imageLinks?.thumbnail,
+      coverUrl: book.volumeInfo.imageLinks?.thumbnail || undefined,
       description: book.volumeInfo.description,
       pageCount: book.volumeInfo.pageCount,
       publishedDate: book.volumeInfo.publishedDate,

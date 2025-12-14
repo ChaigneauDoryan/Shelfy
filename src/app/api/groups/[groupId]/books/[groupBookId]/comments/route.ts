@@ -1,16 +1,26 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function POST(request: Request, { params }: { params: { groupId: string, groupBookId: string } }) {
+interface RouteParams {
+  groupId: string;
+  groupBookId: string;
+}
+
+interface PostRequestBody {
+  pageNumber: number;
+  content: string;
+}
+
+export async function POST(request: NextRequest, context: { params: Promise<{ groupId: string; groupBookId: string; }> }) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId, groupBookId } = await params;
-  const { pageNumber, content } = await request.json();
+  const { groupId, groupBookId } = await context.params;
+  const { pageNumber, content }: PostRequestBody = await request.json();
 
   if (typeof pageNumber !== 'number' || pageNumber <= 0) {
     return NextResponse.json({ message: 'Le numéro de page doit être un nombre positif.' }, { status: 400 });
@@ -70,14 +80,14 @@ export async function POST(request: Request, { params }: { params: { groupId: st
   }
 }
 
-export async function GET(request: Request, { params }: { params: { groupId: string, groupBookId: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ groupId: string; groupBookId: string; }> }) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId, groupBookId } = await params;
+  const { groupId, groupBookId } = await context.params;
 
   try {
     // 1. Vérifier si l'utilisateur est membre du groupe
@@ -131,4 +141,5 @@ export async function GET(request: Request, { params }: { params: { groupId: str
     return NextResponse.json({ message: 'Échec de la récupération des commentaires.', error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }
+
 

@@ -26,6 +26,7 @@ import PollDisplay from "@/components/PollDisplay";
 import GroupCurrentReadingBook from "@/components/GroupCurrentReadingBook";
 import GroupFinishedBookDetails from "@/components/GroupFinishedBookDetails"; // Import du nouveau composant
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"; // Import des composants Sheet
+import type { BookSelectionPayload, GroupBookWithAverageRating } from '@/types/domain';
 
 const groupSettingsSchema = z.object({
   name: z.string().min(2, { message: "Le nom du groupe doit contenir au moins 2 caractères." }),
@@ -69,11 +70,11 @@ export default function GroupDetailsPage() {
   const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
 
   const [showFinishedBookDetails, setShowFinishedBookDetails] = useState(false);
-  const [selectedFinishedBook, setSelectedFinishedBook] = useState<any | null>(null);
+  const [selectedFinishedBook, setSelectedFinishedBook] = useState<GroupBookWithAverageRating | null>(null);
 
-  let currentlyReadingBook: any | undefined;
-  let finishedBooks: any[] = [];
-  let suggestedBooks: any[] = [];
+  let currentlyReadingBook: GroupBookWithAverageRating | undefined;
+  let finishedBooks: GroupBookWithAverageRating[] = [];
+  let suggestedBooks: GroupBookWithAverageRating[] = [];
 
   useEffect(() => {
     if (group) {
@@ -108,13 +109,17 @@ export default function GroupDetailsPage() {
 
   const isAdmin = group.members.some(member => member.user.id === session?.user?.id && member.role === 'ADMIN');
 
-  currentlyReadingBook = group.books.find((book: any) => book.status === 'CURRENT');
+  currentlyReadingBook = group.books.find((book) => book.status === 'CURRENT');
   finishedBooks = group.books
-    .filter((book: any) => book.status === 'FINISHED')
-    .sort((a: any, b: any) => new Date(b.finished_at).getTime() - new Date(a.finished_at).getTime());
-  suggestedBooks = group.books.filter((book: any) => book.status === 'SUGGESTED');
+    .filter((book) => book.status === 'FINISHED')
+    .sort((a, b) => {
+      const dateA = a.finished_at ? new Date(a.finished_at).getTime() : 0;
+      const dateB = b.finished_at ? new Date(b.finished_at).getTime() : 0;
+      return dateB - dateA;
+    });
+  suggestedBooks = group.books.filter((book) => book.status === 'SUGGESTED');
 
-  const handleSelectBook = async (book: any) => {
+  const handleSelectBook = async (book: GroupBookWithAverageRating) => {
     const response = await fetch(`/api/groups/${group.id}/currently-reading`, {
       method: 'POST',
       headers: {
@@ -128,15 +133,15 @@ export default function GroupDetailsPage() {
     }
   };
 
-  const handleSuggestBook = async (book: any) => {
+  const handleSuggestBook = async (book: BookSelectionPayload) => {
     const bookData = {
       googleBooksId: book.googleBooksId,
       title: book.title,
       author: book.author,
-      cover_url: book.cover_url,
+      coverUrl: book.coverUrl,
       description: book.description,
-      page_count: book.page_count,
-      published_date: book.published_date,
+      pageCount: book.pageCount,
+      publishedDate: book.publishedDate,
       publisher: book.publisher,
       genre: book.genre,
     };
@@ -225,7 +230,7 @@ export default function GroupDetailsPage() {
     }
   };
 
-  const handleViewFinishedBookDetails = (book: any) => {
+  const handleViewFinishedBookDetails = (book: GroupBookWithAverageRating) => {
     setSelectedFinishedBook(book);
     setShowFinishedBookDetails(true);
   };
@@ -296,7 +301,7 @@ export default function GroupDetailsPage() {
                   </div>
                 </>
               ) : (
-                <PollDisplay groupId={group.id} />
+                <PollDisplay groupId={group.id} isAdmin={isAdmin} currentlyReadingGroupBookId={currentlyReadingBook?.id || null} />
               )}
             </TabsContent>
             <TabsContent value="history">

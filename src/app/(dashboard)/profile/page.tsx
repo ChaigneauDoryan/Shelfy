@@ -25,6 +25,33 @@ import PaceDisplay from '@/components/PaceDisplay'
 import useSWR from 'swr'
 import { useSession } from 'next-auth/react';
 import PageHeader from '@/components/ui/PageHeader';
+import type { AwardedBadge } from '@/types/domain';
+
+interface ProfileStatsResponse {
+  profile?: {
+    bio?: string | null;
+    name?: string | null;
+    image?: string | null;
+  };
+  stats?: {
+    total_books_read: number;
+    total_pages_read: number;
+    average_rating: number;
+  };
+  badges: UserProfileBadge[];
+  readingPace?: 'occasional' | 'regular' | 'passionate' | null;
+  topGenres?: { name: string; count: number }[];
+  topAuthors?: { name: string; count: number }[];
+}
+
+interface UserProfileBadge {
+  id: string | number;
+  name: string;
+  description: string;
+  icon_name?: string;
+  icon_url?: string | null;
+  unlocked_at?: string;
+}
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: "Le nom d'utilisateur doit contenir au moins 2 caractères." }),
@@ -44,7 +71,7 @@ export default function ProfilePage() {
     document.title = 'Shelfy - Mon Profil';
   }, []);
 
-  const { data, error, isLoading, mutate } = useSWR(userId ? '/api/profile/stats' : null, fetcher);
+  const { data, error, isLoading, mutate } = useSWR<ProfileStatsResponse>(userId ? '/api/profile/stats' : null, fetcher);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -70,9 +97,9 @@ export default function ProfilePage() {
     const checkBadges = async () => {
       if (userId) {
         const response = await fetch('/api/profile/check-badges', { method: 'POST' });
-        const data = await response.json();
-        if (data.awardedBadges && Array.isArray(data.awardedBadges)) {
-          data.awardedBadges.forEach((badge: any) => {
+        const badgeData: { awardedBadges?: AwardedBadge[] } = await response.json();
+        if (badgeData.awardedBadges && Array.isArray(badgeData.awardedBadges)) {
+          badgeData.awardedBadges.forEach((badge) => {
             toast({
               title: 'Nouveau badge débloqué !',
               description: `Vous avez obtenu le badge : ${badge.name}`,
@@ -164,8 +191,15 @@ export default function ProfilePage() {
           <CardContent>
             {data?.badges && data.badges.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {data.badges.map((badge: any) => (
-                  <BadgeCard key={badge.id} badge={badge} />
+                {data.badges.map((badge) => (
+                  <BadgeCard
+                    key={badge.id}
+                    badge={{
+                      ...badge,
+                      icon_name: badge.icon_name || '', // Provide a default empty string if undefined
+                      unlocked_at: badge.unlocked_at || '', // Provide a default empty string if undefined
+                    }}
+                  />
                 ))}
               </div>
             ) : (
@@ -179,9 +213,9 @@ export default function ProfilePage() {
             <CardTitle>Vos Préférences de Lecture</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <WordCloud data={data?.topGenres} title="Genres Favoris" />
-            <WordCloud data={data?.topAuthors} title="Auteurs Favoris" />
-            <PaceDisplay pace={data?.readingPace} />
+            <WordCloud data={data?.topGenres || []} title="Genres Favoris" />
+            <WordCloud data={data?.topAuthors || []} title="Auteurs Favoris" />
+            <PaceDisplay pace={data?.readingPace || null} />
           </CardContent>
         </Card>
 

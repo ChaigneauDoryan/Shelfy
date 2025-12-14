@@ -1,16 +1,25 @@
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function DELETE(request: Request, { params }: { params: { groupId: string, suggestionId: string } }) {
+interface RouteParams {
+  groupId: string;
+  suggestionId: string;
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId, suggestionId } = await params;
+  const resolvedParams = await context.params;
+  const { groupId, suggestionId } = resolvedParams;
 
   try {
     const member = await prisma.groupMember.findUnique({
@@ -44,13 +53,17 @@ export async function DELETE(request: Request, { params }: { params: { groupId: 
   }
 }
 
-export async function GET(request: Request, { params }: { params: { groupId: string, suggestionId: string } }) {
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId, suggestionId } = await params;
+  const resolvedParams = await context.params;
+  const { groupId, suggestionId } = resolvedParams;
 
   try {
     const suggestion = await prisma.groupBook.findUnique({

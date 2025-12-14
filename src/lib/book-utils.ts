@@ -3,6 +3,8 @@ import { prisma } from './prisma';
 import { checkAndAwardBadges } from './badge-utils';
 import { canAddMorePersonalBooks } from './subscription-utils';
 import { SubscriptionLimitError } from './errors';
+import { BookData, GoogleBooksApiBook, ManualBookData, AddUserBookData, GoogleBooksVolumeInfo } from '@/types/book';
+import type { AwardedBadge, UserBookWithBook } from '@/types/domain';
 
 // Note: Les types Book et UserBook sont maintenant générés par Prisma.
 // Nous pouvons les importer si nécessaire, mais souvent ce n'est pas obligatoire
@@ -20,34 +22,82 @@ export async function getReadingStatusId(statusName: string): Promise<number> {
   return status.id;
 }
 
-export async function findOrCreateBook(bookData: any, userId: string) {
-  const isGoogleBooks = bookData.volumeInfo !== undefined;
-  const bookInfo = isGoogleBooks ? bookData.volumeInfo : bookData;
+interface NormalizedBookInput {
+  googleBooksId?: string;
+  isbn?: string | null;
+  title: string;
+  author: string;
+  description?: string | null;
+  coverUrl?: string | null;
+  pageCount?: number | null;
+  genre?: string | null;
+  publishedDate?: string | null;
+  publisher?: string | null;
+  isManual: boolean;
+}
 
-  const googleBooksId = bookData.id;
-  const title = bookInfo.title;
-  const author = bookInfo.authors ? bookInfo.authors.join(', ') : bookData.author;
-  const description = bookInfo.description;
-  const coverUrl = bookInfo.imageLinks?.thumbnail || bookInfo.imageLinks?.smallThumbnail || bookData.coverUrl;
-  const pageCount = bookInfo.pageCount;
-  const genre = bookInfo.categories ? bookInfo.categories.join(', ') : bookData.genre;
-  let publishedDate = bookInfo.publishedDate;
-  if (publishedDate) {
-    try {
-      publishedDate = new Date(publishedDate).toISOString();
-    } catch (e) {
-      publishedDate = null; // Invalide date format
-    }
+const toIsoDateOrNull = (value?: string): string | null => {
+  if (!value) {
+    return null;
   }
-  const publisher = bookInfo.publisher;
-  const isManual = bookData.isManual || !isGoogleBooks;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+};
 
-  let isbn = bookData.isbn;
-  if (isGoogleBooks && bookInfo.industryIdentifiers) {
-    const isbn13 = bookInfo.industryIdentifiers.find((i: any) => i.type === 'ISBN_13');
-    const isbn10 = bookInfo.industryIdentifiers.find((i: any) => i.type === 'ISBN_10');
-    isbn = isbn13 ? isbn13.identifier : (isbn10 ? isbn10.identifier : null);
-  }
+const normalizeGoogleBook = (book: GoogleBooksApiBook): NormalizedBookInput => {
+  const volume = book.volumeInfo;
+  const identifiers = volume.industryIdentifiers ?? [];
+  const isbn13 = identifiers.find((i) => i.type === 'ISBN_13');
+  const isbn10 = identifiers.find((i) => i.type === 'ISBN_10');
+
+  return {
+    googleBooksId: book.id,
+    isbn: isbn13?.identifier ?? isbn10?.identifier ?? null,
+    title: volume.title,
+    author: volume.authors?.join(', ') ?? 'Auteur inconnu',
+    description: volume.description ?? null,
+    coverUrl: volume.imageLinks?.thumbnail ?? volume.imageLinks?.smallThumbnail ?? null,
+    pageCount: volume.pageCount ?? null,
+    genre: volume.categories?.join(', ') ?? null,
+    publishedDate: toIsoDateOrNull(volume.publishedDate),
+    publisher: volume.publisher ?? null,
+    isManual: false,
+  };
+};
+
+const normalizeManualBook = (book: ManualBookData): NormalizedBookInput => ({
+  googleBooksId: undefined,
+  isbn: book.isbn ?? null,
+  title: book.title,
+  author: book.author,
+  description: book.description ?? null,
+  coverUrl: book.coverUrl ?? null,
+  pageCount: book.pageCount ?? null,
+  genre: book.genre ?? null,
+  publishedDate: toIsoDateOrNull(book.publishedDate),
+  publisher: book.publisher ?? null,
+  isManual: book.isManual ?? true,
+});
+
+export async function findOrCreateBook(bookData: BookData, userId: string) {
+  const isGoogleBooks = 'volumeInfo' in bookData;
+  const normalizedData = isGoogleBooks
+    ? normalizeGoogleBook(bookData as GoogleBooksApiBook)
+    : normalizeManualBook(bookData as ManualBookData);
+
+  const {
+    googleBooksId,
+    isbn,
+    title,
+    author,
+    description,
+    coverUrl,
+    pageCount,
+    genre,
+    publishedDate,
+    publisher,
+    isManual,
+  } = normalizedData;
 
   // Logique de recherche simplifiée avec Prisma
   if (!isManual && (googleBooksId || isbn)) {
@@ -97,7 +147,7 @@ export async function findOrCreateBook(bookData: any, userId: string) {
   return newBook;
 }
 
-export async function addUserBook(userId: string, bookId: string, bookData: any) {
+export async function addUserBook(userId: string, bookId: string, bookData: AddUserBookData) {
   const { readingPace } = bookData;
 
   const canAdd = await canAddMorePersonalBooks(userId);
@@ -118,7 +168,7 @@ export async function addUserBook(userId: string, bookId: string, bookData: any)
       user_id: userId,
       book_id: bookId,
       status_id: 1, // Default: 'to_read' (ID 1)
-      reading_pace: readingPace,
+      reading_pace: readingPace != null ? String(readingPace) : null,
     },
   });
 
@@ -133,7 +183,7 @@ export async function getUserBooks(userId: string, statusId?: number, isArchived
       is_archived: isArchived,
     },
     include: {
-      book: true, // Inclure l'objet livre complet
+      book: true, // Inclure l\'objet livre complet
     },
     orderBy: {
       created_at: 'desc',
@@ -159,34 +209,52 @@ export async function getUserBookById(userBookId: string, userId: string) {
   return userBook;
 }
 
-export async function updateUserBookStatus(userBookId: string, statusName: string, userId: string) {
+export async function updateUserBookStatus(
+  userBookId: string,
+  statusName: string,
+  userId: string
+): Promise<{ updatedBook: UserBookWithBook; awardedBadges: AwardedBadge[] }> {
   const statusId = await getReadingStatusId(statusName);
-  const updateData: any = { status_id: statusId };
+  const updateData: { status_id: number; finished_at?: Date; current_page?: number } = { status_id: statusId };
 
+  // First, verify the book exists and belongs to the user.
+  // This prevents errors by fetching the book before attempting to update.
+  const userBook = await prisma.userBook.findFirst({
+    where: {
+      id: userBookId,
+      user_id: userId,
+    },
+    include: {
+      book: true,
+    },
+  });
+
+  if (!userBook) {
+    throw new Error("Livre non trouvé ou vous n'avez pas la permission de le modifier.");
+  }
+
+  // If the book is finished, set the finished date and update the current page.
   if (statusName === 'finished') {
     updateData.finished_at = new Date();
-
-    // Get the book's page count to update the current page
-    const userBook = await prisma.userBook.findUnique({
-      where: { id: userBookId, user_id: userId },
-      include: { book: true },
-    });
-
-    if (userBook && userBook.book.page_count) {
+    if (userBook.book.page_count) {
       updateData.current_page = userBook.book.page_count;
     }
   }
 
   const updatedBook = await prisma.userBook.update({
-    where: { id: userBookId, user_id: userId },
+    where: {
+      id: userBookId,
+    },
     data: updateData,
+    include: {
+      book: true,
+    },
   });
 
-  let awardedBadges: any[] = [];
-  // La logique de badge doit aussi être migrée pour utiliser Prisma
-  // if (statusName === 'finished') {
-  //   awardedBadges = await checkAndAwardBadges(userId);
-  // }
+  let awardedBadges: AwardedBadge[] = [];
+  if (statusName === 'finished') {
+    awardedBadges = await checkAndAwardBadges(userId);
+  }
 
   return { updatedBook, awardedBadges };
 }

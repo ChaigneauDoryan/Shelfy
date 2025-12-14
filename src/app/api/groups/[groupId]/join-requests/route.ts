@@ -1,17 +1,21 @@
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
 
-export async function GET(request: Request, { params }: { params: { groupId: string } }) {
+interface RouteParams {
+  groupId: string;
+}
+
+export async function GET(request: NextRequest, context: { params: Promise<{ groupId: string; }> }) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId } = await params;
+  const { groupId } = await context.params;
 
   try {
     // Check if the user is an admin of the group

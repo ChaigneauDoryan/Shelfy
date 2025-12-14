@@ -1,21 +1,31 @@
 
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
-// Déclare une variable globale pour stocker le client Prisma
 declare global {
   // eslint-disable-next-line no-var
   var prisma: PrismaClient | undefined;
 }
 
-// Crée une instance unique du client Prisma.
-// En développement, Next.js recharge les fichiers, ce qui peut créer de multiples instances.
-// Ce code évite cela en stockant le client dans la variable globale.
+const globalForPrisma = globalThis as {
+  prisma?: PrismaClient;
+};
+
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL environment variable is not set.');
+}
+
 export const prisma =
-  (globalThis as any).prisma ||
-  new PrismaClient({
-    log: [],
-  });
+  globalForPrisma.prisma ??
+  (() => {
+    const pool = new Pool({ connectionString });
+    const adapter = new PrismaPg(pool);
+    return new PrismaClient({ adapter, log: [] });
+  })();
 
 if (process.env.NODE_ENV !== 'production') {
-  (globalThis as any).prisma = prisma;
+  globalForPrisma.prisma = prisma;
 }

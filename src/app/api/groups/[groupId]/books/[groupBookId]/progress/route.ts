@@ -1,16 +1,25 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function PATCH(request: Request, { params }: { params: { groupId: string, groupBookId: string } }) {
+interface RouteParams {
+  groupId: string;
+  groupBookId: string;
+}
+
+interface PatchRequestBody {
+  currentPage: number;
+}
+
+export async function PATCH(request: NextRequest, context: { params: Promise<{ groupId: string; groupBookId: string; }> }) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId, groupBookId } = await params;
-  const { currentPage } = await request.json();
+  const { groupId, groupBookId } = await context.params;
+  const { currentPage }: PatchRequestBody = await request.json();
 
   if (typeof currentPage !== 'number' || currentPage < 0) {
     return NextResponse.json({ message: 'La page actuelle doit être un nombre positif.' }, { status: 400 });
@@ -61,14 +70,14 @@ export async function PATCH(request: Request, { params }: { params: { groupId: s
   }
 }
 
-export async function GET(request: Request, { params }: { params: { groupId: string, groupBookId: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ groupId: string; groupBookId: string; }> }) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId, groupBookId } = await params;
+  const { groupId, groupBookId } = await context.params;
 
   try {
     // 1. Vérifier si l'utilisateur est membre du groupe

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { GoogleBooksApiBook } from '@/types/book';
 
 export async function GET(request: Request) {
   const session = await getSession();
@@ -52,12 +53,13 @@ export async function GET(request: Request) {
 
     // 3. Filter results
     if (data.items) {
-      data.items = data.items.filter((book: any) => !existingGoogleBooksIds.has(book.id));
+      data.items = data.items.filter((book: GoogleBooksApiBook) => !existingGoogleBooksIds.has(book.id));
     }
 
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error('Error searching Google Books:', error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error searching Google Books:', message);
     return NextResponse.json({ message: 'Failed to search books from Google Books API.' }, { status: 500 });
   }
 }

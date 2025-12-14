@@ -1,17 +1,30 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
 
-export async function POST(request: Request, { params }: { params: { groupId: string, pollId: string } }) {
+interface RouteParams {
+  groupId: string;
+  pollId: string;
+}
+
+interface PostRequestBody {
+  readingEndDate?: string | null;
+}
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> } // Explicitly type params as a Promise
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId, pollId } = await params;
-  const { readingEndDate } = await request.json();
+  const resolvedParams = await context.params; // Await the params Promise
+  const { groupId, pollId } = resolvedParams; // Access properties from the resolved object
+  const { readingEndDate }: PostRequestBody = await request.json();
 
   try {
     // 1. Vérifier si l'utilisateur est administrateur du groupe

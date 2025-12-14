@@ -1,8 +1,8 @@
+import 'server-only';
 import { prisma } from './prisma';
-import { User } from '@prisma/client';
+import { FREE_PLAN_ID, PREMIUM_PLAN_ID } from './subscription-constants';
 
-export const FREE_PLAN_ID = 'free';
-export const PREMIUM_PLAN_ID = 'premium';
+import type { User } from '@prisma/client';
 
 export async function getUserSubscription(userId: string) {
   // Récupérer l'abonnement le plus récent de l'utilisateur, quel que soit son statut.
@@ -21,12 +21,12 @@ export async function getUserSubscription(userId: string) {
   return subscription;
 }
 
-export function isPremium(subscription: { planId: string }) {
-  return subscription.planId === PREMIUM_PLAN_ID;
+export function isPremium(subscription: { planId: string } | null) {
+  return subscription?.planId === PREMIUM_PLAN_ID;
 }
 
-export function isFree(subscription: { planId: string }) {
-  return subscription.planId === FREE_PLAN_ID;
+export function isFree(subscription: { planId: string } | null) {
+  return !subscription || subscription.planId === FREE_PLAN_ID;
 }
 
 // Fonctions pour vérifier les limites

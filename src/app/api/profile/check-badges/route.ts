@@ -1,11 +1,12 @@
-
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import {
   checkAndAwardGroupCreationBadges,
   checkAndAwardGroupMembershipBadges,
   checkAndAwardGroupActivityBadges,
+  checkAndAwardInvitationBadges,
 } from '@/lib/badge-utils';
+import type { AwardedBadge } from '@/types/domain';
 
 export async function POST() {
   const session = await getSession();
@@ -16,7 +17,7 @@ export async function POST() {
   const userId = session.user.id;
 
   try {
-    const awardedBadges = [];
+    const awardedBadges: AwardedBadge[] = [];
     const groupCreationBadges = await checkAndAwardGroupCreationBadges(userId);
     const groupMembershipBadges = await checkAndAwardGroupMembershipBadges(userId);
     const groupActivityBadges = await checkAndAwardGroupActivityBadges(userId);

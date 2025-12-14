@@ -1,13 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Group, User, Book, GroupBook, GroupMember, GroupJoinRequest } from "@prisma/client";
-
-interface GroupDetails extends Group {
-  members: (GroupMember & { user: User })[];
-  books: (GroupBook & { book: Book })[];
-  joinRequests: (GroupJoinRequest & { user: User })[];
-  memberCount: number;
-  adminCount: number;
-}
+import type { GroupDetails } from '@/types/domain';
 
 export function useGroupDetails(groupId: string, enabled = true) {
   return useQuery<GroupDetails>({

@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import type { AwardedBadge } from '@/types/domain';
 
 export interface Book {
   id: string;
@@ -173,11 +174,12 @@ export default function LibraryPage() {
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data: Book[] = await response.json();
       setBooks(data);
-    } catch (e: any) {
-      setError(e.message);
-      toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de charger les livres.';
+      setError(message);
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -221,10 +223,11 @@ export default function LibraryPage() {
       const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
       await fetchBooks(filterStatus, selectedArchiveStatus);
       
-    } catch (e: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de supprimer le livre.';
       toast({
         title: 'Erreur',
-        description: e.message,
+        description: message,
         variant: 'destructive',
       });
     }
@@ -260,10 +263,11 @@ export default function LibraryPage() {
       const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
       await fetchBooks(filterStatus, selectedArchiveStatus);
       
-    } catch (e: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de modifier l’archive.';
       toast({
         title: 'Erreur',
-        description: e.message,
+        description: message,
         variant: 'destructive',
       });
     }
@@ -284,10 +288,10 @@ export default function LibraryPage() {
         throw new Error(errorData.message || 'Failed to update book status.');
       }
 
-      const { awardedBadges } = await response.json();
+      const { awardedBadges } = (await response.json()) as { awardedBadges?: AwardedBadge[] };
 
       if (awardedBadges && awardedBadges.length > 0) {
-        awardedBadges.forEach((badge: any) => {
+        awardedBadges.forEach((badge) => {
           toast({
             title: 'Nouveau badge débloqué !',
             description: `Vous avez obtenu le badge : ${badge.name}`,
@@ -298,10 +302,11 @@ export default function LibraryPage() {
 
       const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
       await fetchBooks(filterStatus, selectedArchiveStatus);
-    } catch (e: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de mettre à jour le statut.';
       toast({
         title: 'Erreur',
-        description: e.message,
+        description: message,
         variant: 'destructive',
       });
     }

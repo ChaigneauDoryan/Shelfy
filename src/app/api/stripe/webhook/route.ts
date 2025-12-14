@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
-import { PREMIUM_PLAN_ID, FREE_PLAN_ID } from '@/lib/subscription-utils';
+import { PREMIUM_PLAN_ID, FREE_PLAN_ID } from '@/lib/subscription-constants';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2025-11-17.clover',
 });
 
 export async function POST(req: Request) {
@@ -23,9 +23,10 @@ export async function POST(req: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
-  } catch (err: any) {
-    console.error(`Webhook Error: ${err.message}`);
-    return NextResponse.json({ message: `Webhook Error: ${err.message}` }, { status: 400 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error(`Webhook Error: ${message}`);
+    return NextResponse.json({ message: `Webhook Error: ${message}` }, { status: 400 });
   }
 
   const eventType = event.type;
@@ -81,7 +82,14 @@ export async function POST(req: Request) {
 
       case 'invoice.payment_succeeded':
         const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = invoice.subscription as string;
+        const subscriptionId = typeof (invoice as any).subscription === 'string'
+          ? (invoice as any).subscription
+          : ((invoice as any).subscription as Stripe.Subscription)?.id;
+
+        if (!subscriptionId) {
+          console.error('Subscription ID not found for invoice.payment_succeeded event:', invoice);
+          return NextResponse.json({ message: 'Subscription ID not found.' }, { status: 400 });
+        }
 
         // Mettre à jour le statut de l'abonnement dans votre base de données
         await prisma.subscription.updateMany({
@@ -92,7 +100,14 @@ export async function POST(req: Request) {
 
       case 'invoice.payment_failed':
         const failedInvoice = event.data.object as Stripe.Invoice;
-        const failedSubscriptionId = failedInvoice.subscription as string;
+        const failedSubscriptionId = typeof (failedInvoice as any).subscription === 'string'
+          ? (failedInvoice as any).subscription
+          : ((failedInvoice as any).subscription as Stripe.Subscription)?.id;
+
+        if (!failedSubscriptionId) {
+          console.error('Subscription ID not found for invoice.payment_failed event:', failedInvoice);
+          return NextResponse.json({ message: 'Subscription ID not found.' }, { status: 400 });
+        }
 
         // Mettre à jour le statut de l'abonnement comme échoué
         await prisma.subscription.updateMany({

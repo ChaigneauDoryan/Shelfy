@@ -10,27 +10,29 @@ import {
   Section,
   Text,
   Button,
-  Link,
 } from '@react-email/components';
+import type { ReactElement } from 'react';
+
+type JoinRequestStatus = 'pending' | 'accepted' | 'declined';
 
 interface GroupJoinRequestEmailProps {
-  adminName?: string; // Optional for requester notification
+  adminName?: string;
   requesterName: string;
   groupName: string;
   managementUrl: string;
-  status?: 'pending' | 'accepted' | 'declined'; // Status of the request
+  status?: JoinRequestStatus;
 }
 
-export const GroupJoinRequestEmail = ({ 
+export const GroupJoinRequestEmail = ({
   adminName,
   requesterName,
   groupName,
   managementUrl,
-  status = 'pending', // Default to pending for admin notifications
+  status = 'pending',
 }: GroupJoinRequestEmailProps) => {
   let previewText: string;
   let headingText: string;
-  let bodyContent: JSX.Element;
+  let bodyContent: ReactElement;
   let buttonText: string;
   let subjectText: string;
 
@@ -74,7 +76,7 @@ export const GroupJoinRequestEmail = ({
           <Section style={{ textAlign: 'center', marginTop: '20px', marginBottom: '20px' }}>
             <Button 
               style={{ backgroundColor: '#dc3545', color: '#fff', padding: '12px 20px', borderRadius: '5px', textDecoration: 'none' }} 
-              href={`${process.env.NEXTAUTH_URL}/dashboard/groups`}
+              href={managementUrl}
             >
               {buttonText}
             </Button>

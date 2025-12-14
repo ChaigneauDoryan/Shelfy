@@ -65,8 +65,9 @@ export default function PollDisplay({ groupId, isAdmin, currentlyReadingGroupBoo
       queryClient.invalidateQueries({ queryKey: ['polls', groupId] });
       toast({ title: 'Succès', description: 'Votre vote a été enregistré.' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      const description = error instanceof Error ? error.message : 'Le vote a échoué.';
+      toast({ title: 'Erreur', description, variant: 'destructive' });
     },
   });
 
@@ -92,8 +93,9 @@ export default function PollDisplay({ groupId, isAdmin, currentlyReadingGroupBoo
       queryClient.invalidateQueries({ queryKey: ['groupBookData'] }); // Invalidate group book data as well
       toast({ title: 'Succès', description: 'Le livre gagnant a été défini comme lecture en cours.' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      const description = error instanceof Error ? error.message : 'Impossible de définir la nouvelle lecture.';
+      toast({ title: 'Erreur', description, variant: 'destructive' });
     },
   });
 
@@ -197,7 +199,7 @@ export default function PollDisplay({ groupId, isAdmin, currentlyReadingGroupBoo
                             onClick={() => handleSetCurrentReading(poll.id)}
                             className="mt-2"
                             size="sm"
-                            disabled={winners[0].groupBook.id === currentlyReadingGroupBookId} // Nouvelle prop utilisée ici
+                            disabled={winners[0].groupBook.book.id === currentlyReadingGroupBookId} // Nouvelle prop utilisée ici
                           >
                             Définir comme lecture en cours
                           </Button>

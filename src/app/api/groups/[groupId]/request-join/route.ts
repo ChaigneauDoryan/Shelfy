@@ -1,5 +1,5 @@
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Resend } from 'resend';
@@ -10,14 +10,22 @@ import { RoleInGroup } from '@prisma/client';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function POST(request: Request, { params }: { params: { groupId: string } }) {
+interface RouteParams {
+  groupId: string;
+}
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId } = await params;
+  const resolvedParams = await context.params;
+  const { groupId } = resolvedParams;
 
   if (!groupId) {
     return NextResponse.json({ message: 'Group ID is required.' }, { status: 400 });

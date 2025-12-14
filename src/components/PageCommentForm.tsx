@@ -72,9 +72,10 @@ export function PageCommentForm({ userBookId, onCommentAdded }: PageCommentFormP
       setChapterTitle('');
       setCommentText('');
       onCommentAdded(); // Refresh the list of comments
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Échec de l’enregistrement du commentaire.';
       console.error('Error saving page comment:', error);
-      toast({ title: 'Erreur', description: error.message || 'Échec de l\'enregistrement du commentaire.', variant: 'destructive' });
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }

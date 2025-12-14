@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import type { Prisma } from '@prisma/client';
 
 export async function GET(request: Request) {
   const session = await getSession();
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
 
     const excludedGroupIds = [...memberGroupIds, ...pendingGroupIds];
 
-    const whereClause: any = {
+    const whereClause: Prisma.GroupWhereInput = {
       id: {
         notIn: excludedGroupIds,
       },

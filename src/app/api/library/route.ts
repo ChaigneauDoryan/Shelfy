@@ -25,8 +25,9 @@ export async function GET(request: Request) {
 
     const books = await getUserBooks(userId, statusId, isArchived);
     return NextResponse.json(books);
-  } catch (error: any) {
-    console.error('Error fetching user books:', error.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error fetching user books:', message);
     return NextResponse.json({ message: 'Failed to fetch user books.' }, { status: 500 });
   }
 }

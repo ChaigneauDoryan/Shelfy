@@ -22,31 +22,14 @@ import { ChevronLeft } from 'lucide-react';
 import { useDebounce } from '@/hooks/use-debounce';
 import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
+import type { GoogleBooksApiBook } from '@/types/book';
 
 const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), {
   ssr: false,
   loading: () => <p>Chargement du scanner...</p>, // Optional loading component
 });
 
-interface BookResult {
-  id?: string | null;
-  volumeInfo: {
-    title: string;
-    authors?: string[];
-    imageLinks?: {
-      thumbnail?: string;
-    };
-    description?: string;
-    pageCount?: number;
-    categories?: string[];
-    publishedDate?: string;
-    publisher?: string;
-    industryIdentifiers?: {
-      type: string;
-      identifier: string;
-    }[];
-  };
-}
+type BookResult = GoogleBooksApiBook;
 
 const manualBookSchema = z.object({
   title: z.string().min(1, "Le titre est requis."),
@@ -99,7 +82,7 @@ export default function AddBookPage() {
     setChaptersInput(prev => prev.filter(chapter => chapter.id !== id));
   }, []);
 
-  const handleChapterChange = useCallback((id: number, field: keyof ChapterInput, value: any) => {
+  const handleChapterChange = useCallback((id: number, field: keyof ChapterInput, value: string | number) => {
     setChaptersInput(prev => prev.map(chapter =>
       chapter.id === id ? { ...chapter, [field]: value } : chapter
     ));
@@ -151,17 +134,18 @@ export default function AddBookPage() {
       const data = await response.json();
 
       // De-duplicate results based on book ID
-      const uniqueResults = data.items ? Array.from(new Map(data.items.map((item: any) => [item.id, item])).values()) : [];
+      const rawItems: BookResult[] = Array.isArray(data.items) ? data.items : [];
+      const uniqueResults = Array.from(new Map(rawItems.map((item) => [item.id, item])).values());
 
       // Fetch more details for results that are missing them
       const detailedResults = await Promise.all(
-        uniqueResults.map(async (book: any) => {
+        uniqueResults.map(async (book) => {
           if (!book.volumeInfo.description || !book.volumeInfo.imageLinks?.thumbnail) {
             try {
               const detailsResponse = await fetch(`/api/books/${book.id}`);
               if (detailsResponse.ok) {
                 const detailsData = await detailsResponse.json();
-                return detailsData; // Return the more detailed book data
+                return detailsData as BookResult; // Return the more detailed book data
               }
             } catch (e) {
               console.error(`Failed to fetch details for book ${book.id}`, e);
@@ -172,8 +156,9 @@ export default function AddBookPage() {
       );
 
       setResults(detailedResults);
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Erreur inconnue lors de la recherche.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -187,7 +172,23 @@ export default function AddBookPage() {
     }
   }, [debouncedSearchParams, handleSearch]);
 
-  const addBookToLibrary = useCallback(async (bookData: any, bookIdForLoading: string | null = null) => {
+  type ManualBookPayload = {
+    isManual: true;
+    googleBooksId: null;
+    isbn: string | null;
+    title: string;
+    author: string | null;
+    description: string | null;
+    coverUrl: string | null;
+    pageCount: number | null;
+    genre: string | null;
+    publishedDate: string | null;
+    publisher: string | null;
+  };
+
+  type LibraryAddPayload = BookResult | ManualBookPayload;
+
+  const addBookToLibrary = useCallback(async (bookData: LibraryAddPayload, bookIdForLoading: string | null = null) => {
     setLoading(true);
     setAddingBookId(bookIdForLoading);
     try {
@@ -220,9 +221,10 @@ export default function AddBookPage() {
         setResults([]);
         setShowManualForm(false);
       }
-    } catch (e: any) {
-      if (e.message !== 'Vous avez atteint la limite de livres personnels pour votre plan d\'abonnement.') {
-        toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible d’ajouter le livre.';
+      if (message !== 'Vous avez atteint la limite de livres personnels pour votre plan d\'abonnement.') {
+        toast({ title: 'Erreur', description: message, variant: 'destructive' });
       }
     } finally {
       setLoading(false);
@@ -305,9 +307,10 @@ export default function AddBookPage() {
         setChaptersInput([]);
         setShowManualForm(false);
       }
-    } catch (e: any) {
-      if (e.message !== 'Vous avez atteint la limite de livres personnels pour votre plan d\'abonnement.') {
-        toast({ title: 'Erreur', description: e.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible d’ajouter le livre.';
+      if (message !== 'Vous avez atteint la limite de livres personnels pour votre plan d\'abonnement.') {
+        toast({ title: 'Erreur', description: message, variant: 'destructive' });
       }
     } finally {
       setLoading(false);

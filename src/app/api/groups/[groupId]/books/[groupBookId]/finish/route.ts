@@ -1,15 +1,20 @@
 // src/app/api/groups/[groupId]/books/[groupBookId]/finish/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function PATCH(request: Request, { params }: { params: { groupId: string, groupBookId: string } }) {
+interface RouteParams {
+  groupId: string;
+  groupBookId: string;
+}
+
+export async function PATCH(request: NextRequest, context: { params: Promise<{ groupId: string; groupBookId: string; }> }) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  const { groupId, groupBookId } = params;
+  const { groupId, groupBookId } = await context.params;
 
   try {
     const groupBook = await prisma.groupBook.findUnique({
@@ -44,3 +49,4 @@ export async function PATCH(request: Request, { params }: { params: { groupId: s
     return NextResponse.json({ message: 'Échec de la mise à jour du statut du livre.' }, { status: 500 });
   }
 }
+

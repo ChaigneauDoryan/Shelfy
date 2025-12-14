@@ -56,10 +56,12 @@ export default function BookCommentTimeline({ userBookId, totalBookPages, refres
 
         const data = await response.json();
         setComments(data);
-      } catch (e: any) {
+      } catch (error: unknown) {
+        const description =
+          error instanceof Error ? error.message : 'Impossible de charger les commentaires pour le moment.';
         toast({
           title: 'Erreur de chargement des commentaires',
-          description: e.message,
+          description,
           variant: 'destructive',
         });
       } finally {

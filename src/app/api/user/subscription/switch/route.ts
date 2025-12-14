@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { FREE_PLAN_ID, PREMIUM_PLAN_ID } from '@/lib/subscription-utils';
+import { FREE_PLAN_ID, PREMIUM_PLAN_ID } from '@/lib/subscription-constants';
 
 export async function POST(request: Request) {
   const session = await getSession();

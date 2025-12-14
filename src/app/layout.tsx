@@ -3,8 +3,8 @@
 import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
-import { Toaster } from '@/components/ui/toaster';
-import TopNavbar from "@/components/TopNavbar";
+import { Toaster } from 'sonner';
+
 import CookieConsent from "react-cookie-consent";
 
 const geistSans = Geist({
@@ -23,13 +23,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
+    <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`antialiased`}
       >
         
         <Providers>{children}</Providers>
-        <Toaster />
+        <Toaster richColors />
         <CookieConsent
           location="bottom"
           buttonText="J'accepte"

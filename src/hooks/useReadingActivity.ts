@@ -1,21 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { Book, Group, GroupBook } from "@prisma/client";
-
-interface GroupBookWithDetails extends GroupBook {
-  book: Book;
-  group: {
-    id: string;
-    name: string;
-  };
-}
-
-interface ReadingActivityData {
-  groupBooks: GroupBookWithDetails[];
-  personalBooks: any[];
-}
+import type { ReadingActivityResponse } from '@/types/domain';
 
 export function useReadingActivity(enabled = true) {
-  return useQuery<ReadingActivityData>({
+  return useQuery<ReadingActivityResponse>({
     queryKey: ['readingActivity'],
     queryFn: async () => {
       const response = await fetch('/api/user/reading-activity');

@@ -3,11 +3,14 @@ import Stripe from 'stripe';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
-});
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const stripeClient = stripeSecret ? new Stripe(stripeSecret) : null;
 
-export async function POST(req: Request) {
+export async function POST() {
+  if (!stripeClient) {
+    return NextResponse.json({ message: 'Stripe is not configured.' }, { status: 500 });
+  }
+
   const session = await getSession();
 
   if (!session?.user?.id) {
@@ -25,9 +28,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Stripe customer not found for this user.' }, { status: 404 });
     }
 
-    const portalSession = await stripe.billingPortal.sessions.create({
+    const nextAuthUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+
+    const portalSession = await stripeClient.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: `${process.env.NEXTAUTH_URL}/subscription`,
+      return_url: `${nextAuthUrl}/subscription`,
     });
 
     return NextResponse.json({ url: portalSession.url });

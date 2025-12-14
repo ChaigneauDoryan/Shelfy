@@ -56,10 +56,11 @@ export default function AddCommentForm({ userBookId, onCommentAdded }: AddCommen
       setCommentTitle('');
       setCommentText('');
       onCommentAdded(); // Notify parent to refresh comments
-    } catch (e: any) {
+    } catch (error: unknown) {
+      const description = error instanceof Error ? error.message : 'Impossible d’ajouter le commentaire.';
       toast({
         title: 'Erreur',
-        description: e.message,
+        description,
         variant: 'destructive',
       });
     } finally {

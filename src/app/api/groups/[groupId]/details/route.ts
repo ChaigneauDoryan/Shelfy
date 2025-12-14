@@ -1,18 +1,22 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(request: Request, { params }: { params: { groupId: string } }) {
+interface RouteParams {
+  groupId: string;
+}
+
+export async function GET(request: NextRequest, context: { params: Promise<{ groupId: string; }> }) {
   const session = await getSession();
   if (!session?.user?.id) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   const userId = session.user.id;
-  const { groupId } = await params;
+  const { groupId } = await context.params;
 
   try {
-    // Vérifier si l'utilisateur est membre du groupe
+    // Vérifier si lutilisateur est membre du groupe
     const groupMember = await prisma.groupMember.findUnique({
       where: { group_id_user_id: { group_id: groupId, user_id: userId } },
     });

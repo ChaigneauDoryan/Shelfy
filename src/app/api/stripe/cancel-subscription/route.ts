@@ -3,11 +3,14 @@ import Stripe from 'stripe';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
-});
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const stripeClient = stripeSecret ? new Stripe(stripeSecret) : null;
 
-export async function POST(req: Request) {
+export async function POST() {
+  if (!stripeClient) {
+    return NextResponse.json({ message: 'Stripe is not configured.' }, { status: 500 });
+  }
+
   const session = await getSession();
 
   if (!session?.user?.id) {
@@ -31,7 +34,7 @@ export async function POST(req: Request) {
     }
 
     // Annuler l'abonnement à la fin de la période de facturation en cours
-    const canceledSubscription = await stripe.subscriptions.update(
+    const canceledSubscription = await stripeClient.subscriptions.update(
       userSubscription.stripeSubscriptionId,
       {
         cancel_at_period_end: true,
@@ -47,18 +50,27 @@ export async function POST(req: Request) {
       },
       data: {
         status: 'canceled_at_period_end',
-        endDate: new Date(canceledSubscription.cancel_at * 1000), // Enregistrer la date de fin
+        endDate: canceledSubscription.cancel_at ? new Date(canceledSubscription.cancel_at * 1000) : null, // Enregistrer la date de fin
       },
     });
 
-    const periodEndDate = new Date(canceledSubscription.cancel_at * 1000);
-    const formattedDate = periodEndDate.toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    const periodEndDate = canceledSubscription.cancel_at
+      ? new Date(canceledSubscription.cancel_at * 1000)
+      : null;
+    const formattedDate = periodEndDate
+      ? periodEndDate.toLocaleDateString('fr-FR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : null;
 
-    return NextResponse.json({ message: `Votre abonnement sera annulé le ${formattedDate}.`, periodEndDate: formattedDate });
+    return NextResponse.json({
+      message: formattedDate
+        ? `Votre abonnement sera annulé le ${formattedDate}.`
+        : 'Votre abonnement est programmé pour être annulé.',
+      periodEndDate: formattedDate,
+    });
   } catch (error) {
     console.error('Error canceling subscription:', error);
     return NextResponse.json({ message: 'Failed to cancel subscription.' }, { status: 500 });

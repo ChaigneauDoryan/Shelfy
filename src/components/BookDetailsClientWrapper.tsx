@@ -7,14 +7,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Import Select components
 import { useToast } from '@/hooks/use-toast'; // Import useToast
+import type { AwardedBadge, UserBookWithBook } from '@/types/domain';
 
 interface BookDetailsClientWrapperProps {
   userBookId: string;
-  userBook: any;
+  userBook: UserBookWithBook;
 }
 
+interface UpdateStatusResponse {
+  updatedBook: UserBookWithBook;
+  awardedBadges: AwardedBadge[];
+}
+
+type ReadingStatus = 'to_read' | 'reading' | 'finished';
+
 export default function BookDetailsClientWrapper({ userBookId, userBook: initialUserBook }: BookDetailsClientWrapperProps) {
-  const [userBook, setUserBook] = useState(initialUserBook); // Use state for userBook
+  const [userBook, setUserBook] = useState<UserBookWithBook>(initialUserBook); // Use state for userBook
   const [refreshKey, setRefreshKey] = useState(0);
   const [showCommentForm, setShowCommentForm] = useState(false);
   const { toast } = useToast(); // Initialize useToast
@@ -24,7 +32,7 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
     setShowCommentForm(false);
   };
 
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: ReadingStatus) => {
     try {
       const response = await fetch(`/api/library/${userBookId}/status`, {
         method: 'PATCH',
@@ -39,22 +47,23 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
         throw new Error(errorData.message || 'Failed to update book status.');
       }
 
-      const { updatedBook, awardedBadges } = await response.json();
+      const { updatedBook, awardedBadges } = (await response.json()) as UpdateStatusResponse;
       setUserBook(updatedBook); // Update the book details
 
       // Display toast for awarded badges
       if (awardedBadges && awardedBadges.length > 0) {
-        awardedBadges.forEach((badge: any) => {
+        awardedBadges.forEach((badge) => {
           toast({
             title: 'Nouveau badge débloqué !',
             description: `Vous avez obtenu le badge : ${badge.name}`,
           });
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de mettre à jour le statut du livre.';
       toast({
         title: 'Erreur',
-        description: error.message,
+        description: message,
         variant: 'destructive',
       });
     }

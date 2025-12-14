@@ -8,16 +8,15 @@ import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input" // Import Input component
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+export type CalendarProps = {
   selected?: Date;
   onSelect?: (date: Date | undefined) => void;
   showTime?: boolean; // New prop to control time selection
-};
+} & Omit<React.ComponentProps<typeof DayPicker>, 'selected' | 'onSelect' | 'mode'>;
 
 function Calendar({
   className,
   classNames,
-  showHead = true,
   selected,
   onSelect,
   showTime = false, // Default to false
@@ -60,7 +59,7 @@ function Calendar({
   return (
     <div className={cn("p-3", className)}>
       <DayPicker
-        showHead={showHead}
+        mode="single" // Added this prop
         classNames={{
           months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
           month: "space-y-4",
@@ -94,10 +93,6 @@ function Calendar({
             "aria-selected:bg-accent aria-selected:text-accent-foreground",
           day_hidden: "invisible",
           ...classNames,
-        }}
-        components={{
-          IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
-          IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
         }}
         selected={selected}
         onSelect={handleDateSelect}

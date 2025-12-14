@@ -20,7 +20,7 @@ import { FaSun, FaMoon, FaDesktop, FaUser } from 'react-icons/fa';
 import { useSession, signOut } from 'next-auth/react';
 import { useUserSubscription } from '@/hooks/useUserSubscription'; // Nouvelle importation
 import { useMutation, useQueryClient } from '@tanstack/react-query'; // Pour le switch d'abonnement
-import { FREE_PLAN_ID, PREMIUM_PLAN_ID } from '@/lib/subscription-utils'; // Pour les IDs de plan
+import { FREE_PLAN_ID, PREMIUM_PLAN_ID } from '@/lib/subscription-constants'; // Pour les IDs de plan
 import { useToast } from '@/hooks/use-toast'; // Pour les notifications
 
 export default function TopNavbar() {
@@ -45,8 +45,9 @@ export default function TopNavbar() {
       queryClient.invalidateQueries({ queryKey: ['userSubscription', user?.id] });
       toast({ title: 'Succès', description: 'Votre abonnement a été mis à jour.' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Erreur', description: error.message, variant: 'destructive' });
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Une erreur est survenue lors du changement de plan.';
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
     },
   });
 

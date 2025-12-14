@@ -44,9 +44,10 @@ export function ChapterSummaryForm({ userBookId, chapters, onSummaryAdded }: Cha
       setSummaryText('');
       setSelectedChapterId('');
       onSummaryAdded(); // Refresh the list of summaries
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Échec de l’enregistrement du résumé.';
       console.error('Error saving chapter summary:', error);
-      toast({ title: 'Erreur', description: error.message || 'Échec de l\'enregistrement du résumé.', variant: 'destructive' });
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
     } finally {
       setIsSaving(false);
     }

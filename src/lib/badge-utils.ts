@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import type { Badge } from '@prisma/client';
 
 // This function will be called when a user's book status is updated to 'finished'
 export async function checkAndAwardBadges(userId: string) {
@@ -11,7 +12,7 @@ export async function checkAndAwardBadges(userId: string) {
 }
 
 async function checkAndAwardBookCountBadges(userId: string) {
-  const awardedBadges = [];
+  const awardedBadges: Badge[] = [];
 
   const count = await prisma.userBook.count({
     where: {
@@ -42,7 +43,7 @@ async function checkAndAwardBookCountBadges(userId: string) {
 }
 
 async function checkAndAwardGenreDiversityBadge(userId: string) {
-  const awardedBadges = [];
+  const awardedBadges: Badge[] = [];
 
   const userBooks = await prisma.userBook.findMany({
     where: {
@@ -75,7 +76,7 @@ async function checkAndAwardGenreDiversityBadge(userId: string) {
   return awardedBadges;
 }
 
-async function awardBadge(userId: string, badgeId: number) {
+async function awardBadge(userId: string, badgeId: number): Promise<Badge | null> {
   // Check if the user already has the badge
   const existingBadge = await prisma.userBadge.findUnique({
     where: {
@@ -100,7 +101,7 @@ async function awardBadge(userId: string, badgeId: number) {
 }
 
 export async function checkAndAwardGroupCreationBadges(userId: string) {
-  const awardedBadges = [];
+  const awardedBadges: Badge[] = [];
 
   const count = await prisma.group.count({
     where: {
@@ -130,7 +131,7 @@ export async function checkAndAwardGroupCreationBadges(userId: string) {
 }
 
 export async function checkAndAwardGroupMembershipBadges(userId: string) {
-  const awardedBadges = [];
+  const awardedBadges: Badge[] = [];
 
   const count = await prisma.groupMember.count({
     where: {
@@ -160,7 +161,7 @@ export async function checkAndAwardGroupMembershipBadges(userId: string) {
 }
 
 export async function checkAndAwardGroupActivityBadges(userId: string) {
-  const awardedBadges = [];
+  const awardedBadges: Badge[] = [];
 
   const memberships = await prisma.groupMember.findMany({
     where: {
@@ -199,7 +200,7 @@ export async function checkAndAwardGroupActivityBadges(userId: string) {
 }
 
 export async function checkAndAwardInvitationBadges(userId: string) {
-  const awardedBadges = [];
+  const awardedBadges: Badge[] = [];
 
   const count = await prisma.groupMember.count({
     where: {

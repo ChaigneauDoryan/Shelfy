@@ -3,7 +3,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth'; // Helper à créer
 import { regenerateInvitationCode } from '@/lib/group-utils';
 
-export async function PATCH(request: NextRequest, { params }: { params: { groupId: string } }) {
+interface RouteParams {
+  groupId: string;
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<RouteParams> }
+) {
   const session = await getSession();
 
   if (!session?.user?.id) {
@@ -11,7 +18,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { groupI
   }
 
   const userId = session.user.id;
-  const { groupId } = params;
+  const resolvedParams = await context.params;
+  const { groupId } = resolvedParams;
 
   try {
     const result = await regenerateInvitationCode(groupId, userId);

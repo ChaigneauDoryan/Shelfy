@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -9,9 +9,9 @@ import { Input } from '@/components/ui/input';
 import { generateAvatarFromText } from '@/lib/avatar-utils';
 
 interface GroupAvatarUploadProps {
-  groupId: string;
+  groupId?: string;
   groupName: string;
-  initialAvatarUrl: string | null;
+  initialAvatarUrl?: string | null;
   onUpload: (url: string) => void;
 }
 
@@ -23,7 +23,7 @@ function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: numbe
   );
 }
 
-function getCroppedImg(image: HTMLImageElement, crop: Crop, scale = 1): Promise<Blob> {
+async function getCroppedImg(image: HTMLImageElement, crop: Crop, scale = 1): Promise<Blob> {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
 
@@ -76,14 +76,14 @@ function getCroppedImg(image: HTMLImageElement, crop: Crop, scale = 1): Promise<
 
 export default function GroupAvatarUpload({ groupId, groupName, initialAvatarUrl, onUpload }: GroupAvatarUploadProps) {
   const [uploading, setUploading] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(initialAvatarUrl ?? null);
   const [src, setSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [scale, setScale] = useState(1);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
-  const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onSelectFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setCrop(undefined);
       const reader = new FileReader();
@@ -91,50 +91,56 @@ export default function GroupAvatarUpload({ groupId, groupName, initialAvatarUrl
       reader.readAsDataURL(e.target.files[0]);
       setIsModalOpen(true);
     }
-  };
+  }, []);
 
-  function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+  const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { width, height } = e.currentTarget;
     setCrop(centerAspectCrop(width, height, 1));
-  }
+  }, []);
+  
+  const handleCrop = useCallback(async () => {
+    if (!imgRef.current || !crop?.width || !crop?.height) {
+      return;
+    }
+    setUploading(true);
+    setIsModalOpen(false);
 
-  const handleCrop = async () => {
-    if (imgRef.current && crop?.width && crop?.height) {
-      setUploading(true);
-      setIsModalOpen(false);
+    try {
+      const croppedImageBlob = await getCroppedImg(imgRef.current, crop, scale);
 
-      try {
-        const croppedImageBlob = await getCroppedImg(imgRef.current, crop, scale);
-        const uniqueId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      if (groupId) {
+        const uniqueId = `${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
         const fileName = `group-${groupId}-${Date.now()}-${uniqueId}.png`;
 
-        const response = await fetch(`/api/groups/${groupId}/avatar/upload?filename=${fileName}`,
-          {
-            method: 'POST',
-            body: croppedImageBlob,
-          }
-        );
+        const response = await fetch(`/api/groups/${groupId}/avatar/upload?filename=${fileName}`, {
+          method: 'POST',
+          body: croppedImageBlob,
+        });
 
         if (!response.ok) {
           throw new Error('Failed to upload image to Vercel Blob');
         }
 
         const { url: publicUrl } = await response.json();
-        
+
         setAvatarUrl(publicUrl);
         onUpload(publicUrl);
-
-      } catch (error: any) {
-        alert('Erreur: ' + error.message);
-      } finally {
-        setUploading(false);
-        setSrc(null);
-        setScale(1);
+      } else {
+        const publicUrl = URL.createObjectURL(croppedImageBlob);
+        setAvatarUrl(publicUrl);
+        onUpload(publicUrl);
       }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Échec du téléversement.';
+      alert('Erreur: ' + message);
+    } finally {
+      setUploading(false);
+      setSrc(null);
+      setScale(1);
     }
-  };
+  }, [crop, groupId, onUpload, scale]);
 
-  const groupAvatar = avatarUrl || generateAvatarFromText(groupName, 200);
+  const groupAvatar = avatarUrl ?? generateAvatarFromText(groupName, 200) ?? 'https://via.placeholder.com/200';
 
   return (
     <div className="flex flex-col items-center space-y-4">
