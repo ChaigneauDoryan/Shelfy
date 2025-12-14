@@ -4,19 +4,12 @@ import { getSession } from '@/lib/auth'; // Helper à créer
 import { prisma } from '@/lib/prisma';
 import { getReadingStatusId } from '@/lib/book-utils';
 
-interface RouteParams {
-  userBookId: string;
-}
-
-interface PostRequestBody {
-  page_number: number;
-  comment_text: string;
-}
+import type { UserBookCommentsRouteParams, UserBookCommentsPostRequestBody } from '@/types/api';
 
 // GET /api/user-books/[userBookId]/comments
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<UserBookCommentsRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user) {
@@ -51,7 +44,7 @@ export async function GET(
 // POST /api/user-books/[userBookId]/comments
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<UserBookCommentsRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {
@@ -62,7 +55,7 @@ export async function POST(
   const { userBookId } = resolvedParams;
 
   try {
-    const { page_number, comment_text }: PostRequestBody = await request.json();
+    const { page_number, comment_text }: UserBookCommentsPostRequestBody = await request.json();
 
     if (page_number === undefined || !comment_text) {
       return NextResponse.json({ error: 'Missing required fields: page_number, comment_text' }, { status: 400 });

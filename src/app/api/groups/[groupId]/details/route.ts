@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-interface RouteParams {
-  groupId: string;
-}
+import type { GroupDetailsRouteParams } from '@/types/api';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ groupId: string; }> }) {
   const session = await getSession();

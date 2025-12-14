@@ -5,9 +5,7 @@ import { findOrCreateBook, fetchBookDetailsFromGoogleBooks } from '@/lib/book-ut
 import { BookData, GoogleBooksVolumeInfo, ManualBookData } from '@/types/book';
 import { z } from 'zod';
 
-interface RouteParams {
-  groupId: string;
-}
+import type { GroupSuggestionsRouteParams } from '@/types/api';
 
 const bookSuggestionSchema = z.object({
   bookData: z.object({
@@ -20,7 +18,7 @@ const bookSuggestionSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<GroupSuggestionsRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {
@@ -116,7 +114,7 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<GroupSuggestionsRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {

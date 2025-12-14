@@ -3,10 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-interface RouteParams {
-  groupId: string;
-  groupBookId: string;
-}
+import type { FinishGroupBookRouteParams } from '@/types/api';
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ groupId: string; groupBookId: string; }> }) {
   const session = await getSession();

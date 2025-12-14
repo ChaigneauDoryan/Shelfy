@@ -2,15 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-interface RouteParams {
-  groupId: string;
-  groupBookId: string;
-}
-
-interface PostRequestBody {
-  pageNumber: number;
-  content: string;
-}
+import type { GroupBookCommentsRouteParams, GroupBookCommentsPostRequestBody } from '@/types/api';
 
 export async function POST(request: NextRequest, context: { params: Promise<{ groupId: string; groupBookId: string; }> }) {
   const session = await getSession();
@@ -20,7 +12,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ gr
 
   const userId = session.user.id;
   const { groupId, groupBookId } = await context.params;
-  const { pageNumber, content }: PostRequestBody = await request.json();
+  const { pageNumber, content }: GroupBookCommentsPostRequestBody = await request.json();
 
   if (typeof pageNumber !== 'number' || pageNumber <= 0) {
     return NextResponse.json({ message: 'Le numéro de page doit être un nombre positif.' }, { status: 400 });

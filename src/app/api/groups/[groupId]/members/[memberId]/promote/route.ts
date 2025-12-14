@@ -5,10 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
 import { getUserSubscription, isPremium } from '@/lib/subscription-utils';
 
-interface RouteParams {
-  groupId: string;
-  memberId: string;
-}
+import type { PromoteMemberRouteParams } from '@/types/api';
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ groupId: string; memberId: string; }> }) {
   const session = await getSession();

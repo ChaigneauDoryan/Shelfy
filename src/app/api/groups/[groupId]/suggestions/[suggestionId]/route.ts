@@ -3,14 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-interface RouteParams {
-  groupId: string;
-  suggestionId: string;
-}
+import type { SuggestionRouteParams } from '@/types/api';
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<SuggestionRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {
@@ -55,7 +52,7 @@ export async function DELETE(
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<SuggestionRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {

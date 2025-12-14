@@ -7,19 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Import Select components
 import { useToast } from '@/hooks/use-toast'; // Import useToast
-import type { AwardedBadge, UserBookWithBook } from '@/types/domain';
+import type { AwardedBadge, UserBookWithBook, ReadingStatus } from '@/types/domain';
+
+import type { UpdateStatusResponse } from '@/types/api';
 
 interface BookDetailsClientWrapperProps {
   userBookId: string;
   userBook: UserBookWithBook;
 }
-
-interface UpdateStatusResponse {
-  updatedBook: UserBookWithBook;
-  awardedBadges: AwardedBadge[];
-}
-
-type ReadingStatus = 'to_read' | 'reading' | 'finished';
 
 export default function BookDetailsClientWrapper({ userBookId, userBook: initialUserBook }: BookDetailsClientWrapperProps) {
   const [userBook, setUserBook] = useState<UserBookWithBook>(initialUserBook); // Use state for userBook

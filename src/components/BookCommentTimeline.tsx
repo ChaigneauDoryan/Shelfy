@@ -7,12 +7,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 
-interface Comment {
-  id: string;
-  page_number: number;
-  comment_text: string;
-  created_at: string;
-}
+import type { Comment } from '@/types/domain';
 
 interface BookCommentTimelineProps {
   userBookId: string;

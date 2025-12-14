@@ -4,20 +4,12 @@ import { getSession } from '@/lib/auth'; // Assumant que vous aurez un helper po
 import { deleteGroup, updateGroup } from '@/lib/group-utils';
 import { prisma } from '@/lib/prisma';
 
-interface RouteParams {
-  groupId: string;
-}
-
-interface PatchRequestBody {
-  name?: string;
-  description?: string;
-  avatar_url?: string;
-}
+import type { GroupRouteParams, GroupPatchRequestBody } from '@/types/api';
 
 // GET /api/groups/[groupId] - Récupérer les détails d'un groupe
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<GroupRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user) {
@@ -68,7 +60,7 @@ export async function GET(
 // DELETE /api/groups/[groupId] - Supprimer un groupe
 export async function DELETE(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<GroupRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {
@@ -93,7 +85,7 @@ export async function DELETE(
 // PATCH /api/groups/[groupId] - Mettre à jour un groupe
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<GroupRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {
@@ -103,7 +95,7 @@ export async function PATCH(
   const userId = session.user.id;
   const resolvedParams = await context.params;
   const { groupId } = resolvedParams;
-  const updateGroupDto: PatchRequestBody = await request.json();
+  const updateGroupDto: GroupPatchRequestBody = await request.json();
 
   try {
     

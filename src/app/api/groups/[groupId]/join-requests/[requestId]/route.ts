@@ -15,14 +15,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // This is the new path for the file
 // src/app/api/groups/[groupId]/join-requests/[requestId]/route.ts
 
-interface RouteParams {
-  groupId: string;
-  requestId: string;
-}
-
-interface PutRequestBody {
-  action: 'accept' | 'decline';
-}
+import type { JoinRequestRouteParams, JoinRequestPutRequestBody } from '@/types/api';
 
 export async function PUT(request: NextRequest, context: { params: Promise<{ groupId: string; requestId: string; }> }) {
   const session = await getSession();
@@ -33,7 +26,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ gro
   const userId = session.user.id;
   const { groupId, requestId } = await context.params;
 
-  const { action }: PutRequestBody = await request.json();
+  const { action }: JoinRequestPutRequestBody = await request.json();
 
   if (action !== 'accept' && action !== 'decline') {
     return NextResponse.json({ message: 'Invalid action.' }, { status: 400 });

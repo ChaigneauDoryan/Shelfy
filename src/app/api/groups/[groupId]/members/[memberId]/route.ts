@@ -4,10 +4,7 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
 
-interface RouteParams {
-  groupId: string;
-  memberId: string;
-}
+import type { GroupMemberRouteParams } from '@/types/api';
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ groupId: string; memberId: string; }> }) {
   const session = await getSession();

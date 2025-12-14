@@ -2,13 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth'; // Helper à créer
 import { updateUserBookStatus } from '@/lib/book-utils';
 
-interface RouteParams {
-  userBookId: string;
-}
+import type { UserBookStatusRouteParams } from '@/types/api';
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<UserBookStatusRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {

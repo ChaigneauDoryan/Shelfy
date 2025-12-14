@@ -3,15 +3,7 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
 
-interface RouteParams {
-  groupId: string;
-  groupBookId: string;
-}
-
-interface PatchRequestBody {
-  reading_end_date?: string | null;
-  rating?: number;
-}
+import type { GroupBookRouteParams, GroupBookPatchRequestBody } from '@/types/api';
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ groupId: string; groupBookId: string; }> }) {
   const session = await getSession();
@@ -21,7 +13,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ g
 
   const userId = session.user.id;
   const { groupId, groupBookId } = await context.params;
-  const { reading_end_date, rating }: PatchRequestBody = await request.json(); // Accepter rating
+  const { reading_end_date, rating }: GroupBookPatchRequestBody = await request.json(); // Accepter rating
 
   // Logique de mise à jour de la date de fin de lecture (pour les admins)
   if (reading_end_date !== undefined) { // Vérifier si reading_end_date est présent dans la requête

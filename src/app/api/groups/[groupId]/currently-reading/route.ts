@@ -4,13 +4,7 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
 
-interface RouteParams {
-  groupId: string;
-}
-
-interface PostRequestBody {
-  bookId: string;
-}
+import type { CurrentlyReadingRouteParams, CurrentlyReadingPostRequestBody } from '@/types/api';
 
 export async function POST(request: NextRequest, context: { params: Promise<{ groupId: string; }> }) {
   const session = await getSession();
@@ -20,7 +14,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ gr
 
   const userId = session.user.id;
   const { groupId } = await context.params;
-  const { bookId }: PostRequestBody = await request.json();
+  const { bookId }: CurrentlyReadingPostRequestBody = await request.json();
 
   if (!bookId) {
     return NextResponse.json({ message: 'Book ID is required.' }, { status: 400 });

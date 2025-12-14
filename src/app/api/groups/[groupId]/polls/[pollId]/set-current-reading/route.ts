@@ -3,18 +3,11 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
 
-interface RouteParams {
-  groupId: string;
-  pollId: string;
-}
-
-interface PostRequestBody {
-  readingEndDate?: string | null;
-}
+import type { SetCurrentReadingRouteParams, SetCurrentReadingPostRequestBody } from '@/types/api';
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<RouteParams> } // Explicitly type params as a Promise
+  context: { params: Promise<SetCurrentReadingRouteParams> } // Explicitly type params as a Promise
 ) {
   const session = await getSession();
   if (!session?.user?.id) {
@@ -24,7 +17,7 @@ export async function POST(
   const userId = session.user.id;
   const resolvedParams = await context.params; // Await the params Promise
   const { groupId, pollId } = resolvedParams; // Access properties from the resolved object
-  const { readingEndDate }: PostRequestBody = await request.json();
+  const { readingEndDate }: SetCurrentReadingPostRequestBody = await request.json();
 
   try {
     // 1. Vérifier si l'utilisateur est administrateur du groupe

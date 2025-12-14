@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-interface RouteParams {
-  groupId: string;
-  groupBookId: string;
-}
-
-interface PatchRequestBody {
-  currentPage: number;
-}
+import type { GroupBookProgressRouteParams, GroupBookProgressPatchRequestBody } from '@/types/api';
 
 export async function PATCH(request: NextRequest, context: { params: Promise<{ groupId: string; groupBookId: string; }> }) {
   const session = await getSession();
@@ -19,7 +12,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ g
 
   const userId = session.user.id;
   const { groupId, groupBookId } = await context.params;
-  const { currentPage }: PatchRequestBody = await request.json();
+  const { currentPage }: GroupBookProgressPatchRequestBody = await request.json();
 
   if (typeof currentPage !== 'number' || currentPage < 0) {
     return NextResponse.json({ message: 'La page actuelle doit être un nombre positif.' }, { status: 400 });

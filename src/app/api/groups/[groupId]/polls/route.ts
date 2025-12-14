@@ -4,9 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
 import { z } from 'zod';
 
-interface RouteParams {
-  groupId: string;
-}
+import type { GroupPollsRouteParams } from '@/types/api';
 
 const createPollSchema = z.object({
   groupBookIds: z.array(z.string().min(1)).min(2, { message: 'Veuillez sélectionner au moins deux livres pour le sondage.' }),
@@ -15,7 +13,7 @@ const createPollSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<GroupPollsRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {
@@ -90,7 +88,7 @@ export async function POST(
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<GroupPollsRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {

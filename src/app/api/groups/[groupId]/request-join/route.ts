@@ -10,13 +10,11 @@ import { RoleInGroup } from '@prisma/client';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-interface RouteParams {
-  groupId: string;
-}
+import type { RequestJoinRouteParams } from '@/types/api';
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<RequestJoinRouteParams> }
 ) {
   const session = await getSession();
   if (!session?.user?.id) {

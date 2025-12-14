@@ -4,9 +4,7 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { RoleInGroup } from '@prisma/client';
 
-interface RouteParams {
-  groupId: string;
-}
+import type { GroupJoinRequestsRouteParams } from '@/types/api';
 
 export async function GET(request: NextRequest, context: { params: Promise<{ groupId: string; }> }) {
   const session = await getSession();

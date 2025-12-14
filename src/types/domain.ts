@@ -107,3 +107,12 @@ export interface ReadingActivityPoint {
   finished_at: string | null;
   books_count: number;
 }
+
+export type ReadingStatus = 'to_read' | 'reading' | 'finished';
+
+export interface Comment {
+  id: string;
+  page_number: number;
+  comment_text: string;
+  created_at: string;
+}

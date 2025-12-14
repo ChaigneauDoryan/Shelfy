@@ -3,13 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth'; // Helper à créer
 import { regenerateInvitationCode } from '@/lib/group-utils';
 
-interface RouteParams {
-  groupId: string;
-}
+import type { RegenerateCodeRouteParams } from '@/types/api';
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<RouteParams> }
+  context: { params: Promise<RegenerateCodeRouteParams> }
 ) {
   const session = await getSession();
 

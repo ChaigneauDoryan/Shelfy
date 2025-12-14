@@ -3,9 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth'; // Helper à créer
 import { leaveGroup } from '@/lib/group-utils';
 
-interface RouteParams {
-  groupId: string;
-}
+import type { LeaveGroupRouteParams } from '@/types/api';
 
 export async function DELETE(request: NextRequest, context: { params: Promise<{ groupId: string; }> }) {
   const { groupId } = await context.params;
