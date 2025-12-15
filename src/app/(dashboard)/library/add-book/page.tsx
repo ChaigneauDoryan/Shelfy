@@ -24,7 +24,7 @@ import dynamic from 'next/dynamic';
 import { useSession } from 'next-auth/react';
 import type { GoogleBooksApiBook } from '@/types/book';
 
-const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), {
+const BarcodeScanner = dynamic(() => import('./components/BarcodeScanner'), {
   ssr: false,
   loading: () => <p>Chargement du scanner...</p>, // Optional loading component
 });

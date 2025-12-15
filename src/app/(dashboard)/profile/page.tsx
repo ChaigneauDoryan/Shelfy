@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import AvatarUpload from '@/components/AvatarUpload'
+import AvatarUpload from './components/AvatarUpload'
 import { useToast } from "@/hooks/use-toast"
 import ReadingActivityChart from '@/components/ReadingActivityChart'
 import BadgeCard from '@/components/BadgeCard'
