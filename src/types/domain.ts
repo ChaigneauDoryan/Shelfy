@@ -116,3 +116,22 @@ export interface Comment {
   comment_text: string;
   created_at: string;
 }
+
+export interface UserLibraryBook {
+  id: string;
+  status_id: number;
+  rating: number | null;
+  started_at: string | null;
+  finished_at: string | null;
+  current_page: number | null;
+  is_archived?: boolean;
+  book: {
+    id: string;
+    title: string;
+    author: string | null;
+    description: string | null;
+    cover_url: string | null;
+    page_count: number | null;
+    genre: string | null;
+  };
+}

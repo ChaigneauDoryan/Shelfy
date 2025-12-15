@@ -11,26 +11,8 @@ import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import type { AwardedBadge } from '@/types/domain';
-
-export interface Book {
-  id: string;
-  status_id: number;
-  rating: number | null;
-  started_at: string | null;
-  finished_at: string | null;
-  current_page: number | null;
-  is_archived?: boolean;
-  book: {
-    id: string;
-    title: string;
-    author: string | null;
-    description: string | null;
-    cover_url: string | null;
-    page_count: number | null;
-    genre: string | null;
-  };
-}
+import type { Book } from '@prisma/client';
+import type { AwardedBadge, UserLibraryBook } from '@/types/domain';
 
 // Composant modal custom pour éviter les problèmes avec ConfirmModal
 const CustomConfirmModal = ({ 
@@ -134,7 +116,7 @@ const ARCHIVE_STATUSES = [
 export default function LibraryPage() {
   const { data: session, status } = useSession();
   const user = session?.user;
-  const [books, setBooks] = useState<Book[]>([]);
+  const [books, setBooks] = useState<UserLibraryBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -174,7 +156,7 @@ export default function LibraryPage() {
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      const data: Book[] = await response.json();
+      const data: UserLibraryBook[] = await response.json();
       setBooks(data);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Impossible de charger les livres.';

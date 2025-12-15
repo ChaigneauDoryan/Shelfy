@@ -1,14 +1,14 @@
 'use client';
 
 import { ConfirmModal } from './ui/ConfirmModal';
-import { Book } from '@/app/(dashboard)/library/page';
+import type { UserLibraryBook } from '@/types/domain';
 
 interface ArchiveConfirmModalWrapperProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   bookToArchiveId: string | null;
-  books: Book[];
+  books: UserLibraryBook[];
 }
 
 export function ArchiveConfirmModalWrapper({

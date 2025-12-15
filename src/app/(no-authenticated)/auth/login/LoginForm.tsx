@@ -72,7 +72,7 @@ function LoginFormContent() {
       }
     } else if (result?.ok) {
       // Redirection manuelle après une connexion réussie
-      router.push('/dashboard');
+      router.push('/authenticated/dashboard');
       router.refresh();
     }
   }
@@ -143,7 +143,7 @@ function LoginFormContent() {
         <Button
           variant="outline"
           className="w-full mt-6"
-          onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+          onClick={() => signIn('google', { callbackUrl: '/authenticated/dashboard' })}
         >
           <FcGoogle className="mr-2 h-4 w-4" />
           Se connecter avec Google
