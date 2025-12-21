@@ -18,6 +18,19 @@ Shelfy is a full-stack web application designed for book lovers to track their r
 - All Stripe endpoints (checkout, portal, cancel, webhook, plan switching) short-circuit with `501 Not Implemented` while `NEXT_PUBLIC_ENABLE_PREMIUM` is not set to `true`, so there is no billing activity in production.
 - Premium-only navigation such as the **Discover** page is hidden for now and replaced with a “Bientôt disponible” notice until paid tiers return.
 
+## 📱 Responsive & Device Support
+
+- Layouts rely on Tailwind breakpoints (`xs` → `2xl`) plus a shared `PageContainer` wrapper to guarantee consistent padding on desktop, tablet, and phone.
+- Navigation automatically adapts: `TopNavbar` for desktop/tablet, and a dedicated bottom tab bar (`MobileBottomTabs`) for smartphones with large touch targets.
+- Charts, cards, and forms expose mobile fallbacks (lists, vertical stacks, font-size ≥ 16px) to avoid horizontal scrolling on small screens.
+- When you add a new page, wrap the content with `PageContainer` and respect the responsive utility classes already defined.
+
+## 🧪 UI Testing (Storybook & Chromatic)
+
+- Storybook is configured for this project. Run `npm run storybook` to preview components locally, and `npm run build-storybook` in CI for static bundles.
+- Visual regressions can be captured with Chromatic via `npm run chromatic` (set the `CHROMATIC_PROJECT_TOKEN` environment variable beforehand).
+- Add `.stories.tsx` files next to components; Storybook automatically loads them from `src/**`.
+
 ## 🛠️ Tech Stack
 
 - **Framework:** [Next.js](https://nextjs.org/) (App Router)

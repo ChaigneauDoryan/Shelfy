@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageContainer } from '@/components/layout/PageContainer';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
@@ -319,17 +320,17 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
+    <PageContainer className="pb-32 md:pb-12">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">Ma Bibliothèque</h1>
-        <Link href="/library/add-book">
-          <Button>Ajouter un Nouveau Livre</Button>
+        <Link href="/library/add-book" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">Ajouter un Nouveau Livre</Button>
         </Link>
       </div>
 
-      <div className="mb-6 flex space-x-4">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
         <Select onValueChange={setFilterStatus} defaultValue={filterStatus}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder="Filtrer par statut" />
           </SelectTrigger>
           <SelectContent>
@@ -345,7 +346,7 @@ export default function LibraryPage() {
         </Select>
 
         <Select onValueChange={setFilterArchiveStatus} defaultValue={filterArchiveStatus}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder="Filtrer par archive" />
           </SelectTrigger>
           <SelectContent>
@@ -367,7 +368,7 @@ export default function LibraryPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {!loading && !error && books.map((userBook) => {
           const isCurrentlyArchived = userBook?.is_archived || false;
           
@@ -384,30 +385,36 @@ export default function LibraryPage() {
                   <p className="text-sm text-gray-500">par {userBook.book.author}</p>
                 )}
               </CardHeader>
-              <CardContent className="flex-grow">
-                {userBook.book.cover_url && (
-                  <img
-                    src={userBook.book.cover_url}
-                    alt={userBook.book.title}
-                    className="float-left mr-4 mb-4 w-24 h-auto object-contain"
-                  />
-                )}
-                <p className="text-sm line-clamp-4">{userBook.book.description || 'Aucune description disponible.'}</p>
-                <p className="text-sm mt-2 text-gray-800 flex items-center">
-                  <span className={`w-2 h-2 rounded-full mr-2 ${READING_STATUSES.find(s => s.name === (userBook.status_id === 1 ? 'to_read' : userBook.status_id === 2 ? 'reading' : 'finished'))?.bgColorClass || 'bg-gray-400'}`}></span>
-                  Statut: {READING_STATUSES.find(s => s.name === (userBook.status_id === 1 ? 'to_read' : userBook.status_id === 2 ? 'reading' : 'finished'))?.label || 'Inconnu'}
-                </p>
-                {userBook.book.page_count && userBook.current_page !== null && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Avancement: {Math.round((userBook.current_page / userBook.book.page_count) * 100)}% ({userBook.current_page} / {userBook.book.page_count} pages)
-                  </p>
-                )}
-                {userBook.rating !== null && (
-                  <p className="text-sm text-gray-600">Note: {userBook.rating}/5</p>
-                )}
+              <CardContent className="flex flex-col gap-3">
+                <div className="flex flex-col gap-4 sm:flex-row">
+                  {userBook.book.cover_url && (
+                    <img
+                      src={userBook.book.cover_url}
+                      alt={userBook.book.title}
+                      className="h-48 w-full rounded-md object-cover sm:h-44 sm:w-36"
+                    />
+                  )}
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p className="line-clamp-4 text-foreground">
+                      {userBook.book.description || 'Aucune description disponible.'}
+                    </p>
+                    <p className="text-sm font-medium text-foreground flex items-center">
+                      <span className={`mr-2 h-2 w-2 rounded-full ${READING_STATUSES.find(s => s.name === (userBook.status_id === 1 ? 'to_read' : userBook.status_id === 2 ? 'reading' : 'finished'))?.bgColorClass || 'bg-gray-400'}`} />
+                      Statut : {READING_STATUSES.find(s => s.name === (userBook.status_id === 1 ? 'to_read' : userBook.status_id === 2 ? 'reading' : 'finished'))?.label || 'Inconnu'}
+                    </p>
+                    {userBook.book.page_count && userBook.current_page !== null && (
+                      <p className="text-sm text-muted-foreground">
+                        Avancement : {Math.round((userBook.current_page / userBook.book.page_count) * 100)}% ({userBook.current_page} / {userBook.book.page_count} pages)
+                      </p>
+                    )}
+                    {userBook.rating !== null && (
+                      <p className="text-sm text-muted-foreground">Note : {userBook.rating}/5</p>
+                    )}
+                  </div>
+                </div>
               </CardContent>
-              <div className="p-4 pt-0 flex justify-between items-center space-x-2">
-                <Link href={`/library/${userBook.id}`} className="flex-1">
+              <div className="flex flex-col gap-2 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                <Link href={`/library/${userBook.id}`} className="w-full sm:w-auto">
                   <Button className="w-full">Voir les détails</Button>
                 </Link>
                 <DropdownMenu>
@@ -475,6 +482,6 @@ export default function LibraryPage() {
           : "Êtes-vous sûr de vouloir archiver ce livre ? Il sera masqué de la vue par défaut."
         }
       />
-    </div>
+    </PageContainer>
   );
 }

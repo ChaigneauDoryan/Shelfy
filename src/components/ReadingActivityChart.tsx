@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useSession } from 'next-auth/react';
 import type { ReadingActivityPoint } from '@/types/domain';
+import { cn } from '@/lib/utils';
 
 // Fonction pour agréger les données par période
 type SeriesPoint = { date: string; livres: number };
@@ -46,6 +47,7 @@ export default function ReadingActivityChart() {
   const [rawData, setRawData] = useState<ReadingActivityPoint[]>([]);
   const [period, setPeriod] = useState<Period>('month');
   const [loading, setLoading] = useState(true);
+  const [isCompact, setIsCompact] = useState(false);
 
   const fetchActivity = useCallback(async () => {
     if (!userId) return;
@@ -70,6 +72,16 @@ export default function ReadingActivityChart() {
 
   const chartData = aggregateData(rawData, period);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const handleResize = () => setIsCompact(window.innerWidth < 640);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   if (loading || status === 'loading') {
     return <div>Chargement du graphique...</div>;
   }
@@ -78,23 +90,50 @@ export default function ReadingActivityChart() {
     return <div>Veuillez vous connecter pour voir votre activité.</div>;
   }
 
+  const hasData = chartData.length > 0;
+
+  const periodButtonClasses = (target: Period) =>
+    `px-3 py-1 rounded-full text-sm transition-colors ${
+      period === target ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
+    }`;
+
   return (
-    <div>
-      <div className="flex justify-end space-x-2 mb-4">
-        <button onClick={() => setPeriod('week')} className={`px-3 py-1 rounded ${period === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Semaine</button>
-        <button onClick={() => setPeriod('month')} className={`px-3 py-1 rounded ${period === 'month' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Mois</button>
-        <button onClick={() => setPeriod('year')} className={`px-3 py-1 rounded ${period === 'year' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>Année</button>
+    <div className="rounded-lg border border-border p-4">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-medium text-muted-foreground">Livres terminés</p>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setPeriod('week')} className={periodButtonClasses('week')}>Semaine</button>
+          <button onClick={() => setPeriod('month')} className={periodButtonClasses('month')}>Mois</button>
+          <button onClick={() => setPeriod('year')} className={periodButtonClasses('year')}>Année</button>
+        </div>
       </div>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" />
-          <YAxis allowDecimals={false} />
-          <Tooltip />
-          <Legend />
-          <Bar dataKey="livres" fill="#8884d8" name="Livres Lus" />
-        </BarChart>
-      </ResponsiveContainer>
+      {!hasData && <p className="text-sm text-muted-foreground">Pas encore de données pour cette période.</p>}
+      {hasData && (
+        <>
+          <div className="sm:hidden">
+            <ul className="space-y-2">
+              {chartData.map((point) => (
+                <li key={point.date} className="flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2 text-sm">
+                  <span className="font-medium">{point.date}</span>
+                  <span className="text-muted-foreground">{point.livres} livre(s)</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className={cn('hidden sm:block', isCompact ? 'opacity-50' : 'opacity-100')}>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="livres" fill="#6366f1" name="Livres Lus" radius={6} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
     </div>
   );
 }

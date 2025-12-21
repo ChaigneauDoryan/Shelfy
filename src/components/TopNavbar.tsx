@@ -10,9 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
-import { Menu, BookText } from "lucide-react";
+import { BookText } from "lucide-react";
 import Link from "next/link";
 import { useTheme } from 'next-themes';
 import { FaSun, FaMoon, FaDesktop, FaUser } from 'react-icons/fa';
@@ -26,7 +24,6 @@ export default function TopNavbar() {
     await signOut({ callbackUrl: '/' });
   };
   const { setTheme, theme } = useTheme();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const getInitials = (name: string) => {
     return name
@@ -36,7 +33,7 @@ export default function TopNavbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-40 hidden w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:block">
       <div className="container flex h-14 items-center">
         <div className="mr-4 hidden md:flex">
           <Link className="mr-6 flex items-center space-x-2" href="/dashboard">
@@ -72,57 +69,7 @@ export default function TopNavbar() {
             </Link>
           </nav>
         </div>
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <div className="md:hidden">
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle Menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="top">
-                <div className="grid gap-2 py-6">
-                  <Link
-                    className="flex items-center space-x-2"
-                    href="/dashboard"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <BookText className="h-6 w-6" />
-                    <span className="font-bold">Shelfy</span>
-                  </Link>
-                  <Link
-                    className="flex w-full items-center py-2 text-lg font-semibold"
-                    href="/dashboard"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Dashboard
-                  </Link>
-                  <Link
-                    className="flex w-full items-center py-2 text-lg font-semibold"
-                    href="/library"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Mes Livres
-                  </Link>
-                  <Link
-                    className="flex w-full items-center py-2 text-lg font-semibold"
-                    href="/groups"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Groupes de Lecture
-                  </Link>
-                  <Link
-                    className="flex w-full items-center py-2 text-lg font-semibold"
-                    href="/contact"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Contact
-                  </Link>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
+        <div className="flex flex-1 items-center justify-end space-x-4">
           <div className="flex items-center space-x-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

@@ -68,7 +68,11 @@
 
 @layer base {
   body {
+    min-height: 100vh;
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    font-size: clamp(0.95rem, 0.4vw + 0.9rem, 1rem);
+    line-height: 1.6;
+    font-feature-settings: "liga" 1, "calt" 1;
   }
 }

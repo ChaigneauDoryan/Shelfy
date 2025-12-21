@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "npx tsc src/prisma/seed.ts --outDir dist/prisma --module commonjs --target es2015 --esModuleInterop true",
-    "seed": "node dist/prisma/seed.js"
+    "seed": "node dist/prisma/seed.js",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "chromatic": "chromatic --exit-zero-on-changes --project-token $CHROMATIC_PROJECT_TOKEN"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -78,9 +81,15 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@storybook/addon-a11y": "^8.2.6",
+    "@storybook/addon-essentials": "^8.2.6",
+    "@storybook/nextjs": "^8.2.6",
+    "@storybook/test": "^8.2.6",
+    "chromatic": "^11.3.0",
     "eslint": "^9",
     "eslint-config-next": "^16.0.7",
     "prisma": "^7.1.0",
+    "storybook": "^8.2.6",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   }
