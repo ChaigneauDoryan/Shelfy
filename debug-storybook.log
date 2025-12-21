@@ -1,0 +1,41 @@
+[19:48:34.879] [INFO] Storybook upgrade - v10.1.10
+[19:48:34.883] [INFO] Detecting projects...
+[19:48:34.891] [INFO] Detecting projects: 1 projects
+[19:48:34.891] [DEBUG] Getting Storybook data...
+[19:48:34.891] [DEBUG] Getting Storybook info...
+[19:48:35.076] [DEBUG] Loading main config...
+[19:48:35.076] [DEBUG] Getting stories paths...
+[19:48:35.113] [DEBUG] Getting package manager...
+[19:48:35.746] [DEBUG] Getting package.json info for /Users/doryan/Documents/Shelfy/package.json...
+[19:48:35.746] [DEBUG] Getting Storybook version...
+[19:48:35.746] [DEBUG] .storybook - Validating before version... undefined
+[19:48:35.747] [DEBUG] SB_CLI_UPGRADE_0005 (UpgradeStorybookUnknownCurrentVersionError): We couldn't determine the current version of Storybook in your project.
+
+Are you running the Storybook CLI in a project without Storybook?
+It might help if you specify your Storybook config directory with the --config-dir flag.
+[19:48:35.747] [INFO] 1 project detected
+[19:48:35.747] [DEBUG] Found 0 valid projects and 1 error projects
+[19:48:35.747] [ERROR] Failed to get projects
+[19:48:35.748] [ERROR] [38;2;241;97;97mError: ❌ Storybook found errors while collecting data for the following projects:
+.storybook:
+SB_CLI_UPGRADE_0005 (UpgradeStorybookUnknownCurrentVersionError): We couldn't determine the current version of Storybook in your project.
+
+Are you running the Storybook CLI in a project without Storybook?
+It might help if you specify your Storybook config directory with the --config-dir flag.
+    at validateVersion (file:///Users/doryan/.npm/_npx/eebaf9eda7885457/node_modules/@storybook/cli/dist/_node-chunks/chunk-DRVRF5O4.js:252:11)
+    at processProject (file:///Users/doryan/.npm/_npx/eebaf9eda7885457/node_modules/@storybook/cli/dist/_node-chunks/chunk-DRVRF5O4.js:297:82)
+Please fix the errors and run the upgrade command again.[39m
+    at getProjects (file:///Users/doryan/.npm/_npx/eebaf9eda7885457/node_modules/@storybook/cli/dist/_node-chunks/chunk-DRVRF5O4.js:468:13)
+    at async upgrade (file:///Users/doryan/.npm/_npx/eebaf9eda7885457/node_modules/@storybook/cli/dist/_node-chunks/run-GAOAOJZE.js:9360:24)
+    at async file:///Users/doryan/.npm/_npx/eebaf9eda7885457/node_modules/@storybook/cli/dist/_node-chunks/run-GAOAOJZE.js:9558:70
+    at async withTelemetry (file:///Users/doryan/.npm/_npx/eebaf9eda7885457/node_modules/storybook/dist/_node-chunks/chunk-PGCRO4IZ.js:209:12)
+    at async Command.<anonymous> (file:///Users/doryan/.npm/_npx/eebaf9eda7885457/node_modules/@storybook/cli/dist/_node-chunks/run-GAOAOJZE.js:9554:3)
+[19:48:36.272] [ERROR] Error: ❌ Storybook found errors while collecting data for the following projects:
+.storybook:
+SB_CLI_UPGRADE_0005 (UpgradeStorybookUnknownCurrentVersionError): We couldn't determine the current version of Storybook in your project.
+
+Are you running the Storybook CLI in a project without Storybook?
+It might help if you specify your Storybook config directory with the --config-dir flag.
+    at validateVersion (file:///Users/doryan/.npm/_npx/eebaf9eda7885457/node_modules/@storybook/cli/dist/_node-chunks/chunk-DRVRF5O4.js:252:11)
+    at processProject (file:///Users/doryan/.npm/_npx/eebaf9eda7885457/node_modules/@storybook/cli/dist/_node-chunks/chunk-DRVRF5O4.js:297:82)
+Please fix the errors and run the upgrade command again.
