@@ -63,11 +63,11 @@ const CustomConfirmModal = ({
       />
       
       {/* Contenu de la modal */}
-      <div className="relative bg-white rounded-lg shadow-lg max-w-md w-full mx-4 p-6">
+      <div className="relative mx-4 w-full max-w-md rounded-lg bg-card p-6 text-card-foreground shadow-lg">
         {/* Bouton de fermeture */}
         <button
           onClick={onClose}
-          className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+          className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
         >
           <X className="h-5 w-5" />
         </button>
@@ -76,7 +76,7 @@ const CustomConfirmModal = ({
         <h2 className="text-lg font-semibold mb-4 pr-8">{title}</h2>
         
         {/* Message */}
-        <p className="text-gray-600 mb-6">{message}</p>
+        <p className="mb-6 text-muted-foreground">{message}</p>
         
         {/* Boutons */}
         <div className="flex justify-end space-x-2">
@@ -360,7 +360,7 @@ export default function LibraryPage() {
       </div>
 
       {!loading && !error && books.length === 0 && (
-        <p className="text-lg text-gray-600">
+        <p className="text-lg text-muted-foreground">
           {filterStatus === 'all'
             ? 'Votre bibliothèque est vide. Ajoutez votre premier livre !'
             : `Aucun livre dans le statut "${READING_STATUSES.find(s => s.name === filterStatus)?.label}" pour l'instant.`
@@ -378,11 +378,11 @@ export default function LibraryPage() {
                 <CardTitle className="flex justify-between items-start">
                   <span>{userBook.book.title}</span>
                   {isCurrentlyArchived && (
-                    <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">Archivé</span>
+                    <span className="text-xs rounded bg-muted px-2 py-1 text-muted-foreground">Archivé</span>
                   )}
                 </CardTitle>
                 {userBook.book.author && (
-                  <p className="text-sm text-gray-500">par {userBook.book.author}</p>
+                  <p className="text-sm text-muted-foreground">par {userBook.book.author}</p>
                 )}
               </CardHeader>
               <CardContent className="flex flex-col gap-3">

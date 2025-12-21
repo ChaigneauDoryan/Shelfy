@@ -25,6 +25,22 @@ Shelfy is a full-stack web application designed for book lovers to track their r
 - Charts, cards, and forms expose mobile fallbacks (lists, vertical stacks, font-size ≥ 16px) to avoid horizontal scrolling on small screens.
 - When you add a new page, wrap the content with `PageContainer` and respect the responsive utility classes already defined.
 
+## 🌙 Dark Theme Palette
+
+| Token                         | Hex        | Usage                                  |
+|------------------------------|------------|----------------------------------------|
+| `--background`               | `#0F141A`  | Page background                        |
+| `--surface / card`           | `#161B22`  | Cards, popovers, dialogs               |
+| `--foreground`               | `#E6EDF3`  | Text principal                         |
+| `--muted-foreground`         | `#9BA5B4`  | Paragraphes, labels secondaires        |
+| `--border` / `--input`       | `#2D333B`  | Traits, champs                          |
+| `--primary` (accent bleu)    | `#3A7CFF`  | Boutons, liens, focus ring             |
+| `--primary-foreground`       | `#0B1220`  | Texte sur boutons primaires            |
+| `--success`                  | `#2A9D8F`  | États positifs                         |
+| `--warning`                  | `#F4B740`  | Notifications d’avertissement          |
+
+Hover/focus : utilisez `bg-primary/90`, `ring-primary/40`, etc., pour offrir des retours visuels subtils mais visibles.
+
 ## 🧪 UI Testing (Storybook & Chromatic)
 
 - Storybook is configured for this project. Run `npm run storybook` to preview components locally, and `npm run build-storybook` in CI for static bundles.

@@ -70,7 +70,7 @@ export default function GroupBookCommentTimeline({ comments, currentPage }: Grou
   return (
     <div className="relative">
       {/* Central vertical line */}
-      <div className="absolute left-1/2 top-0 transform -translate-x-1/2 h-full w-1 bg-slate-200" />
+      <div className="absolute left-1/2 top-0 h-full w-1 -translate-x-1/2 transform bg-border" />
 
       <div className="flex flex-col space-y-16 mt-6">
         {timelineItems.map((item) => {
@@ -84,7 +84,7 @@ export default function GroupBookCommentTimeline({ comments, currentPage }: Grou
             >
               {/* Comment block */}
               <div
-                className={`bg-white shadow-md hover:shadow-lg transition-shadow duration-200 rounded-2xl p-4 md:w-[45%] ${
+                className={`bg-card text-card-foreground shadow-md transition-shadow duration-200 hover:shadow-lg rounded-2xl p-4 md:w-[45%] ${
                   isLeft ? 'md:ml-auto' : 'md:mr-auto'
                 }`}
               >
@@ -93,7 +93,7 @@ export default function GroupBookCommentTimeline({ comments, currentPage }: Grou
               </div>
 
               {/* Central point */}
-              <div className="absolute left-1/2 transform -translate-x-1/2 w-5 h-5 bg-blue-500 rounded-full border-4 border-white shadow-md" />
+              <div className="absolute left-1/2 w-5 h-5 -translate-x-1/2 transform rounded-full border-4 border-background bg-primary shadow-md" />
             </div>
           );
         })}

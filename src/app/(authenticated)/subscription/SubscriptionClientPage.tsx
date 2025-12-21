@@ -57,16 +57,16 @@ export default function SubscriptionPage() {
       <section className="text-center max-w-3xl space-y-4">
         <p className="text-sm uppercase tracking-wide text-blue-600 font-semibold">Bêta publique</p>
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900">Abonnements Shelfy</h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-lg text-muted-foreground">
           Shelfy est actuellement gratuit et illimité pour tout le monde. Nous préparons un plan Premium pour plus tard.
         </p>
       </section>
 
-      <div className="w-full max-w-4xl rounded-xl border border-blue-200 bg-blue-50 p-6 text-center shadow-sm">
-        <div className="flex flex-col items-center space-y-3">
-          <Clock className="text-blue-600" size={32} />
-          <p className="text-xl font-semibold text-blue-900">Fonctionnalité premium en chantier</p>
-          <p className="text-blue-800 max-w-3xl">
+      <div className="w-full max-w-4xl rounded-xl border border-border bg-card/70 p-6 text-center shadow-sm">
+        <div className="flex flex-col items-center space-y-3 text-foreground">
+          <Clock className="text-primary" size={32} />
+          <p className="text-xl font-semibold text-foreground">Fonctionnalité premium en chantier</p>
+          <p className="max-w-3xl text-muted-foreground">
             L'abonnement payant sera proposé plus tard. En attendant, aucun paiement n'est requis et aucune action n'est nécessaire de votre part.
           </p>
         </div>
@@ -78,32 +78,32 @@ export default function SubscriptionPage() {
           return (
             <Card
               key={plan.id}
-              className={`relative flex flex-col justify-between p-6 shadow-lg bg-white ${
-                isCurrentPlan ? 'border-2 border-blue-600' : 'border border-gray-200'
+              className={`relative flex flex-col justify-between p-6 shadow-lg bg-card text-card-foreground ${
+                isCurrentPlan ? 'border-2 border-primary' : 'border border-border'
               }`}
             >
               <CardHeader className="pb-4 space-y-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-3xl font-bold text-gray-900">{plan.title}</CardTitle>
-                  <span className={`text-xs font-semibold px-3 py-1 rounded-full ${plan.isComingSoon ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>
+                  <CardTitle className="text-3xl font-bold">{plan.title}</CardTitle>
+                  <span className={`text-xs font-semibold px-3 py-1 rounded-full ${plan.isComingSoon ? 'bg-yellow-200/40 text-yellow-300' : 'bg-primary/15 text-primary'}`}>
                     {plan.badge}
                   </span>
                 </div>
-                <p className="text-gray-600">{plan.description}</p>
-                <p className="text-2xl font-bold text-gray-800">{plan.price}</p>
+                <p className="text-muted-foreground">{plan.description}</p>
+                <p className="text-2xl font-bold text-foreground">{plan.price}</p>
               </CardHeader>
               <CardContent className="flex-grow space-y-4">
-                <ul className="space-y-2 text-gray-700">
+                <ul className="space-y-2 text-muted-foreground">
                   {PLAN_FEATURES[plan.id as keyof typeof PLAN_FEATURES]?.map((feature) => (
                     <li key={`${plan.id}-${feature}`} className="flex items-center">
-                      <CheckCircle2 className="text-green-500 mr-2 h-5 w-5" />
+                      <CheckCircle2 className="mr-2 h-5 w-5 text-primary" />
                       {feature}
                     </li>
                   ))}
                 </ul>
                 <Button
                   variant={plan.isComingSoon ? 'default' : 'outline'}
-                  className={`w-full text-lg py-3 ${plan.isComingSoon ? 'bg-gray-300 text-gray-800 cursor-not-allowed' : 'cursor-not-allowed'}`}
+                  className={`w-full text-lg py-3 ${plan.isComingSoon ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'cursor-not-allowed'}`}
                   disabled
                 >
                   {isCurrentPlan && !plan.isComingSoon ? 'Plan appliqué automatiquement' : plan.cta}

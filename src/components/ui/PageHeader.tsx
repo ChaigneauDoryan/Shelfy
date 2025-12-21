@@ -8,8 +8,8 @@ interface PageHeaderProps {
 export default function PageHeader({ title, description }: PageHeaderProps) {
   return (
     <header className="mb-6">
-      <h1 className="text-3xl font-bold text-foreground mb-2">{title}</h1>
-      {description && <p className="text-lg text-muted-foreground">{description}</p>}
+      <h1 className="page-header-title mb-2 text-3xl font-bold">{title}</h1>
+      {description && <p className="page-header-description text-lg">{description}</p>}
     </header>
   );
 }

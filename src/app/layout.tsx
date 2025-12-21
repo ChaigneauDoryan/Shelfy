@@ -41,11 +41,25 @@ export default function RootLayout({
           location="bottom"
           buttonText="J'accepte"
           cookieName="myAwesomeCookieConsent"
-          style={{ background: "#2B373B" }}
-          buttonStyle={{ color: "#4e503b", fontSize: "13px" }}
+          style={{ background: 'hsl(var(--card))', color: 'hsl(var(--card-foreground))' }}
+          buttonStyle={{
+            color: 'hsl(var(--primary-foreground))',
+            background: 'hsl(var(--primary))',
+            borderRadius: '999px',
+            fontSize: '13px',
+            padding: '0.4rem 1rem'
+          }}
           expires={150}
           enableDeclineButton
           declineButtonText="Je refuse"
+          declineButtonStyle={{
+            color: 'hsl(var(--foreground))',
+            background: 'transparent',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: '999px',
+            fontSize: '13px',
+            padding: '0.4rem 1rem'
+          }}
           cookieSecurity={true} // Use secure cookies in production
           onAccept={(byScroll) => {
             // Optional: Callback when cookies are accepted
@@ -58,7 +72,7 @@ export default function RootLayout({
           }}
         >
           Ce site utilise des cookies pour améliorer l'expérience utilisateur. En continuant à naviguer, vous acceptez notre utilisation des cookies.{" "}
-          <a href="/politique-confidentialite" style={{ color: "#fff" }}>En savoir plus</a>
+          <a href="/politique-confidentialite" style={{ color: 'hsl(var(--primary))' }}>En savoir plus</a>
         </CookieConsent>
         <footer className="hidden w-full border-t bg-background py-6 md:block">
           <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">

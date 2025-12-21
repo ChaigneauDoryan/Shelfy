@@ -144,7 +144,7 @@ export default function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps)
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-white p-4 rounded-lg shadow-xl max-w-md w-full mx-4 text-center">
+      <div className="w-full max-w-md rounded-lg bg-card p-4 text-center text-card-foreground shadow-xl">
         <h2 className="text-xl font-bold mb-3">Scanner le code-barres</h2>
         
         <div className="relative w-full aspect-video bg-gray-200 rounded-md overflow-hidden">
