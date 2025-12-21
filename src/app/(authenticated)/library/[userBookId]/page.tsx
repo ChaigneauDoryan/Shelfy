@@ -1,18 +1,13 @@
 
 import { notFound, redirect } from 'next/navigation';
+import type { PageProps } from 'next';
 import { getSession } from '@/lib/auth'; // Notre nouveau helper
 import { getUserBookById } from '@/lib/book-utils'; // Nos fonctions Prisma
 import BookDetailsClientWrapper from '@/components/BookDetailsClientWrapper';
 import type { UserBookWithBook } from '@/types/domain';
 
-interface BookDetailPageProps {
-  params: {
-    userBookId: string;
-  };
-}
-
-export default async function BookDetailPage({ params }: BookDetailPageProps) {
-  const { userBookId } = params;
+export default async function BookDetailPage({ params }: PageProps<{ userBookId: string }>) {
+  const { userBookId } = await params;
 
   if (!userBookId) {
     notFound();
