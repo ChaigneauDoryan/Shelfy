@@ -5,10 +5,14 @@ import { getUserBookById } from '@/lib/book-utils'; // Nos fonctions Prisma
 import BookDetailsClientWrapper from '@/components/BookDetailsClientWrapper';
 import type { UserBookWithBook } from '@/types/domain';
 
-export default async function BookDetailPage(props: { params: { userBookId: string } }) {
-  const { params } = await Promise.resolve(props);
-  const resolvedParams = await params; // Await the params Promise
-  const { userBookId } = resolvedParams;
+interface BookDetailPageProps {
+  params: {
+    userBookId: string;
+  };
+}
+
+export default async function BookDetailPage({ params }: BookDetailPageProps) {
+  const { userBookId } = params;
 
   if (!userBookId) {
     notFound();
