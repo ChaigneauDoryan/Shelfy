@@ -1,8 +1,6 @@
 
 import { prisma } from './prisma';
 import { checkAndAwardBadges } from './badge-utils';
-import { canAddMorePersonalBooks } from './subscription-utils';
-import { SubscriptionLimitError } from './errors';
 import { BookData, GoogleBooksApiBook, ManualBookData, AddUserBookData, GoogleBooksVolumeInfo } from '@/types/book';
 import type { AwardedBadge, UserBookWithBook } from '@/types/domain';
 
@@ -149,11 +147,6 @@ export async function findOrCreateBook(bookData: BookData, userId: string) {
 
 export async function addUserBook(userId: string, bookId: string, bookData: AddUserBookData) {
   const { readingPace } = bookData;
-
-  const canAdd = await canAddMorePersonalBooks(userId);
-  if (!canAdd) {
-    throw new SubscriptionLimitError('Vous avez atteint la limite de livres personnels pour votre plan d\'abonnement.');
-  }
 
   const existingUserBook = await prisma.userBook.findUnique({
     where: { user_id_book_id: { user_id: userId, book_id: bookId } },

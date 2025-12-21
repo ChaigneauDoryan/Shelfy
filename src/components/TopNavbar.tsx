@@ -14,48 +14,13 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { Menu, BookText } from "lucide-react";
 import Link from "next/link";
-import { User } from '@prisma/client';
 import { useTheme } from 'next-themes';
 import { FaSun, FaMoon, FaDesktop, FaUser } from 'react-icons/fa';
 import { useSession, signOut } from 'next-auth/react';
-import { useUserSubscription } from '@/hooks/useUserSubscription'; // Nouvelle importation
-import { useMutation, useQueryClient } from '@tanstack/react-query'; // Pour le switch d'abonnement
-import { FREE_PLAN_ID, PREMIUM_PLAN_ID } from '@/lib/subscription-constants'; // Pour les IDs de plan
-import { useToast } from '@/hooks/use-toast'; // Pour les notifications
 
 export default function TopNavbar() {
   const { data: session } = useSession();
-  const user = session?.user as User | null;
-  const profile = user ? { username: user.name || '', avatar_url: user.image || '' } : null;
-
-  const { data: subscription, isLoading: isSubscriptionLoading } = useUserSubscription(user?.id); // Utilisation du hook
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const switchSubscriptionMutation = useMutation({
-    mutationFn: async (newPlanId: string) => {
-      const response = await fetch('/api/user/subscription/switch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPlanId }),
-      });
-      if (!response.ok) throw new Error('Failed to switch subscription');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['userSubscription', user?.id] });
-      toast({ title: 'Succès', description: 'Votre abonnement a été mis à jour.' });
-    },
-    onError: (error: unknown) => {
-      const message = error instanceof Error ? error.message : 'Une erreur est survenue lors du changement de plan.';
-      toast({ title: 'Erreur', description: message, variant: 'destructive' });
-    },
-  });
-
-  const handleSwitchSubscription = (newPlanId: string) => {
-    if (user?.id && subscription?.planId !== newPlanId) {
-      switchSubscriptionMutation.mutate(newPlanId);
-    }
-  };
+  const profile = session?.user ? { username: session.user.name || '', avatar_url: session.user.image || '', email: session.user.email || '' } : null;
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/' });
@@ -87,14 +52,6 @@ export default function TopNavbar() {
             >
               Dashboard
             </Link>
-            {(subscription?.planId === PREMIUM_PLAN_ID || isSubscriptionLoading) && ( // Afficher si Premium ou en chargement
-              <Link
-                className="transition-colors hover:text-foreground/80 text-foreground/60"
-                href="/discover"
-              >
-                Découvrir
-              </Link>
-            )}
             <Link
               className="transition-colors hover:text-foreground/80 text-foreground/60"
               href="/library"
@@ -141,15 +98,6 @@ export default function TopNavbar() {
                   >
                     Dashboard
                   </Link>
-                  {(subscription?.planId === PREMIUM_PLAN_ID || isSubscriptionLoading) && ( // Afficher si Premium ou en chargement
-                    <Link
-                      className="flex w-full items-center py-2 text-lg font-semibold"
-                      href="/discover"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      Découvrir
-                    </Link>
-                  )}
                   <Link
                     className="flex w-full items-center py-2 text-lg font-semibold"
                     href="/library"
@@ -215,7 +163,7 @@ export default function TopNavbar() {
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{profile?.username}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user?.email}
+                      {profile?.email}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -229,7 +177,7 @@ export default function TopNavbar() {
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">Plan actuel : {isSubscriptionLoading ? 'Chargement...' : (subscription?.planId === FREE_PLAN_ID ? 'Gratuit' : 'Premium')}</p>
+                    <p className="text-sm font-medium leading-none">Plan actuel : Gratuit illimité (bêta)</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuItem asChild>

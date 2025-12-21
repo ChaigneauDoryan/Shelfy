@@ -3,11 +3,22 @@ import Stripe from 'stripe';
 import { prisma } from '@/lib/prisma';
 import { PREMIUM_PLAN_ID, FREE_PLAN_ID } from '@/lib/subscription-constants';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-11-17.clover',
-});
+const BILLING_DISABLED = process.env.NEXT_PUBLIC_ENABLE_PREMIUM !== 'true';
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const stripe = !BILLING_DISABLED && stripeSecret
+  ? new Stripe(stripeSecret, {
+      apiVersion: '2025-11-17.clover',
+    })
+  : null;
 
 export async function POST(req: Request) {
+  if (BILLING_DISABLED || !stripe) {
+    return NextResponse.json(
+      { message: 'Les webhooks Stripe sont désactivés pendant notre bêta gratuite.' },
+      { status: 501 }
+    );
+  }
+
   const body = await req.text();
   const signature = req.headers.get('stripe-signature');
 

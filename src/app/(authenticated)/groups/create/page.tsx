@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -17,10 +17,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useToast } from '@/hooks/use-toast';
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
 import { useSession } from 'next-auth/react';
-import { useUserSubscription } from '@/hooks/useUserSubscription';
 
 const createGroupSchema = z.object({
   name: z.string().min(3, { message: "Le nom du groupe doit contenir au moins 3 caractères." }).max(50, { message: "Le nom du groupe ne peut pas dépasser 50 caractères." }),
@@ -32,33 +30,11 @@ type CreateGroupFormValues = z.infer<typeof createGroupSchema>;
 
 export default function CreateGroupPage() {
   const router = useRouter();
-  const { toast } = useToast();
   const { data: session, status } = useSession();
   const userId = session?.user?.id;
-  const { data: subscription, isLoading: isSubscriptionLoading } = useUserSubscription(userId);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [canCreateGroup, setCanCreateGroup] = useState(true);
-
-  useEffect(() => {
-    if (userId && subscription && !isSubscriptionLoading) {
-      const checkLimit = async () => {
-        try {
-          const response = await fetch('/api/groups/can-create');
-          if (!response.ok) {
-            throw new Error('Failed to check group limit.');
-          }
-          const data = await response.json();
-          setCanCreateGroup(Boolean(data.canCreate));
-        } catch (error) {
-          console.error('Error checking group limit:', error);
-          setCanCreateGroup(true);
-        }
-      };
-      checkLimit();
-    }
-  }, [userId, subscription, isSubscriptionLoading]);
 
   const form = useForm<CreateGroupFormValues>({
     resolver: zodResolver(createGroupSchema),
@@ -88,15 +64,7 @@ export default function CreateGroupPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (response.status === 402) {
-          toast({
-            title: 'Limite du plan gratuit atteinte',
-            description: errorData.message,
-            variant: 'destructive',
-          });
-        } else {
-          throw new Error(errorData.message || 'Échec de la création du groupe.');
-        }
+        throw new Error(errorData.message || 'Échec de la création du groupe.');
       } else {
         router.push('/groups');
         router.refresh();
@@ -169,10 +137,7 @@ export default function CreateGroupPage() {
                 )}
               />
               {error && <p className="text-red-600 text-sm">{error}</p>}
-              {!canCreateGroup && (
-                <p className="text-red-600 text-sm">Vous avez atteint la limite de création de groupes pour votre plan d'abonnement. Passez au plan Premium pour créer plus de groupes.</p>
-              )}
-              <Button type="submit" className="w-full" disabled={loading || !canCreateGroup}>
+              <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Création en cours...' : 'Créer le groupe'}
               </Button>
             </form>

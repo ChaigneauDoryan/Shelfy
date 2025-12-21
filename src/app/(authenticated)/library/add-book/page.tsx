@@ -206,15 +206,7 @@ export default function AddBookPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (response.status === 402) {
-          toast({
-            title: 'Limite du plan gratuit atteinte',
-            description: errorData.error,
-            variant: 'destructive',
-          });
-        } else {
-          throw new Error(errorData.error || 'Échec de l\'ajout du livre à la bibliothèque.');
-        }
+        throw new Error(errorData.error || 'Échec de l\'ajout du livre à la bibliothèque.');
       } else {
         toast({ title: 'Succès', description: 'Livre ajouté à votre bibliothèque !' });
         setSearchParams({ title: '', author: '', isbn: '', genre: '' });
@@ -223,9 +215,7 @@ export default function AddBookPage() {
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Impossible d’ajouter le livre.';
-      if (message !== 'Vous avez atteint la limite de livres personnels pour votre plan d\'abonnement.') {
-        toast({ title: 'Erreur', description: message, variant: 'destructive' });
-      }
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
       setAddingBookId(null);
@@ -292,15 +282,7 @@ export default function AddBookPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        if (response.status === 402) {
-          toast({
-            title: 'Limite du plan gratuit atteinte',
-            description: errorData.error,
-            variant: 'destructive',
-          });
-        } else {
-          throw new Error(errorData.error || 'Échec de l\'ajout du livre à la bibliothèque.');
-        }
+        throw new Error(errorData.error || 'Échec de l\'ajout du livre à la bibliothèque.');
       } else {
         toast({ title: 'Succès', description: 'Livre ajouté à votre bibliothèque !' });
         manualForm.reset();
@@ -309,9 +291,7 @@ export default function AddBookPage() {
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Impossible d’ajouter le livre.';
-      if (message !== 'Vous avez atteint la limite de livres personnels pour votre plan d\'abonnement.') {
-        toast({ title: 'Erreur', description: message, variant: 'destructive' });
-      }
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
       setAddingBookId(null);

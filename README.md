@@ -11,6 +11,13 @@ Shelfy is a full-stack web application designed for book lovers to track their r
 - **Book Discovery:** Search for new books to add to your library.
 - **Interactive Discussions:** Leave comments and notes on books you are reading.
 
+## 🆓 Free Beta Mode
+
+- Shelfy is currently running as an unlimited free plan for every user: no quotas, no premium gating, and no user can be marked as “premium” in the database.
+- The subscription page is read-only and simply previews the future plans while highlighting that paid features are under construction.
+- All Stripe endpoints (checkout, portal, cancel, webhook, plan switching) short-circuit with `501 Not Implemented` while `NEXT_PUBLIC_ENABLE_PREMIUM` is not set to `true`, so there is no billing activity in production.
+- Premium-only navigation such as the **Discover** page is hidden for now and replaced with a “Bientôt disponible” notice until paid tiers return.
+
 ## 🛠️ Tech Stack
 
 - **Framework:** [Next.js](https://nextjs.org/) (App Router)

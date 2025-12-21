@@ -25,7 +25,7 @@ type ContactFormValues = z.infer<typeof contactFormSchema>;
 
 export function ContactForm() {
   const { data: session } = useSession();
-  const { data: subscription, isLoading: isSubscriptionLoading } = useUserSubscription(session?.user?.id);
+  const { data: subscription } = useUserSubscription(session?.user?.id);
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 

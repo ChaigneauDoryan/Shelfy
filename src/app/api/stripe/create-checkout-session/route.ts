@@ -4,10 +4,19 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { PREMIUM_PLAN_ID } from '@/lib/subscription-constants';
 
+const BILLING_DISABLED = process.env.NEXT_PUBLIC_ENABLE_PREMIUM !== 'true';
+
 const stripeSecret = process.env.STRIPE_SECRET_KEY;
-const stripeClient = stripeSecret ? new Stripe(stripeSecret) : null;
+const stripeClient = !BILLING_DISABLED && stripeSecret ? new Stripe(stripeSecret) : null;
 
 export async function POST(req: Request) {
+  if (BILLING_DISABLED) {
+    return NextResponse.json(
+      { message: 'La facturation Stripe est désactivée pendant notre bêta gratuite.' },
+      { status: 501 }
+    );
+  }
+
   if (!stripeClient) {
     return NextResponse.json({ message: 'Stripe is not configured.' }, { status: 500 });
   }

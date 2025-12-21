@@ -78,15 +78,7 @@ export default function JoinRequestsManager({ groupId }: JoinRequestsManagerProp
 
       const errorData = await response.json();
       if (!response.ok) {
-        if (response.status === 402) {
-          toast({
-            title: 'Limite du plan gratuit atteinte',
-            description: errorData.message,
-            variant: 'destructive',
-          });
-        } else {
-          throw new Error(errorData.message || `Failed to ${action} request.`);
-        }
+        throw new Error(errorData.message || `Failed to ${action} request.`);
       } else {
         toast({ title: 'Succès', description: `La demande a été ${action === 'accept' ? 'acceptée' : 'refusée'}.` });
         // Refresh the list
