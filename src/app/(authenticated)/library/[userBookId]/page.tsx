@@ -5,13 +5,13 @@ import BookDetailsClientWrapper from '@/components/BookDetailsClientWrapper';
 import type { UserBookWithBook } from '@/types/domain';
 
 interface BookDetailPageProps {
-  params: {
+  params: Promise<{
     userBookId: string;
-  };
+  }>;
 }
 
 export default async function BookDetailPage({ params }: BookDetailPageProps) {
-  const { userBookId } = params;
+  const { userBookId } = await params;
 
   if (!userBookId) {
     notFound();
