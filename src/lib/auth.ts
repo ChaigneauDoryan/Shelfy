@@ -1,6 +1,6 @@
 
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth-options';
 
 /**
  * Récupère la session de l'utilisateur côté serveur.
