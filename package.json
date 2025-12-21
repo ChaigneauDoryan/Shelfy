@@ -7,7 +7,7 @@
     "build": "dotenv -e .env -- ./node_modules/.bin/prisma generate --schema src/prisma/schema.prisma && dotenv -e .env -- ./node_modules/.bin/prisma migrate deploy --schema src/prisma/schema.prisma && npm run seed && next build",
     "start": "next start",
     "lint": "next lint",
-    "postinstall": "npx tsc src/prisma/seed.ts --outDir dist/prisma --module commonjs --target es2015 --esModuleInterop true",
+    "postinstall": "npx prisma generate --schema src/prisma/schema.prisma && npx tsc --project tsconfig.json src/prisma/seed.ts --outDir dist/prisma --module commonjs --target es2015 --esModuleInterop true",
     "seed": "node dist/prisma/seed.js",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
