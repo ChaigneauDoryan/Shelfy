@@ -2,9 +2,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "dist/prisma",
-    "module": "commonjs",
+    "module": "es2015",
     "target": "es2015",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "moduleResolution": "node"
   },
   "include": [
     "src/prisma/seed.ts"
