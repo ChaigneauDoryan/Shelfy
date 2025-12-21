@@ -1,3 +1,5 @@
-export default {
-  extends: ["next/core-web-vitals", "next/typescript"],
-};
+export default [
+  {
+    extends: ["next/core-web-vitals", "next/typescript"],
+  },
+];
