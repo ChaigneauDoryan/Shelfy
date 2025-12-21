@@ -92,10 +92,13 @@ export async function POST(req: Request) {
         break;
 
       case 'invoice.payment_succeeded':
-        const invoice = event.data.object as Stripe.Invoice;
-        const subscriptionId = typeof (invoice as any).subscription === 'string'
-          ? (invoice as any).subscription
-          : ((invoice as any).subscription as Stripe.Subscription)?.id;
+        const invoice = event.data.object as Stripe.Invoice & {
+          subscription: string | Stripe.Subscription | null;
+        };
+        const subscriptionId =
+          typeof invoice.subscription === 'string'
+            ? invoice.subscription
+            : invoice.subscription?.id;
 
         if (!subscriptionId) {
           console.error('Subscription ID not found for invoice.payment_succeeded event:', invoice);
@@ -110,10 +113,13 @@ export async function POST(req: Request) {
         break;
 
       case 'invoice.payment_failed':
-        const failedInvoice = event.data.object as Stripe.Invoice;
-        const failedSubscriptionId = typeof (failedInvoice as any).subscription === 'string'
-          ? (failedInvoice as any).subscription
-          : ((failedInvoice as any).subscription as Stripe.Subscription)?.id;
+        const failedInvoice = event.data.object as Stripe.Invoice & {
+          subscription: string | Stripe.Subscription | null;
+        };
+        const failedSubscriptionId =
+          typeof failedInvoice.subscription === 'string'
+            ? failedInvoice.subscription
+            : failedInvoice.subscription?.id;
 
         if (!failedSubscriptionId) {
           console.error('Subscription ID not found for invoice.payment_failed event:', failedInvoice);

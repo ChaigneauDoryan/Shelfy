@@ -70,7 +70,7 @@ export function MobileBottomTabs({ activePath }: MobileBottomTabsProps) {
             {profile ? (
               <Avatar className="h-6 w-6">
                 <AvatarImage src={profile.image || undefined} alt={profile.name || 'Profil'} />
-                <AvatarFallback>{profile.name?.split(' ').map((n) => n[0]).join('') || 'U'}</AvatarFallback>
+                <AvatarFallback>{profile.name?.split(' ').map((n: string) => n[0]).join('') || 'U'}</AvatarFallback>
               </Avatar>
             ) : (
               <User className="h-5 w-5" aria-hidden />
@@ -89,7 +89,7 @@ export function MobileBottomTabs({ activePath }: MobileBottomTabsProps) {
               <div className="flex items-center gap-3 rounded-lg border border-border p-3 text-foreground">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={profile.image || undefined} alt={profile.name || 'Profil'} />
-                  <AvatarFallback>{profile.name?.split(' ').map((n) => n[0]).join('') || 'U'}</AvatarFallback>
+                  <AvatarFallback>{profile.name?.split(' ').map((n: string) => n[0]).join('') || 'U'}</AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="font-semibold text-foreground">{profile.name}</p>
