@@ -1,4 +1,3 @@
-
 import { notFound, redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth'; // Notre nouveau helper
 import { getUserBookById } from '@/lib/book-utils'; // Nos fonctions Prisma
