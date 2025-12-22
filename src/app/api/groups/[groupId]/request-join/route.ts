@@ -4,9 +4,9 @@ import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { Resend } from 'resend';
 import GroupJoinRequestAdminNotificationEmail from '@/emails/GroupJoinRequestAdminNotificationEmail';
-
 import { render } from '@react-email/render';
 import { RoleInGroup } from '@prisma/client';
+import { buildActionLink } from '@/lib/email-link';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -78,13 +78,14 @@ export async function POST(
     const admins = group.members;
     const requester = session.user;
 
+    const managementUrl = buildActionLink(`/groups/${groupId}?tab=settings`);
     for (const admin of admins) {
       if (admin.user.email) {
         try {
           const emailHtml = await render(GroupJoinRequestAdminNotificationEmail({
             requesterName: requester.name || 'Un utilisateur',
             groupName: group.name,
-            managementUrl: `${process.env.NEXTAUTH_URL}/groups/${groupId}?tab=settings`,
+            managementUrl,
           }));
 
           console.log(`Attempting to send email to ${admin.user.email}`);

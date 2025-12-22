@@ -12,7 +12,8 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "chromatic": "chromatic --exit-zero-on-changes --project-token $CHROMATIC_PROJECT_TOKEN",
-    "test:theme": "node tests/themeTokens.cjs"
+    "test:theme": "node tests/themeTokens.cjs",
+    "test:email-links": "tsc --module commonjs --esModuleInterop --outDir .tmp tests/email-link-checks.ts && node .tmp/tests/email-link-checks.js && rm -rf .tmp"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",

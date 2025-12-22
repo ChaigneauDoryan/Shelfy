@@ -1,15 +1,33 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useReadingActivity } from '@/hooks/useReadingActivity';
 import { useSession } from 'next-auth/react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { actionLinkStore } from '@/lib/action-link-store';
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const redirectRef = useRef(false);
   const { data, isLoading, error } = useReadingActivity(!!session?.user?.id);
 
   const groupReadingActivity = data?.groupBooks || [];
   const personalReadingActivity = data?.personalBooks || [];
+
+  useEffect(() => {
+    if (status !== 'unauthenticated' || redirectRef.current) {
+      return;
+    }
+    const queryString = searchParams.toString();
+    const nextPath = `${pathname}${queryString ? `?${queryString}` : ''}`;
+    actionLinkStore.setPendingLink(nextPath);
+    redirectRef.current = true;
+    router.replace(`/auth/login?next=${encodeURIComponent(nextPath)}`);
+  }, [searchParams, pathname, router, status]);
 
   if (isLoading) {
     return <p>Chargement de l'activité de lecture...</p>;

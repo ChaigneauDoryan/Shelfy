@@ -11,6 +11,12 @@ Shelfy is a full-stack web application designed for book lovers to track their r
 - **Book Discovery:** Search for new books to add to your library.
 - **Interactive Discussions:** Leave comments and notes on books you are reading.
 
+## 📧 Liens d'action dans les emails
+
+- Les liens critiques (gestion des demandes d'adhésion, mise à jour du statut d'une demande ou rappel de lecture) pointent vers les pages protégées correspondantes et sont générés via un helper central pour garantir qu'ils restent mono-domaine.
+- Si l'administrateur clique sur l'un de ces liens sans être connecté, Shelfy le redirige automatiquement vers `/auth/login?next=...`, conserve la cible dans un store temporaire et le ramène directement sur l'action souhaitée après connexion.
+- Les liens de vérification d'adresse e-mail et de réinitialisation du mot de passe restent inchangés pour continuer à fonctionner comme avant.
+
 ## 🆓 Free Beta Mode
 
 - Shelfy is currently running as an unlimited free plan for every user: no quotas, no premium gating, and no user can be marked as “premium” in the database.

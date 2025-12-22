@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { actionLinkStore } from '@/lib/action-link-store';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -30,10 +31,17 @@ function LoginFormContent() {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const nextParam = searchParams.get('next');
 
   useEffect(() => {
     document.title = 'Shelfy - Login';
   }, []);
+
+  useEffect(() => {
+    if (nextParam) {
+      actionLinkStore.setPendingLink(nextParam);
+    }
+  }, [nextParam]);
 
   useEffect(() => {
     const message = searchParams.get('message');
@@ -72,7 +80,8 @@ function LoginFormContent() {
       }
     } else if (result?.ok) {
       // Redirection manuelle après une connexion réussie
-      router.push('/dashboard');
+      const destination = actionLinkStore.consumePendingLink() ?? nextParam ?? '/dashboard';
+      router.push(destination);
       router.refresh();
     }
   }
@@ -143,7 +152,10 @@ function LoginFormContent() {
         <Button
           variant="outline"
           className="w-full mt-6"
-          onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+          onClick={() => {
+            const destination = actionLinkStore.consumePendingLink() ?? nextParam ?? '/dashboard';
+            signIn('google', { callbackUrl: destination });
+          }}
         >
           <FcGoogle className="mr-2 h-4 w-4" />
           Se connecter avec Google

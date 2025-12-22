@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { FaPlus } from 'react-icons/fa';
 import GroupCard from '@/components/GroupCard';
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Group, RoleInGroup } from "@prisma/client";
 import {
   Dialog,
@@ -19,9 +19,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from 'next-auth/react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import DiscoverGroups from '@/components/DiscoverGroups';
 import MyPendingGroupRequests from '@/components/MyPendingGroupRequests';
 import PageHeader from '@/components/ui/PageHeader';
+import { actionLinkStore } from '@/lib/action-link-store';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 type GroupWithMembership = Group & {
@@ -39,6 +41,10 @@ export default function GroupsPage() {
   const [isJoining, setIsJoining] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const { toast } = useToast();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const redirectRef = useRef(false);
 
   const fetchAndSetGroups = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['myGroups', user?.id] });
@@ -50,6 +56,17 @@ export default function GroupsPage() {
     document.title = 'Shelfy - Groups';
     fetchAndSetGroups();
   }, [fetchAndSetGroups]);
+
+  useEffect(() => {
+    if (status !== 'unauthenticated' || redirectRef.current) {
+      return;
+    }
+    const queryString = searchParams.toString();
+    const nextPath = `${pathname}${queryString ? `?${queryString}` : ''}`;
+    actionLinkStore.setPendingLink(nextPath);
+    redirectRef.current = true;
+    router.replace(`/auth/login?next=${encodeURIComponent(nextPath)}`);
+  }, [searchParams, pathname, router, status]);
 
   const { data: myGroups, isLoading: isLoadingMyGroups } = useQuery<GroupWithMembership[]>({
     queryKey: ['myGroups', user?.id],

@@ -3,6 +3,7 @@ import { Resend } from 'resend';
 import ReadingReminderEmail from '@/emails/ReadingReminderEmail';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { buildActionLink } from '@/lib/email-link';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -42,7 +43,7 @@ export async function sendReadingReminderEmail(groupBookId: string) {
     const groupName = groupBook.group.name;
     const bookTitle = groupBook.book.title;
     const formattedEndDate = format(groupBook.reading_end_date, 'dd MMMM yyyy à HH:mm', { locale: fr });
-    const groupLink = `${process.env.NEXTAUTH_URL}/dashboard/groups/${groupBook.group.id}`; // Assurez-vous que NEXTAUTH_URL est défini
+    const groupLink = buildActionLink(`/dashboard/groups/${groupBook.group.id}`);
 
     const memberEmails = groupBook.group.members
       .map(member => member.user.email)

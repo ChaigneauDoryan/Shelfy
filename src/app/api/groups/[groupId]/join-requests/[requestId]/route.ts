@@ -7,6 +7,7 @@ import { Resend } from 'resend';
 import GroupJoinRequestEmail from '@/emails/GroupJoinRequestEmail';
 import { render } from '@react-email/render';
 import { checkAndAwardGroupMembershipBadges, checkAndAwardInvitationBadges } from '@/lib/badge-utils';
+import { buildActionLink } from '@/lib/email-link';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -55,6 +56,8 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ gro
       return NextResponse.json({ message: 'Join request not found or already processed.' }, { status: 404 });
     }
 
+    const managementUrl = buildActionLink(`/groups/${joinRequest.groupId}`);
+
     if (action === 'accept') {
       // Use a transaction to ensure atomicity
       await prisma.$transaction(async (tx) => {
@@ -85,7 +88,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ gro
             adminName: 'Admin', // This email is sent to the requester, so adminName is generic
             requesterName: joinRequest.user.name || 'Utilisateur',
             groupName: joinRequest.group.name,
-            managementUrl: `${process.env.NEXTAUTH_URL}/groups/${joinRequest.groupId}`, // Link to the group page
+            managementUrl,
             status: 'accepted',
           }));
 
@@ -113,7 +116,7 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ gro
             adminName: 'Admin', // This email is sent to the requester, so adminName is generic
             requesterName: joinRequest.user.name || 'Utilisateur',
             groupName: joinRequest.group.name,
-            managementUrl: `${process.env.NEXTAUTH_URL}/groups/${joinRequest.groupId}`, // Link to the group page
+            managementUrl,
             status: 'declined',
           }));
 
