@@ -140,12 +140,13 @@ export default function GroupAvatarUpload({ groupId, groupName, initialAvatarUrl
     }
   }, [crop, groupId, onUpload, scale]);
 
-  const groupAvatar = avatarUrl ?? generateAvatarFromText(groupName, 200) ?? 'https://via.placeholder.com/200';
+  const fallbackAvatar = generateAvatarFromText(groupName, 200) ?? 'https://via.placeholder.com/200';
+  const groupAvatar = avatarUrl && avatarUrl.trim() ? avatarUrl : fallbackAvatar;
 
   return (
     <div className="flex flex-col items-center space-y-4">
       <img 
-        src={groupAvatar}
+        src={groupAvatar || undefined}
         alt="Avatar"
         className="w-32 h-32 rounded-full object-cover bg-gray-200"
       />

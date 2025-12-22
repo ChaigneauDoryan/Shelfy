@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Star } from "lucide-react";
@@ -235,18 +235,37 @@ export default function GroupDetailsPage() {
     setShowFinishedBookDetails(true);
   };
 
+  const tabItems = [
+    { value: 'currently-reading', label: 'Lecture en cours' },
+    { value: 'suggestions', label: 'Suggestions' },
+    { value: 'polls', label: 'Sondages' },
+    { value: 'history', label: 'Historique' },
+  ];
+
+  if (isAdmin) {
+    tabItems.push({ value: 'settings', label: 'Paramètres' });
+  }
+
   return (
     <div className="container mx-auto p-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          <Tabs defaultValue={tab || 'currently-reading'}>
-            <TabsList>
-              <TabsTrigger value="currently-reading">Lecture en cours</TabsTrigger>
-              <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
-              <TabsTrigger value="polls">Sondages</TabsTrigger>
-              <TabsTrigger value="history">Historique</TabsTrigger>
-              {isAdmin && <TabsTrigger value="settings">Paramètres</TabsTrigger>}
-            </TabsList>
+          <Tabs defaultValue={tab || 'currently-reading'} className="space-y-6">
+            <div className="relative sticky top-4 z-20 -mx-4 rounded-b-md border-b border-border bg-background/90 px-4 pb-2 backdrop-blur-sm transition sm:static sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0">
+              <div className="overflow-x-auto hide-scrollbar px-6">
+                <TabsList className="relative justify-start gap-3 rounded-none bg-transparent px-0 py-2">
+                  {tabItems.map(item => (
+                    <TabsTrigger
+                      key={item.value}
+                      value={item.value}
+                      className="min-w-[120px] rounded-full bg-muted/40 px-4 py-2 text-sm font-semibold capitalize text-center text-foreground hover:bg-muted/60 focus-visible:ring-2"
+                    >
+                      {item.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+            </div>
             <TabsContent value="currently-reading">
               {currentlyReadingBook ? (
                 <GroupCurrentReadingBook groupId={group.id} groupBook={currentlyReadingBook} />
@@ -272,17 +291,25 @@ export default function GroupDetailsPage() {
                 <CardContent>
                   <div className="space-y-4">
                     {suggestedBooks.map(suggestion => (
-                      <div key={suggestion.id} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <img src={suggestion.book.cover_url || '/file.svg'} alt={suggestion.book.title} className="w-16 h-24 object-cover" />
-                          <div>
-                            <h3 className="font-semibold">{suggestion.book.title}</h3>
-                            <p className="text-sm text-gray-500">{suggestion.book.author}</p>
-                            
-                          </div>
+                      <div
+                        key={suggestion.id}
+                        className="flex flex-col gap-3 rounded-lg border border-border/80 p-4 shadow-sm transition hover:border-primary/50 sm:flex-row sm:items-center"
+                      >
+                        <img
+                          src={suggestion.book.cover_url || '/file.svg'}
+                          alt={suggestion.book.title}
+                          className="h-24 w-16 flex-shrink-0 rounded-sm object-cover"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold text-lg leading-tight line-clamp-2">
+                            {suggestion.book.title}
+                          </h3>
+                          <p className="text-sm text-muted-foreground line-clamp-1">
+                            {suggestion.book.author}
+                          </p>
                         </div>
                         {session?.user?.id === suggestion.suggested_by_id && (
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteSuggestion(suggestion.id)}>
+                          <Button variant="destructive" size="sm" className="self-start sm:self-auto">
                             Supprimer
                           </Button>
                         )}
@@ -311,19 +338,27 @@ export default function GroupDetailsPage() {
                 </CardHeader>
                 <CardContent>
                   {finishedBooks.length > 0 ? (
-                    <div className="space-y-4"> {/* Use space-y for vertical spacing */}
+                    <div className="space-y-4">
                       {finishedBooks.map(book => (
-                        <div key={book.id} className="flex items-center space-x-4 p-4 border rounded-md hover:bg-gray-50 cursor-pointer transition-colors" onClick={() => handleViewFinishedBookDetails(book)}>
-                          <img src={book.book.cover_url || '/file.svg'} alt={book.book.title} className="w-16 h-24 object-cover rounded-sm shadow-sm flex-shrink-0" />
-                          <div className="flex-grow">
-                            <h3 className="font-semibold text-lg line-clamp-1">{book.book.title}</h3>
-                            <p className="text-sm text-gray-600 line-clamp-1">{book.book.author}</p>
+                        <div
+                          key={book.id}
+                          className="flex flex-col gap-3 rounded-lg border border-border/80 p-4 transition hover:border-primary/50 sm:flex-row sm:items-center sm:gap-4"
+                          onClick={() => handleViewFinishedBookDetails(book)}
+                        >
+                          <img
+                            src={book.book.cover_url || '/file.svg'}
+                            alt={book.book.title}
+                            className="h-24 w-16 flex-shrink-0 rounded-sm object-cover"
+                          />
+                          <div className="flex flex-1 flex-col gap-1 min-w-0">
+                            <h3 className="font-semibold text-lg line-clamp-2">{book.book.title}</h3>
+                            <p className="text-sm text-muted-foreground line-clamp-1">{book.book.author}</p>
                             {book.averageRating && (
-                              <div className="flex items-center space-x-1 mt-1">
-                                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                <span className="text-sm font-bold">{book.averageRating}</span>
+                              <div className="flex items-center gap-1 text-sm">
+                                <Star className="h-4 w-4 text-yellow-500" />
+                                <span className="font-bold">{book.averageRating}</span>
                                 {book.voterCount !== undefined && (
-                                  <span className="text-xs text-gray-500">({book.voterCount} votes)</span>
+                                  <span className="text-xs text-muted-foreground">({book.voterCount} votes)</span>
                                 )}
                               </div>
                             )}

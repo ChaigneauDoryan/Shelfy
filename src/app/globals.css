@@ -134,4 +134,13 @@
   .dark .border-gray-300 {
     border-color: hsl(var(--border)) !important;
   }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }

@@ -31,8 +31,20 @@ export default function RootLayout({
     <html lang="fr" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="antialiased bg-background text-foreground">
         <Providers>
-          <div className="flex min-h-screen flex-col pb-24 md:pb-0">
+          <div className={`flex min-h-screen flex-col ${shouldShowTabs ? 'pb-24' : 'pb-0'} md:pb-0`}>
             <div className="flex-1 w-full pb-10 md:pb-0">{children}</div>
+            <footer
+              className="w-full border-t bg-background/70 py-3"
+              style={{ paddingBottom: shouldShowTabs ? '3.5rem' : undefined }}
+            >
+              <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
+                <p>&copy; {new Date().getFullYear()} Shelfy. Tous droits réservés.</p>
+                <div className="flex space-x-4 mt-3 md:mt-0">
+                  <a href="/mentions-legales" className="hover:underline">Mentions Légales</a>
+                  <a href="/politique-confidentialite" className="hover:underline">Politique de Confidentialité</a>
+                </div>
+              </div>
+            </footer>
           </div>
           {shouldShowTabs && <MobileBottomTabs />}
         </Providers>
@@ -74,15 +86,6 @@ export default function RootLayout({
           Ce site utilise des cookies pour améliorer l'expérience utilisateur. En continuant à naviguer, vous acceptez notre utilisation des cookies.{" "}
           <a href="/politique-confidentialite" style={{ color: 'hsl(var(--primary))' }}>En savoir plus</a>
         </CookieConsent>
-        <footer className="hidden w-full border-t bg-background py-6 md:block">
-          <div className="container mx-auto flex flex-col md:flex-row justify-between items-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} Shelfy. Tous droits réservés.</p>
-            <div className="flex space-x-4 mt-3 md:mt-0">
-              <a href="/mentions-legales" className="hover:underline">Mentions Légales</a>
-              <a href="/politique-confidentialite" className="hover:underline">Politique de Confidentialité</a>
-            </div>
-          </div>
-        </footer>
       </body>
     </html>
   );
