@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { Suspense, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useReadingActivity } from '@/hooks/useReadingActivity';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { actionLinkStore } from '@/lib/action-link-store';
 
-export default function DashboardPage() {
+function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -87,5 +87,13 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<p>Chargement...</p>}>
+      <Dashboard />
+    </Suspense>
   );
 }

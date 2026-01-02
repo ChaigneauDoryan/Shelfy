@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { FaPlus } from 'react-icons/fa';
 import GroupCard from '@/components/GroupCard';
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Group, RoleInGroup } from "@prisma/client";
 import {
   Dialog,
@@ -33,7 +33,7 @@ type GroupWithMembership = Group & {
   memberCount: number;
 };
 
-export default function GroupsPage() {
+function Groups() {
   const { data: session, status } = useSession();
   const user = session?.user;
   const queryClient = useQueryClient();
@@ -200,5 +200,13 @@ export default function GroupsPage() {
         <DiscoverGroups />
       </section>
     </div>
+  );
+}
+
+export default function GroupsPage() {
+  return (
+    <Suspense fallback={<p>Chargement...</p>}>
+      <Groups />
+    </Suspense>
   );
 }
