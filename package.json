@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test": "vitest",
     "dev": "next dev",
     "build": "dotenv -e .env -- ./node_modules/.bin/prisma generate --schema src/prisma/schema.prisma && dotenv -e .env -- ./node_modules/.bin/prisma migrate deploy --schema src/prisma/schema.prisma && npm run seed && next build",
     "start": "next start",
@@ -75,6 +76,10 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@storybook/addon-a11y": "^8.2.6",
+    "@storybook/addon-essentials": "^8.2.6",
+    "@storybook/nextjs": "^8.2.6",
+    "@storybook/test": "^8.2.6",
     "@swc/core": "^1.15.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/lodash": "^4.17.20",
@@ -83,16 +88,13 @@
     "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@storybook/addon-a11y": "^8.2.6",
-    "@storybook/addon-essentials": "^8.2.6",
-    "@storybook/nextjs": "^8.2.6",
-    "@storybook/test": "^8.2.6",
     "chromatic": "^11.3.0",
     "eslint": "^9",
     "eslint-config-next": "^16.0.7",
     "prisma": "^7.1.0",
     "storybook": "^8.2.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.16"
   }
 }
