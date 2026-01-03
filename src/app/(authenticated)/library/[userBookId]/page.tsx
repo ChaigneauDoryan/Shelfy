@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth'; // Notre nouveau helper
 import { getUserBookById } from '@/lib/book-utils'; // Nos fonctions Prisma
 import BookDetailsClientWrapper from '@/components/BookDetailsClientWrapper';
-import type { UserBookWithBook } from '@/types/domain';
+import type { UserBookWithBook, UserBookWithBookForClient } from '@/types/domain';
 
 interface BookDetailPageProps {
   params: Promise<{
@@ -36,9 +36,21 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
     notFound();
   }
 
+  const serializedUserBook: UserBookWithBookForClient = {
+    ...userBook,
+    review: userBook.review
+      ? {
+          id: userBook.review.id,
+          rating: userBook.review.rating,
+          comment_text: userBook.review.comment_text,
+          updated_at: userBook.review.updated_at.toISOString(),
+        }
+      : null,
+  };
+
   return (
     <div className="container mx-auto py-8">
-      <BookDetailsClientWrapper userBookId={userBookId} userBook={userBook} />
+      <BookDetailsClientWrapper userBookId={userBookId} userBook={serializedUserBook} />
     </div>
   );
 }

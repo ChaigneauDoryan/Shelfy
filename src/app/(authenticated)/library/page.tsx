@@ -14,6 +14,7 @@ import { MoreHorizontal, X } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import type { Book } from '@prisma/client';
 import type { AwardedBadge, UserLibraryBook } from '@/types/domain';
+import BookReviewModal from '@/components/BookReviewModal';
 
 // Composant modal custom pour éviter les problèmes avec ConfirmModal
 const CustomConfirmModal = ({ 
@@ -122,6 +123,8 @@ export default function LibraryPage() {
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterArchiveStatus, setFilterArchiveStatus] = useState<string>('all');
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewModalBookId, setReviewModalBookId] = useState<string | null>(null);
   
   // États pour les modales
   const [modals, setModals] = useState({
@@ -183,6 +186,26 @@ export default function LibraryPage() {
     }));
   };
 
+  const getArchiveFilterValue = () => ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
+  const reloadLibrary = async () => {
+    const archiveFilter = getArchiveFilterValue();
+    await fetchBooks(filterStatus, archiveFilter);
+  };
+
+  const openReviewModal = (bookId: string) => {
+    setReviewModalBookId(bookId);
+    setIsReviewModalOpen(true);
+  };
+
+  const closeReviewModal = () => {
+    setIsReviewModalOpen(false);
+  };
+
+  const handleReviewSaved = async () => {
+    await reloadLibrary();
+    closeReviewModal();
+  };
+
   const handleDeleteBook = async () => {
     const bookId = modals.delete.bookId;
     if (!bookId) return;
@@ -203,8 +226,7 @@ export default function LibraryPage() {
       });
       
       // Recharger les données
-      const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
-      await fetchBooks(filterStatus, selectedArchiveStatus);
+      await reloadLibrary();
       
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Impossible de supprimer le livre.';
@@ -243,8 +265,7 @@ export default function LibraryPage() {
       });
       
       // Recharger les données
-      const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
-      await fetchBooks(filterStatus, selectedArchiveStatus);
+      await reloadLibrary();
       
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Impossible de modifier l’archive.';
@@ -283,8 +304,10 @@ export default function LibraryPage() {
         });
       }
 
-      const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
-      await fetchBooks(filterStatus, selectedArchiveStatus);
+      await reloadLibrary();
+      if (newStatus === 'finished') {
+        openReviewModal(bookId);
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Impossible de mettre à jour le statut.';
       toast({
@@ -297,8 +320,7 @@ export default function LibraryPage() {
 
   useEffect(() => {
     if (user?.id) {
-      const selectedArchiveStatus = ARCHIVE_STATUSES.find(s => s.name === filterArchiveStatus)?.queryValue;
-      fetchBooks(filterStatus, selectedArchiveStatus);
+      reloadLibrary();
     } else if (status === 'unauthenticated') {
       setLoading(false);
     }
@@ -481,6 +503,12 @@ export default function LibraryPage() {
           ? "Êtes-vous sûr de vouloir désarchiver ce livre ?" 
           : "Êtes-vous sûr de vouloir archiver ce livre ? Il sera masqué de la vue par défaut."
         }
+      />
+      <BookReviewModal
+        isOpen={isReviewModalOpen}
+        userBookId={reviewModalBookId}
+        onClose={closeReviewModal}
+        onSaved={handleReviewSaved}
       />
     </PageContainer>
   );

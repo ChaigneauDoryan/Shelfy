@@ -1,4 +1,4 @@
-import type { AwardedBadge, UserBookWithBook } from './domain';
+import type { AwardedBadge, UserBookReviewSummary, UserBookWithBook } from './domain';
 
 export interface UpdateStatusResponse {
   updatedBook: UserBookWithBook;
@@ -56,6 +56,19 @@ export interface GroupSuggestionsRouteParams {
 
 export interface UserBookStatusRouteParams {
   userBookId: string;
+}
+
+export interface UserBookReviewRouteParams {
+  userBookId: string;
+}
+
+export interface UserBookReviewPatchRequestBody {
+  rating: number;
+  comment_text: string;
+}
+
+export interface UserBookReviewResponse {
+  review: UserBookReviewSummary | null;
 }
 
 export interface GroupBookCommentsRouteParams {

@@ -218,8 +218,19 @@ model UserBook {
   status       ReadingStatus     @relation(fields: [status_id], references: [id])
   user         User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
   comments     UserBookComment[]
+  review       UserBookReview?
 
   @@unique([user_id, book_id])
+}
+
+model UserBookReview {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_book_id String    @db.Uuid @unique
+  rating       Float
+  comment_text String
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  userBook     UserBook  @relation(fields: [user_book_id], references: [id], onDelete: Cascade)
 }
 
 model UserBookComment {

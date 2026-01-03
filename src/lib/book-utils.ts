@@ -177,6 +177,7 @@ export async function getUserBooks(userId: string, statusId?: number, isArchived
     },
     include: {
       book: true, // Inclure l\'objet livre complet
+      review: true,
     },
     orderBy: {
       created_at: 'desc',
@@ -193,6 +194,7 @@ export async function getUserBookById(userBookId: string, userId: string) {
     },
     include: {
       book: true,
+      review: true,
     },
   });
 
@@ -200,6 +202,63 @@ export async function getUserBookById(userBookId: string, userId: string) {
     throw new Error('Failed to fetch user book.');
   }
   return userBook;
+}
+
+export async function getUserBookReview(userBookId: string, userId: string) {
+  const review = await prisma.userBookReview.findFirst({
+    where: {
+      user_book_id: userBookId,
+      userBook: {
+        user_id: userId,
+      },
+    },
+  });
+  return review;
+}
+
+export async function upsertUserBookReview(
+  userBookId: string,
+  userId: string,
+  rating: number,
+  commentText: string
+) {
+  const userBook = await prisma.userBook.findFirst({
+    where: {
+      id: userBookId,
+      user_id: userId,
+    },
+  });
+
+  if (!userBook) {
+    throw new Error('Livre introuvable.');
+  }
+
+  const finishedStatusId = await getReadingStatusId('finished');
+  if (userBook.status_id !== finishedStatusId) {
+    throw new Error('Les livres terminés seulement peuvent recevoir un avis.');
+  }
+
+  const review = await prisma.userBookReview.upsert({
+    where: { user_book_id: userBookId },
+    update: {
+      rating,
+      comment_text: commentText,
+    },
+    create: {
+      user_book_id: userBookId,
+      rating,
+      comment_text: commentText,
+    },
+  });
+
+  await prisma.userBook.update({
+    where: { id: userBookId },
+    data: {
+      rating,
+    },
+  });
+
+  return review;
 }
 
 export async function updateUserBookStatus(
@@ -219,6 +278,7 @@ export async function updateUserBookStatus(
     },
     include: {
       book: true,
+      review: true,
     },
   });
 
@@ -241,6 +301,7 @@ export async function updateUserBookStatus(
     data: updateData,
     include: {
       book: true,
+      review: true,
     },
   });
 

@@ -3,28 +3,99 @@
 import { useState } from 'react';
 import AddCommentForm from '@/components/AddCommentForm';
 import BookCommentTimeline from '@/components/BookCommentTimeline';
+import BookReviewSummary from '@/components/BookReviewSummary';
+import BookReviewModal from '@/components/BookReviewModal';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Import Select components
 import { useToast } from '@/hooks/use-toast'; // Import useToast
-import type { AwardedBadge, UserBookWithBook, ReadingStatus } from '@/types/domain';
+import type {
+  AwardedBadge,
+  UserBookReviewSummary,
+  UserBookWithBook,
+  UserBookWithBookForClient,
+  ReadingStatus,
+} from '@/types/domain';
 
 import type { UpdateStatusResponse } from '@/types/api';
 
 interface BookDetailsClientWrapperProps {
   userBookId: string;
-  userBook: UserBookWithBook;
+  userBook: UserBookWithBookForClient;
 }
 
+const normalizeReview = (review: UserBookWithBook['review']): UserBookReviewSummary | null => {
+  if (!review) {
+    return null;
+  }
+  return {
+    id: review.id,
+    rating: review.rating,
+    comment_text: review.comment_text,
+    updated_at: typeof review.updated_at === 'string' ? review.updated_at : review.updated_at.toISOString(),
+  };
+};
+
+const toClientUserBook = (book: UserBookWithBook): UserBookWithBookForClient => ({
+  ...book,
+  review: normalizeReview(book.review),
+});
+
 export default function BookDetailsClientWrapper({ userBookId, userBook: initialUserBook }: BookDetailsClientWrapperProps) {
-  const [userBook, setUserBook] = useState<UserBookWithBook>(initialUserBook); // Use state for userBook
+  const [userBook, setUserBook] = useState<UserBookWithBookForClient>(initialUserBook); // Use state for userBook
+  const [review, setReview] = useState<UserBookReviewSummary | null>(initialUserBook.review ?? null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showCommentForm, setShowCommentForm] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [isFinalizingStatus, setIsFinalizingStatus] = useState(false);
   const { toast } = useToast(); // Initialize useToast
 
-  const handleCommentAdded = () => {
+  const handleCommentAdded = (pageNumber: number) => {
     setRefreshKey(prevKey => prevKey + 1);
     setShowCommentForm(false);
+    if (userBook.book.page_count && pageNumber >= userBook.book.page_count) {
+      finalizeAndOpenReview();
+    }
+  };
+
+  const finalizeAndOpenReview = async () => {
+    if (isFinalizingStatus) {
+      return;
+    }
+
+    if (userBook.status_id === 3) {
+      openReviewModal();
+      return;
+    }
+
+    setIsFinalizingStatus(true);
+    try {
+      const response = await fetch(`/api/library/${userBookId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'finished' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Impossible de terminer le livre.');
+      }
+
+      const { updatedBook } = (await response.json()) as UpdateStatusResponse;
+      setUserBook(toClientUserBook(updatedBook));
+      openReviewModal();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de marquer le livre comme terminé.';
+      toast({
+        title: 'Erreur',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsFinalizingStatus(false);
+    }
   };
 
   const handleStatusChange = async (newStatus: ReadingStatus) => {
@@ -43,7 +114,10 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
       }
 
       const { updatedBook, awardedBadges } = (await response.json()) as UpdateStatusResponse;
-      setUserBook(updatedBook); // Update the book details
+      setUserBook(toClientUserBook(updatedBook)); // Update the book details
+      if (newStatus === 'finished') {
+        openReviewModal();
+      }
 
       // Display toast for awarded badges
       if (awardedBadges && awardedBadges.length > 0) {
@@ -62,6 +136,19 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
         variant: 'destructive',
       });
     }
+  };
+
+  const canReview = userBook.status_id === 3;
+  const openReviewModal = () => setIsReviewModalOpen(true);
+  const closeReviewModal = () => setIsReviewModalOpen(false);
+  const handleReviewSaved = (nextReview: UserBookReviewSummary) => {
+    setReview(nextReview);
+    setRefreshKey(prev => prev + 1);
+    setUserBook(prev => ({
+      ...prev,
+      rating: nextReview.rating,
+    }));
+    closeReviewModal();
   };
 
   return (
@@ -108,6 +195,14 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
         {showCommentForm && (
           <AddCommentForm userBookId={userBookId} onCommentAdded={handleCommentAdded} />
         )}
+        {review && <BookReviewSummary review={review} onEdit={openReviewModal} />}
+        {canReview && (
+          <div className="mb-4 flex justify-end">
+            <Button variant="outline" onClick={openReviewModal}>
+              {review ? 'Modifier mon avis global' : 'Ajouter un avis global'}
+            </Button>
+          </div>
+        )}
         {userBook.book.page_count && (
           <BookCommentTimeline
             userBookId={userBookId}
@@ -116,6 +211,13 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
           />
         )}
       </div>
+      <BookReviewModal
+        isOpen={isReviewModalOpen}
+        userBookId={userBookId}
+        initialReview={review}
+        onClose={closeReviewModal}
+        onSaved={handleReviewSaved}
+      />
     </Card>
   );
 }

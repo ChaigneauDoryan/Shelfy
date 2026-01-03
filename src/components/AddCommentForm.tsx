@@ -11,7 +11,7 @@ import { useSession } from 'next-auth/react';
 
 interface AddCommentFormProps {
   userBookId: string;
-  onCommentAdded: () => void;
+  onCommentAdded: (pageNumber: number) => void;
 }
 
 export default function AddCommentForm({ userBookId, onCommentAdded }: AddCommentFormProps) {
@@ -55,7 +55,7 @@ export default function AddCommentForm({ userBookId, onCommentAdded }: AddCommen
       setPageNumber('');
       setCommentTitle('');
       setCommentText('');
-      onCommentAdded(); // Notify parent to refresh comments
+      onCommentAdded(Number(pageNumber)); // Notify parent to refresh comments
     } catch (error: unknown) {
       const description = error instanceof Error ? error.message : 'Impossible d’ajouter le commentaire.';
       toast({

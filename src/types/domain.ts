@@ -2,8 +2,12 @@ import type { Badge, Prisma } from '@prisma/client';
 import type { GoogleBooksApiBook } from './book';
 
 export type UserBookWithBook = Prisma.UserBookGetPayload<{
-  include: { book: true };
+  include: { book: true; review: true };
 }>;
+
+export type UserBookWithBookForClient = Omit<UserBookWithBook, 'review'> & {
+  review: UserBookReviewSummary | null;
+};
 
 export type GroupBookWithGroupSummary = Prisma.GroupBookGetPayload<{
   include: {
@@ -117,6 +121,13 @@ export interface Comment {
   created_at: string;
 }
 
+export interface UserBookReviewSummary {
+  id: string;
+  rating: number;
+  comment_text: string;
+  updated_at: string;
+}
+
 export interface UserLibraryBook {
   id: string;
   status_id: number;
@@ -134,4 +145,5 @@ export interface UserLibraryBook {
     page_count: number | null;
     genre: string | null;
   };
+  review?: UserBookReviewSummary | null;
 }
