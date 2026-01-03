@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AddCommentForm from '@/components/AddCommentForm';
 import BookCommentTimeline from '@/components/BookCommentTimeline';
 import BookReviewSummary from '@/components/BookReviewSummary';
@@ -49,6 +49,13 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isFinalizingStatus, setIsFinalizingStatus] = useState(false);
   const { toast } = useToast(); // Initialize useToast
+  const isBookFinished = userBook.status_id === 3;
+
+  useEffect(() => {
+    if (isBookFinished && showCommentForm) {
+      setShowCommentForm(false);
+    }
+  }, [isBookFinished, showCommentForm]);
 
   const handleCommentAdded = (pageNumber: number) => {
     setRefreshKey(prevKey => prevKey + 1);
@@ -187,13 +194,30 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
         </div>
       </CardContent>
       <div className="p-4">
-        <div className="flex justify-end mb-4">
-          <Button onClick={() => setShowCommentForm(!showCommentForm)}>
+        <div className="flex justify-between items-center mb-4">
+          <Button
+            onClick={() => {
+              if (isBookFinished) {
+                return;
+              }
+              setShowCommentForm(prev => !prev);
+            }}
+            disabled={isBookFinished}
+          >
             {showCommentForm ? 'Annuler' : 'Ajouter un commentaire'}
           </Button>
+          {isBookFinished && (
+            <p className="text-sm text-muted-foreground ml-4">
+              Les commentaires d’avancement ne sont plus disponibles pour un livre terminé.
+            </p>
+          )}
         </div>
         {showCommentForm && (
-          <AddCommentForm userBookId={userBookId} onCommentAdded={handleCommentAdded} />
+          <AddCommentForm
+            userBookId={userBookId}
+            onCommentAdded={handleCommentAdded}
+            isBookFinished={isBookFinished}
+          />
         )}
         {review && <BookReviewSummary review={review} onEdit={openReviewModal} />}
         {canReview && (

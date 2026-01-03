@@ -6,6 +6,8 @@ import { getReadingStatusId } from '@/lib/book-utils';
 
 import type { UserBookCommentsRouteParams, UserBookCommentsPostRequestBody } from '@/types/api';
 
+const FINISHED_COMMENT_ERROR_MESSAGE = 'Impossible d’ajouter un commentaire sur un livre terminé.';
+
 // GET /api/user-books/[userBookId]/comments
 export async function GET(
   request: NextRequest,
@@ -61,18 +63,24 @@ export async function POST(
       return NextResponse.json({ error: 'Missing required fields: page_number, comment_text' }, { status: 400 });
     }
 
+    const finishedStatusId = await getReadingStatusId('finished');
+    const userBook = await prisma.userBook.findFirst({
+      where: { id: userBookId, user_id: session.user.id },
+      include: { _count: { select: { comments: true } } },
+    });
+
+    if (!userBook) {
+      return NextResponse.json({ error: 'Not found or forbidden' }, { status: 404 });
+    }
+
+    if (userBook.status_id === finishedStatusId) {
+      return NextResponse.json({ error: FINISHED_COMMENT_ERROR_MESSAGE }, { status: 403 });
+    }
+
+    const isFirstComment = userBook._count.comments === 0;
+    const readingStatusId = isFirstComment ? await getReadingStatusId('reading') : undefined;
+
     const newComment = await prisma.$transaction(async (tx) => {
-      // 1. Vérifier que l'utilisateur est propriétaire du userBook
-      const userBook = await tx.userBook.findFirst({
-        where: { id: userBookId, user_id: session.user.id },
-        include: { _count: { select: { comments: true } } },
-      });
-
-      if (!userBook) {
-        throw new Error('Not found or forbidden');
-      }
-
-      // 2. Créer le commentaire
       const createdComment = await tx.userBookComment.create({
         data: {
           user_book_id: userBookId,
@@ -81,21 +89,14 @@ export async function POST(
         },
       });
 
-      // 3. Mettre à jour le userBook (statut et page actuelle)
-      const isFirstComment = userBook._count.comments === 0;
-      let statusUpdate = {};
-
-      if (isFirstComment) {
-        const readingStatusId = await getReadingStatusId('reading');
-        statusUpdate = { status_id: readingStatusId };
+      const updateData: { current_page: number; status_id?: number } = { current_page: page_number };
+      if (typeof readingStatusId === 'number') {
+        updateData.status_id = readingStatusId;
       }
 
       await tx.userBook.update({
         where: { id: userBookId },
-        data: {
-          current_page: page_number,
-          ...statusUpdate,
-        },
+        data: updateData,
       });
 
       return createdComment;

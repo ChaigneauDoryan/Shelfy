@@ -12,15 +12,35 @@ import { useSession } from 'next-auth/react';
 interface AddCommentFormProps {
   userBookId: string;
   onCommentAdded: (pageNumber: number) => void;
+  isBookFinished?: boolean;
 }
 
-export default function AddCommentForm({ userBookId, onCommentAdded }: AddCommentFormProps) {
+export default function AddCommentForm({
+  userBookId,
+  onCommentAdded,
+  isBookFinished = false,
+}: AddCommentFormProps) {
   const { data: session, status } = useSession();
   const [pageNumber, setPageNumber] = useState<string>('');
   const [commentTitle, setCommentTitle] = useState<string>('');
   const [commentText, setCommentText] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  if (isBookFinished) {
+    return (
+      <Card className="mb-8 border border-rose-500">
+        <CardHeader>
+          <CardTitle>Commentaires d'avancement</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-rose-600">
+            Impossible d’ajouter un commentaire d’avancement sur un livre terminé.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
