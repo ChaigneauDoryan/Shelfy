@@ -3,6 +3,8 @@ import { getSession } from '@/lib/auth'; // Notre nouveau helper
 import { getUserBookById } from '@/lib/book-utils'; // Nos fonctions Prisma
 import BookDetailsClientWrapper from '@/components/BookDetailsClientWrapper';
 import type { UserBookWithBook, UserBookWithBookForClient } from '@/types/domain';
+import { createPageMetadata } from '@/lib/seo';
+import type { Metadata } from 'next';
 
 interface BookDetailPageProps {
   params: Promise<{
@@ -53,4 +55,48 @@ export default async function BookDetailPage({ params }: BookDetailPageProps) {
       <BookDetailsClientWrapper userBookId={userBookId} userBook={serializedUserBook} />
     </div>
   );
+}
+
+export async function generateMetadata({ params }: BookDetailPageProps): Promise<Metadata> {
+  const { userBookId } = await params;
+  const fallbackDescription = 'Consultez les détails et le suivi de lecture de votre livre sur Shelfy.';
+
+  try {
+    const session = await getSession();
+    if (!session?.user?.id) {
+      return createPageMetadata({
+        pageTitle: 'Livre',
+        description: fallbackDescription,
+        path: `/library/${userBookId}`,
+      });
+    }
+
+    const userBook = await getUserBookById(userBookId, session.user.id);
+    if (!userBook) {
+      return createPageMetadata({
+        pageTitle: 'Livre introuvable',
+        description: 'Ce livre n’est pas présent dans votre bibliothèque personnelle.',
+        path: `/library/${userBookId}`,
+      });
+    }
+
+    const authorLabel = userBook.book.author ?? 'Auteur inconnu';
+    const formattedTitle = `${userBook.book.title}${userBook.book.author ? ` - ${authorLabel}` : ''}`;
+    const description = userBook.book.description ?? fallbackDescription;
+
+    return createPageMetadata({
+      pageTitle: formattedTitle,
+      description,
+      path: `/library/${userBookId}`,
+      keywords: [userBook.book.title, authorLabel, 'bibliothèque personnelle', 'suivi de lecture'],
+      type: 'article',
+    });
+  } catch (error) {
+    console.error('Failed to compute metadata for user book detail:', error);
+    return createPageMetadata({
+      pageTitle: 'Livre',
+      description: fallbackDescription,
+      path: `/library/${userBookId}`,
+    });
+  }
 }

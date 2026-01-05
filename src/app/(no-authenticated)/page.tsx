@@ -3,10 +3,15 @@ import Link from "next/link";
 import { FaBookReader, FaUsers, FaSearch, FaQuoteLeft } from 'react-icons/fa';
 import { Metadata } from 'next';
 import SubscriptionPlans from "@/components/SubscriptionPlans";
+import { createPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: 'Shelfy - Home',
-};
+export const metadata: Metadata = createPageMetadata({
+  pageTitle: 'Accueil',
+  description:
+    'Shelfy accompagne les lecteurs francophones avec une bibliothèque intelligente, des clubs de lecture dynamiques et des recommandations personnalisées.',
+  path: '/',
+  keywords: ['plateforme de lecture', 'clubs de lecture', 'bibliothèque intelligente'],
+});
 
 export default async function HomePage() {
   return (
