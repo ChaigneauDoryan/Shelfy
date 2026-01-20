@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ReactCrop, { type Crop, centerCrop, makeAspectCrop } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { useSession } from 'next-auth/react'
 
 interface AvatarUploadProps {
@@ -17,7 +16,7 @@ interface AvatarUploadProps {
 // Fonction pour centrer le crop initial
 function centerAspectCrop(mediaWidth: number, mediaHeight: number, aspect: number) {
   return centerCrop(
-    makeAspectCrop({ unit: '%', width: 90 }, aspect, mediaWidth, mediaHeight),
+    makeAspectCrop({ unit: 'px', width: Math.min(mediaWidth, mediaHeight) * 0.9 }, aspect, mediaWidth, mediaHeight),
     mediaWidth,
     mediaHeight,
   )
@@ -28,15 +27,23 @@ function getCroppedImg(image: HTMLImageElement, crop: Crop, scale = 1): Promise<
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
 
-  const scaleX = image.naturalWidth / image.width;
-  const scaleY = image.naturalHeight / image.height;
+  const rect = image.getBoundingClientRect();
+  const renderedWidth = rect.width || image.width * scale || 1;
+  const renderedHeight = rect.height || image.height * scale || 1;
+  const scaleX = image.naturalWidth / renderedWidth;
+  const scaleY = image.naturalHeight / renderedHeight;
 
   const pixelRatio = window.devicePixelRatio;
 
+  const cropWidth = crop.unit === '%' ? (crop.width / 100) * renderedWidth : crop.width;
+  const cropHeight = crop.unit === '%' ? (crop.height / 100) * renderedHeight : crop.height;
+  const cropX = crop.unit === '%' ? (crop.x / 100) * renderedWidth : crop.x;
+  const cropY = crop.unit === '%' ? (crop.y / 100) * renderedHeight : crop.y;
+
   // Déterminer la taille du côté du carré à partir du crop
   // On prend la plus petite dimension pour s'assurer que le cercle rentre
-  const cropPixelWidth = crop.width * scaleX;
-  const cropPixelHeight = crop.height * scaleY;
+  const cropPixelWidth = cropWidth * scaleX;
+  const cropPixelHeight = cropHeight * scaleY;
   const size = Math.min(cropPixelWidth, cropPixelHeight); // Le diamètre du cercle
 
   canvas.width = Math.floor(size * pixelRatio);
@@ -49,8 +56,8 @@ function getCroppedImg(image: HTMLImageElement, crop: Crop, scale = 1): Promise<
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // Calculer les coordonnées source pour centrer le carré dans le crop
-  const sourceX = crop.x * scaleX + (cropPixelWidth - size) / 2;
-  const sourceY = crop.y * scaleY + (cropPixelHeight - size) / 2;
+  const sourceX = cropX * scaleX + (cropPixelWidth - size) / 2;
+  const sourceY = cropY * scaleY + (cropPixelHeight - size) / 2;
 
   // Appliquer un masque circulaire
   ctx.beginPath();
@@ -88,8 +95,11 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: Ava
   const [src, setSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [scale, setScale] = useState(1);
   const imgRef = useRef<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    setAvatarUrl(initialAvatarUrl || null);
+  }, [initialAvatarUrl]);
 
   const onSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -114,7 +124,7 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: Ava
       setIsModalOpen(false);
 
       try {
-        const croppedImageBlob = await getCroppedImg(imgRef.current, crop, scale);
+        const croppedImageBlob = await getCroppedImg(imgRef.current, crop);
         // Generate a more unique file name to prevent caching issues
         const uniqueId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         const fileName = `${session.user.id}-${Date.now()}-${uniqueId}.png`;
@@ -142,7 +152,6 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: Ava
       } finally {
         setUploading(false);
         setSrc(null);
-        setScale(1);
       }
     }
   };
@@ -177,7 +186,7 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: Ava
             <div className="flex flex-col items-center space-y-4">
               <ReactCrop
                 crop={crop}
-                onChange={(_, percentCrop) => setCrop(percentCrop)}
+                onChange={(pixelCrop) => setCrop(pixelCrop)}
                 circularCrop
                 aspect={1}
               >
@@ -185,23 +194,9 @@ export default function AvatarUpload({ userId, initialAvatarUrl, onUpload }: Ava
                   ref={imgRef} 
                   src={src} 
                   alt="Source"
-                  style={{ transform: `scale(${scale})` }}
                   onLoad={onImageLoad}
                 />
               </ReactCrop>
-              <div className="w-full space-y-2">
-                  <label htmlFor="zoom-slider" className="text-sm">Zoom</label>
-                  <Input 
-                    id="zoom-slider"
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="0.1"
-                    value={scale}
-                    onChange={(e) => setScale(Number(e.target.value))}
-                    className="w-full"
-                  />
-              </div>
             </div>
           )}
           <DialogFooter>

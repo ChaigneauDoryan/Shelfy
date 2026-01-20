@@ -51,11 +51,20 @@ export const authOptions: AuthOptions = {
     signIn: '/auth/login',
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
+        token.image = user.image;
+      }
+      if (trigger === 'update' && session) {
+        if (session.name) {
+          token.name = session.name;
+        }
+        if (session.image) {
+          token.image = session.image;
+        }
       }
       return token;
     },
@@ -68,6 +77,9 @@ export const authOptions: AuthOptions = {
       }
       if (session.user && token.email) {
         session.user.email = token.email as string;
+      }
+      if (session.user && token.image) {
+        session.user.image = token.image as string;
       }
       return session;
     },

@@ -63,7 +63,7 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function ProfilePage() {
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const userId = session?.user?.id;
   const { toast } = useToast();
 
@@ -82,6 +82,7 @@ export default function ProfilePage() {
   });
 
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(session?.user?.image ?? undefined);
+  const [hasLocalAvatar, setHasLocalAvatar] = useState(false);
 
   useEffect(() => {
     if (session?.user) {
@@ -89,9 +90,11 @@ export default function ProfilePage() {
         name: session.user.name ?? "",
         bio: data?.profile?.bio || "",
       });
-      setAvatarUrl(session.user.image ?? '');
+      if (!hasLocalAvatar) {
+        setAvatarUrl(data?.profile?.image ?? session.user.image ?? '');
+      }
     }
-  }, [session, data, form]);
+  }, [session, data, form, hasLocalAvatar]);
 
   useEffect(() => {
     const checkBadges = async () => {
@@ -130,6 +133,10 @@ export default function ProfilePage() {
     if (!response.ok) {
       toast({ title: 'Erreur', description: "La mise à jour du profil a échoué.", variant: 'destructive', duration: 5000 });
     } else {
+      const updatedUser = await response.json();
+      setAvatarUrl(updatedUser.image ?? avatarUrl);
+      setHasLocalAvatar(false);
+      await update({ name: updatedUser.name ?? undefined, image: updatedUser.image ?? undefined });
       toast({ title: 'Succès', description: "Votre profil a été mis à jour avec succès.", duration: 5000 });
       mutate(); // Revalider les données après la mise à jour
     }
@@ -230,6 +237,7 @@ export default function ProfilePage() {
                 initialAvatarUrl={avatarUrl}
                 onUpload={(url: string) => {
                   setAvatarUrl(url);
+                  setHasLocalAvatar(true);
                   mutate(); // Revalider les données après l'upload de l'avatar
                 }}
               />
