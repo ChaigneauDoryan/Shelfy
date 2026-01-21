@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import GroupAvatarUpload from "@/components/GroupAvatarUpload";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Star } from "lucide-react";
+import { BookOpen, MoreVertical, Star } from "lucide-react";
 import { generateAvatarFromText } from "@/lib/avatar-utils";
 import JoinRequestsManager from "@/components/JoinRequestsManager";
 import PollManagement from "@/components/PollManagement";
@@ -26,7 +26,7 @@ import PollDisplay from "@/components/PollDisplay";
 import GroupCurrentReadingBook from "@/components/GroupCurrentReadingBook";
 import GroupFinishedBookDetails from "@/components/GroupFinishedBookDetails"; // Import du nouveau composant
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"; // Import des composants Sheet
-import type { BookSelectionPayload, GroupBookWithAverageRating } from '@/types/domain';
+import type { BookSelectionPayload, GroupBookWithAverageRating, UserLibraryBook } from '@/types/domain';
 
 const groupSettingsSchema = z.object({
   name: z.string().min(2, { message: "Le nom du groupe doit contenir au moins 2 caractères." }),
@@ -71,6 +71,11 @@ export default function GroupDetailsPage() {
 
   const [showFinishedBookDetails, setShowFinishedBookDetails] = useState(false);
   const [selectedFinishedBook, setSelectedFinishedBook] = useState<GroupBookWithAverageRating | null>(null);
+  const [isMemberLibraryOpen, setIsMemberLibraryOpen] = useState(false);
+  const [selectedMemberLibrary, setSelectedMemberLibrary] = useState<{ id: string; name: string } | null>(null);
+  const [memberLibraryBooks, setMemberLibraryBooks] = useState<UserLibraryBook[]>([]);
+  const [memberLibraryLoading, setMemberLibraryLoading] = useState(false);
+  const [memberLibraryError, setMemberLibraryError] = useState<string | null>(null);
 
   let currentlyReadingBook: GroupBookWithAverageRating | undefined;
   let finishedBooks: GroupBookWithAverageRating[] = [];
@@ -233,6 +238,38 @@ export default function GroupDetailsPage() {
   const handleViewFinishedBookDetails = (book: GroupBookWithAverageRating) => {
     setSelectedFinishedBook(book);
     setShowFinishedBookDetails(true);
+  };
+
+  const handleOpenMemberLibrary = async (member: { id: string; name: string }) => {
+    setSelectedMemberLibrary(member);
+    setIsMemberLibraryOpen(true);
+    setMemberLibraryLoading(true);
+    setMemberLibraryError(null);
+
+    try {
+      const response = await fetch(`/api/groups/${group.id}/members/${member.id}/library`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Impossible de charger la bibliothèque.');
+      }
+      const data = await response.json();
+      setMemberLibraryBooks(data);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de charger la bibliothèque.';
+      setMemberLibraryError(message);
+      setMemberLibraryBooks([]);
+    } finally {
+      setMemberLibraryLoading(false);
+    }
+  };
+
+  const handleCloseMemberLibrary = (open: boolean) => {
+    setIsMemberLibraryOpen(open);
+    if (!open) {
+      setSelectedMemberLibrary(null);
+      setMemberLibraryBooks([]);
+      setMemberLibraryError(null);
+    }
   };
 
   const tabItems = [
@@ -495,11 +532,22 @@ export default function GroupDetailsPage() {
             <CardContent>
               <ul className="space-y-2">
                 {group.members.map(member => (
-                  <li key={member.user.id} className="flex items-center space-x-2">
-                    <MemberAvatar member={member} />
-                    <span>{member.user.name}</span>
-                    {member.role === 'ADMIN' && <span className="text-xs font-semibold text-white bg-blue-600 px-2 py-1 rounded-full">Admin</span>}
-                    {member.role === 'MODERATOR' && <span className="text-xs font-semibold text-white bg-green-600 px-2 py-1 rounded-full">Modérateur</span>}
+                  <li key={member.user.id} className="flex items-center gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <MemberAvatar member={member} />
+                      <span className="truncate">{member.user.name}</span>
+                      {member.role === 'ADMIN' && <span className="flex-shrink-0 text-xs font-semibold text-white bg-blue-600 px-2 py-1 rounded-full">Admin</span>}
+                      {member.role === 'MODERATOR' && <span className="flex-shrink-0 text-xs font-semibold text-white bg-green-600 px-2 py-1 rounded-full">Modérateur</span>}
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="ml-auto shrink-0"
+                      onClick={() => handleOpenMemberLibrary({ id: member.user.id, name: member.user.name || 'Membre' })}
+                      aria-label={`Voir la bibliothèque de ${member.user.name || 'ce membre'}`}
+                    >
+                      <BookOpen className="h-4 w-4" />
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -528,6 +576,50 @@ export default function GroupDetailsPage() {
           </SheetContent>
         </Sheet>
       )}
+
+      <Sheet open={isMemberLibraryOpen} onOpenChange={handleCloseMemberLibrary}>
+        <SheetContent side="right" className="w-full sm:max-w-lg max-h-screen overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Bibliothèque</SheetTitle>
+            <SheetDescription>
+              {selectedMemberLibrary ? `Livres de ${selectedMemberLibrary.name}` : 'Bibliothèque du membre'}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-4">
+            {memberLibraryLoading && <p>Chargement de la bibliothèque...</p>}
+            {!memberLibraryLoading && memberLibraryError && (
+              <p className="text-sm text-destructive">{memberLibraryError}</p>
+            )}
+            {!memberLibraryLoading && !memberLibraryError && memberLibraryBooks.length === 0 && (
+              <p className="text-sm text-muted-foreground">Aucun livre visible pour le moment.</p>
+            )}
+            {!memberLibraryLoading && !memberLibraryError && memberLibraryBooks.length > 0 && (
+              <div className="space-y-3">
+                {memberLibraryBooks.map((userBook) => (
+                  <div key={userBook.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                    {userBook.book.cover_url && (
+                      <img
+                        src={userBook.book.cover_url}
+                        alt={userBook.book.title}
+                        className="h-16 w-12 rounded object-cover"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-semibold">{userBook.book.title}</p>
+                      {userBook.book.author && (
+                        <p className="text-xs text-muted-foreground">{userBook.book.author}</p>
+                      )}
+                      {userBook.book.description && (
+                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{userBook.book.description}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

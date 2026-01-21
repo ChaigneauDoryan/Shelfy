@@ -136,6 +136,7 @@ export interface UserLibraryBook {
   finished_at: string | null;
   current_page: number | null;
   is_archived?: boolean;
+  is_public?: boolean;
   book: {
     id: string;
     title: string;

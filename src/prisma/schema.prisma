@@ -31,6 +31,7 @@ model User {
   email                         String?            @unique @db.VarChar(255)
   emailVerified                 DateTime?
   image                         String?
+  library_is_public             Boolean            @default(false)
   bio                           String?
   password                      String?
   passwordResetExpires          DateTime?
@@ -211,6 +212,7 @@ model UserBook {
   finished_at  DateTime?
   current_page Int               @default(0)
   is_archived  Boolean           @default(false)
+  is_public    Boolean           @default(false)
   reading_pace String?           @db.VarChar(255)
   created_at   DateTime          @default(now())
   updated_at   DateTime          @updatedAt

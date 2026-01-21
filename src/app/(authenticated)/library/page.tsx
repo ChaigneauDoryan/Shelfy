@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageContainer } from '@/components/layout/PageContainer';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -125,6 +126,8 @@ export default function LibraryPage() {
   const [filterArchiveStatus, setFilterArchiveStatus] = useState<string>('all');
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [reviewModalBookId, setReviewModalBookId] = useState<string | null>(null);
+  const [libraryIsPublic, setLibraryIsPublic] = useState(false);
+  const [libraryVisibilityLoading, setLibraryVisibilityLoading] = useState(true);
   
   // États pour les modales
   const [modals, setModals] = useState({
@@ -168,6 +171,68 @@ export default function LibraryPage() {
       toast({ title: 'Erreur', description: message, variant: 'destructive' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLibraryVisibility = async () => {
+    if (!user?.id) return;
+    setLibraryVisibilityLoading(true);
+    try {
+      const response = await fetch('/api/library/visibility');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setLibraryIsPublic(Boolean(data.isPublic));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de charger la visibilité.';
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
+    } finally {
+      setLibraryVisibilityLoading(false);
+    }
+  };
+
+  const handleLibraryVisibilityChange = async (nextValue: boolean) => {
+    if (!user?.id) return;
+    try {
+      const response = await fetch('/api/library/visibility', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublic: nextValue }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setLibraryIsPublic(Boolean(data.isPublic));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Impossible de mettre à jour la visibilité.';
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
+    }
+  };
+
+  const handleBookVisibilityChange = async (bookId: string, isPublic: boolean) => {
+    const previousBooks = books;
+    setBooks((prev) =>
+      prev.map((book) => (book.id === bookId ? { ...book, is_public: isPublic } : book))
+    );
+
+    try {
+      const response = await fetch(`/api/library/${bookId}/visibility`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublic }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+    } catch (error: unknown) {
+      setBooks(previousBooks);
+      const message = error instanceof Error ? error.message : 'Impossible de mettre à jour la visibilité du livre.';
+      toast({ title: 'Erreur', description: message, variant: 'destructive' });
     }
   };
 
@@ -321,6 +386,7 @@ export default function LibraryPage() {
   useEffect(() => {
     if (user?.id) {
       reloadLibrary();
+      fetchLibraryVisibility();
     } else if (status === 'unauthenticated') {
       setLoading(false);
     }
@@ -349,6 +415,32 @@ export default function LibraryPage() {
           <Button className="w-full sm:w-auto">Ajouter un Nouveau Livre</Button>
         </Link>
       </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Visibilité de la bibliothèque</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">
+              {libraryIsPublic
+                ? 'Votre bibliothèque est publique pour tous les membres de vos groupes.'
+                : 'Votre bibliothèque est privée. Vous pouvez rendre certains livres publics.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={libraryIsPublic}
+              disabled={libraryVisibilityLoading}
+              onCheckedChange={(checked) => handleLibraryVisibilityChange(checked === true)}
+              id="library-visibility"
+            />
+            <label htmlFor="library-visibility" className="text-sm font-medium">
+              Bibliothèque publique
+            </label>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center">
         <Select onValueChange={setFilterStatus} defaultValue={filterStatus}>
@@ -434,6 +526,16 @@ export default function LibraryPage() {
                     )}
                   </div>
                 </div>
+                {!libraryIsPublic && (
+                  <div className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm">
+                    <span>Visible dans les groupes</span>
+                    <Checkbox
+                      checked={userBook.is_public ?? false}
+                      onCheckedChange={(checked) => handleBookVisibilityChange(userBook.id, checked === true)}
+                      aria-label={`Visibilité du livre ${userBook.book.title}`}
+                    />
+                  </div>
+                )}
               </CardContent>
               <div className="flex flex-col gap-2 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between">
                 <Link href={`/library/${userBook.id}`} className="w-full sm:w-auto">
