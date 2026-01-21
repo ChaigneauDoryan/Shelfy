@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { LayoutDashboard, BookOpen, Users, MessageCircle, User } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useState } from 'react';
+import { useTheme } from 'next-themes';
+import { FaDesktop, FaMoon, FaSun } from 'react-icons/fa';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -26,6 +28,7 @@ export function MobileBottomTabs({ activePath }: MobileBottomTabsProps) {
   const { data: session } = useSession();
   const profile = session?.user;
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  const { setTheme, theme } = useTheme();
   let pathname: string | null = null;
   try {
     pathname = usePathname();
@@ -97,6 +100,38 @@ export function MobileBottomTabs({ activePath }: MobileBottomTabsProps) {
                 </div>
               </div>
             )}
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-sm font-semibold text-foreground">Thème</p>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={theme === 'light' ? 'default' : 'secondary'}
+                  className="h-10 w-full gap-2"
+                  onClick={() => setTheme('light')}
+                >
+                  <FaSun className="h-4 w-4" />
+                  Clair
+                </Button>
+                <Button
+                  type="button"
+                  variant={theme === 'dark' ? 'default' : 'secondary'}
+                  className="h-10 w-full gap-2"
+                  onClick={() => setTheme('dark')}
+                >
+                  <FaMoon className="h-4 w-4" />
+                  Sombre
+                </Button>
+                <Button
+                  type="button"
+                  variant={theme === 'system' ? 'default' : 'secondary'}
+                  className="h-10 w-full gap-2"
+                  onClick={() => setTheme('system')}
+                >
+                  <FaDesktop className="h-4 w-4" />
+                  Auto
+                </Button>
+              </div>
+            </div>
             <Button asChild className="w-full">
               <Link href="/subscription" onClick={() => setAccountSheetOpen(false)}>
                 Gérer mon abonnement
