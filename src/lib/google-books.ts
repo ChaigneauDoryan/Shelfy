@@ -8,9 +8,10 @@ export interface LanguageDetectionResult {
 export interface FilterGoogleBooksOptions {
   preferredLanguage: string;
   existingGoogleBooksIds: Set<string>;
+  strictLanguage?: boolean;
 }
 
-const DEFAULT_LANGUAGE = 'en';
+const DEFAULT_LANGUAGE = 'fr';
 const JAPANESE_REGEX = /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u;
 const FRENCH_ACCENTS_REGEX = /[àâäéèêëîïôöùûüÿçœæ]/i;
 const FRENCH_TERMS_REGEX = /\b(le|la|les|des|une|de|du|pour|et|ce|cette|lorsque)\b/i;
@@ -34,6 +35,15 @@ export function detectSearchLanguageFromTerms(terms: string[]): LanguageDetectio
 
   return { language: DEFAULT_LANGUAGE, isFallback: true };
 }
+
+export const normalizeSearchText = (value: string): string => {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^0-9A-Za-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
 
 const getCoverUrl = (volumeInfo: GoogleBooksVolumeInfo): string | undefined =>
   volumeInfo.imageLinks?.thumbnail ?? volumeInfo.imageLinks?.smallThumbnail;
@@ -67,10 +77,11 @@ const computeCompletenessScore = (volumeInfo: GoogleBooksVolumeInfo): number => 
  */
 export function filterGoogleBooksItems(
   items: GoogleBooksApiBook[],
-  { preferredLanguage, existingGoogleBooksIds }: FilterGoogleBooksOptions
+  { preferredLanguage, existingGoogleBooksIds, strictLanguage = true }: FilterGoogleBooksOptions
 ): GoogleBooksApiBook[] {
   const dedupMap = new Map<string, { book: GoogleBooksApiBook; score: number }>();
   const normalizedLanguage = preferredLanguage?.toLowerCase();
+  const enforceLanguage = Boolean(strictLanguage && preferredLanguage && normalizedLanguage);
 
   for (const item of items) {
     if (existingGoogleBooksIds.has(item.id)) {
@@ -83,7 +94,7 @@ export function filterGoogleBooksItems(
     }
 
     if (
-      normalizedLanguage &&
+      enforceLanguage &&
       volumeInfo.language &&
       volumeInfo.language.toLowerCase() !== normalizedLanguage
     ) {
@@ -91,7 +102,9 @@ export function filterGoogleBooksItems(
     }
 
     const key = buildDedupKey(volumeInfo);
-    const score = computeCompletenessScore(volumeInfo);
+    const languageBonus =
+      normalizedLanguage && volumeInfo.language?.toLowerCase() === normalizedLanguage ? 0.5 : 0;
+    const score = computeCompletenessScore(volumeInfo) + languageBonus;
     const existing = dedupMap.get(key);
 
     if (!existing || score > existing.score) {
