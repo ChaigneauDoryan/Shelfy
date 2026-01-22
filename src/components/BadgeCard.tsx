@@ -24,11 +24,15 @@ interface BadgeCardProps {
 
 export default function BadgeCard({ badge }: BadgeCardProps) {
   const IconComponent = iconMap[badge.icon_name] || FaStar; // FaStar comme icône par défaut
-  const unlockedDate = new Date(badge.unlocked_at).toLocaleDateString('fr-FR', {
-    day: 'numeric', 
-    month: 'long', 
-    year: 'numeric'
-  });
+  const unlockedDate = badge.unlocked_at ? new Date(badge.unlocked_at) : null;
+  const unlockedDateLabel =
+    unlockedDate && !Number.isNaN(unlockedDate.getTime())
+      ? unlockedDate.toLocaleDateString('fr-FR', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+      : 'inconnue';
 
   return (
     <TooltipProvider>
@@ -41,7 +45,7 @@ export default function BadgeCard({ badge }: BadgeCardProps) {
         </TooltipTrigger>
         <TooltipContent>
           <p className="font-bold">{badge.description}</p>
-          <p className="text-sm text-gray-500">Débloqué le {unlockedDate}</p>
+          <p className="text-sm text-gray-500">Débloqué le {unlockedDateLabel}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

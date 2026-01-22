@@ -50,7 +50,7 @@ interface UserProfileBadge {
   description: string;
   icon_name?: string;
   icon_url?: string | null;
-  unlocked_at?: string;
+  unlocked_at?: string | null;
 }
 
 const profileFormSchema = z.object({

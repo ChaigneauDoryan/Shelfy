@@ -126,15 +126,15 @@ function Groups() {
 
   return (
     <div className="space-y-8 p-4">
-      <header className="flex justify-between items-center mb-6">
+      <header className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
         <PageHeader
           title="Vos Groupes de Lecture"
           description="Connectez-vous avec d'autres passionnés de lecture."
         />
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4 w-full">
+        <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4 sm:w-auto">
           <Dialog open={isJoinModalOpen} onOpenChange={setIsJoinModalOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg shadow-md flex items-center">
+              <Button className="w-full bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg shadow-md flex items-center sm:w-auto">
                 <FaPlus className="mr-2" /> Rejoindre un groupe
               </Button>
             </DialogTrigger>
@@ -162,7 +162,7 @@ function Groups() {
             </DialogContent>
           </Dialog>
           <Link href="/groups/create">
-            <Button variant="outline" className="px-6 py-3 rounded-lg shadow-md flex items-center">
+            <Button variant="outline" className="w-full px-6 py-3 rounded-lg shadow-md flex items-center sm:w-auto">
               <FaPlus className="mr-2" /> Créer un groupe
             </Button>
           </Link>

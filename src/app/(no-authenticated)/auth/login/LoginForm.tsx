@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signIn } from 'next-auth/react';
+import { signIn, useSession } from 'next-auth/react';
 import { actionLinkStore } from '@/lib/action-link-store';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -29,6 +29,7 @@ const formSchema = z.object({
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { status } = useSession();
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const nextParam = searchParams.get('next');
@@ -53,6 +54,16 @@ function LoginFormContent() {
       setError('Email ou mot de passe invalide.');
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/dashboard');
+    }
+  }, [status, router]);
+
+  if (status === 'authenticated') {
+    return null;
+  }
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

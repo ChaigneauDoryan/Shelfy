@@ -92,7 +92,10 @@ export async function GET(request: Request) {
       where: { user_id: userId },
       include: { badge: true },
     });
-    const badges = userBadges.map(ub => ub.badge);
+    const badges = userBadges.map((ub) => ({
+      ...ub.badge,
+      unlocked_at: ub.unlocked_at,
+    }));
 
     // 4. Calculate reading pace
     const thirtyDaysAgo = new Date();

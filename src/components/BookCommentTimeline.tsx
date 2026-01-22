@@ -82,32 +82,49 @@ export default function BookCommentTimeline({ userBookId, totalBookPages, refres
       {comments.length === 0 ? (
         <p>Aucun commentaire pour ce livre.</p>
       ) : (
-        <div className="relative">
-          {/* Ligne verticale centrale */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 w-1 bg-gray-200 h-full"></div>
-
-          {comments.map((comment, index) => {
-            const isEven = index % 2 === 0; // Pour alterner gauche/droite
-            return (
-              <div key={comment.id} className={`mb-8 flex items-center w-full ${isEven ? 'justify-start' : 'justify-end'}`}>
-                {/* Point sur la ligne */}
-                <div className={`absolute z-10 w-4 h-4 bg-blue-500 rounded-full ${isEven ? 'left-1/2 -translate-x-1/2' : 'left-1/2 -translate-x-1/2'}`}></div>
-
-                <div className={`w-5/12 ${isEven ? 'pr-8 text-right' : 'pl-8 text-left'}`}>
-                  <Card className="w-full cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedComment(comment)}>
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="font-semibold text-lg">Page {comment.page_number}</h3>
-                        <span className="text-sm text-gray-500">{format(new Date(comment.created_at), 'dd MMMM yyyy', { locale: fr })}</span>
-                      </div>
-                      <p className="text-gray-700 line-clamp-2">{comment.comment_text}</p>
-                    </CardContent>
-                  </Card>
+        <>
+          <div className="space-y-4 sm:hidden">
+            {comments.map((comment) => (
+              <Card
+                key={comment.id}
+                className="w-full cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setSelectedComment(comment)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <h3 className="font-semibold text-lg">Page {comment.page_number}</h3>
+                    <span className="text-sm text-gray-500">
+                      {format(new Date(comment.created_at), 'dd MMMM yyyy', { locale: fr })}
+                    </span>
+                  </div>
+                  <p className="text-gray-700 line-clamp-2">{comment.comment_text}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="relative hidden sm:block">
+            <div className="absolute left-1/2 transform -translate-x-1/2 w-1 bg-gray-200 h-full"></div>
+            {comments.map((comment, index) => {
+              const isEven = index % 2 === 0;
+              return (
+                <div key={comment.id} className={`mb-8 flex items-center w-full ${isEven ? 'justify-start' : 'justify-end'}`}>
+                  <div className="absolute z-10 w-4 h-4 bg-blue-500 rounded-full left-1/2 -translate-x-1/2"></div>
+                  <div className={`w-5/12 ${isEven ? 'pr-8 text-right' : 'pl-8 text-left'}`}>
+                    <Card className="w-full cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedComment(comment)}>
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <h3 className="font-semibold text-lg">Page {comment.page_number}</h3>
+                          <span className="text-sm text-gray-500">{format(new Date(comment.created_at), 'dd MMMM yyyy', { locale: fr })}</span>
+                        </div>
+                        <p className="text-gray-700 line-clamp-2">{comment.comment_text}</p>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {selectedComment && (

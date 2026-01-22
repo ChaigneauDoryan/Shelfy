@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Import Select components
 import { useToast } from '@/hooks/use-toast'; // Import useToast
+import Link from 'next/link';
 import type {
   AwardedBadge,
   UserBookReviewSummary,
@@ -160,20 +161,25 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
 
   return (
     <Card>
+      <div className="px-6 pt-6">
+        <Button asChild variant="secondary">
+          <Link href="/library">Retour à ma bibliothèque</Link>
+        </Button>
+      </div>
       <CardHeader>
         <CardTitle>{userBook.book.title}</CardTitle>
         <CardDescription>{userBook.book.author}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-start space-x-4">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-start">
           {userBook.book.cover_url && (
             <img
               src={userBook.book.cover_url}
               alt={`Couverture de ${userBook.book.title}`}
-              className="w-32 h-48 object-contain flex-shrink-0"
+              className="w-32 h-48 object-contain flex-shrink-0 self-center sm:self-start"
             />
           )}
-          <div>
+          <div className="w-full">
             <p className="text-sm text-gray-600 mb-4">{userBook.book.description}</p>
             <div className="flex items-center space-x-2">
               <p className="text-sm">Statut :</p>
@@ -194,7 +200,7 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
         </div>
       </CardContent>
       <div className="p-4">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col items-center gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
           <Button
             onClick={() => {
               if (isBookFinished) {
@@ -207,7 +213,7 @@ export default function BookDetailsClientWrapper({ userBookId, userBook: initial
             {showCommentForm ? 'Annuler' : 'Ajouter un commentaire'}
           </Button>
           {isBookFinished && (
-            <p className="text-sm text-muted-foreground ml-4">
+            <p className="text-sm text-muted-foreground sm:ml-4">
               Les commentaires d’avancement ne sont plus disponibles pour un livre terminé.
             </p>
           )}

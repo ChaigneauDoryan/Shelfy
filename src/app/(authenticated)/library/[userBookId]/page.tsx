@@ -82,7 +82,7 @@ export async function generateMetadata({ params }: BookDetailPageProps): Promise
 
     const authorLabel = userBook.book.author ?? 'Auteur inconnu';
     const formattedTitle = `${userBook.book.title}${userBook.book.author ? ` - ${authorLabel}` : ''}`;
-    const description = userBook.book.description ?? fallbackDescription;
+    const description = (userBook.book.description ?? fallbackDescription).slice(0, 160);
 
     return createPageMetadata({
       pageTitle: formattedTitle,
